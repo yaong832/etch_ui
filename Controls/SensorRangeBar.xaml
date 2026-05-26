@@ -1,0 +1,20 @@
+<UserControl x:Class="etch_ui.Controls.SensorRangeBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="36" Margin="0,0,8,6">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="14"/>
+        </Grid.RowDefinitions>
+        <DockPanel Grid.Row="0" Margin="0,0,0,4">
+            <TextBlock x:Name="TitleBlock" FontSize="11" Foreground="#6B7280" DockPanel.Dock="Left"/>
+            <TextBlock x:Name="ValueBlock" FontSize="11" FontWeight="SemiBold" DockPanel.Dock="Right"/>
+        </DockPanel>
+        <Grid Grid.Row="1" Height="12">
+            <Border Background="#E5E7EB" CornerRadius="3"/>
+            <Border x:Name="BandBorder" Background="#DCFCE7" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
+            <Border x:Name="FillBorder" Background="#2563EB" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
+        </Grid>
+    </Grid>
+</UserControl>

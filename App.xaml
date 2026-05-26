@@ -1,0 +1,11 @@
+﻿<Application x:Class="etch_ui.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:etch_ui"
+             xmlns:conv="clr-namespace:etch_ui.Converters"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <conv:BoolToLampBrushConverter x:Key="LampBrush"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Application.Resources>
+</Application>

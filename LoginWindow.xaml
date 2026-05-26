@@ -1,0 +1,146 @@
+<Window x:Class="etch_ui.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="로그인 — Etch HMI"
+        Width="460"
+        MinWidth="440"
+        MinHeight="520"
+        MaxHeight="900"
+        SizeToContent="Height"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterScreen"
+        Background="#F3F4F6">
+    <Border Margin="20" Background="White" CornerRadius="10" Padding="0">
+        <Border.Effect>
+            <DropShadowEffect Color="#33000000" BlurRadius="16" ShadowDepth="2" Opacity="0.35"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 -->
+            <Border Grid.Row="0" Background="#1F2937" CornerRadius="10,10,0,0" Padding="24,20">
+                <StackPanel>
+                    <TextBlock Text="Etch Load Lock HMI" Foreground="White" FontSize="15" FontWeight="SemiBold" Opacity="0.9"/>
+                    <TextBlock Text="장비 제어 시스템 로그인" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,6,0,0"/>
+                    <TextBlock Text="승인된 계정으로 로그인하세요." Foreground="#D1D5DB" FontSize="12" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 입력 -->
+            <StackPanel Grid.Row="1" Margin="28,24,28,8">
+                <TextBlock Text="아이디" FontWeight="SemiBold" Foreground="#374151" Margin="0,0,0,6"/>
+                <TextBox x:Name="TxtUsername"
+                         Height="40"
+                         Padding="12,0"
+                         VerticalContentAlignment="Center"
+                         FontSize="14"
+                         BorderBrush="#D1D5DB"
+                         BorderThickness="1"/>
+
+                <TextBlock Text="비밀번호" FontWeight="SemiBold" Foreground="#374151" Margin="0,16,0,6"/>
+                <PasswordBox x:Name="TxtPassword"
+                             Height="40"
+                             Padding="12,0"
+                             VerticalContentAlignment="Center"
+                             FontSize="14"
+                             BorderBrush="#D1D5DB"
+                             BorderThickness="1"/>
+
+                <TextBlock x:Name="TxtError"
+                           Foreground="#DC2626"
+                           TextWrapping="Wrap"
+                           MinHeight="22"
+                           Margin="0,14,0,0"
+                           FontSize="13"/>
+
+                <Border Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="안내" FontWeight="SemiBold" Foreground="#374151" FontSize="12"/>
+                        <TextBlock Text="• 비밀번호: 최소 8자, 영문과 숫자 포함" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"/>
+                        <TextBlock Text="• 관리자: 알람 리셋·유지보수·사용자 관리(등록/비활성화)" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="• 작업자: 모니터링·Start/Stop" Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="• 메인 상단 [사용자 관리]는 관리자만 표시됩니다." Foreground="#6B7280" FontSize="12" Margin="0,2,0,0"/>
+                        <TextBlock Text="• 초기 계정 — 관리자: admin / Admin1234 | 작업자: worker / Worker1234" Foreground="#6B7280" FontSize="12" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- 버튼 -->
+            <Border Grid.Row="2" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0" Padding="24,16,24,20" CornerRadius="0,0,10,10">
+                <StackPanel>
+                    <Button x:Name="BtnLogin"
+                            Content="로그인"
+                            Height="44"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Background="#2563EB"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            IsDefault="True"
+                            Click="BtnLogin_Click">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="16,0">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="#1D4ED8"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="#1E40AF"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter TargetName="bd" Property="Opacity" Value="0.55"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="BtnClear"
+                                Grid.Column="0"
+                                Content="입력 지우기"
+                                Height="38"
+                                Margin="0,0,6,0"
+                                FontSize="13"
+                                Foreground="#374151"
+                                Background="#F3F4F6"
+                                BorderBrush="#D1D5DB"
+                                BorderThickness="1"
+                                Cursor="Hand"
+                                Click="BtnClear_Click"/>
+                        <Button x:Name="BtnCancel"
+                                Grid.Column="1"
+                                Content="취소"
+                                Height="38"
+                                Margin="6,0,0,0"
+                                FontSize="13"
+                                Foreground="#374151"
+                                Background="White"
+                                BorderBrush="#D1D5DB"
+                                BorderThickness="1"
+                                Cursor="Hand"
+                                IsCancel="True"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

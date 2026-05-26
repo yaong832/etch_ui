@@ -1,0 +1,22 @@
+# Build
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs / upgrade
+UpgradeLog.htm
+*.log
+
+# Local DB (runtime)
+data/
+*.db
+
+# OS
+Thumbs.db
+.DS_Store
