@@ -16,6 +16,7 @@
 
 ## 문서
 
+- [`docs/TODO.md`](docs/TODO.md) — Flask 제외, 지금 할 수 있는 작업 목록
 - `PROTO_실행순서.md` — Flask / WPF 실행 순서
 - `PLC_IO_매핑.md` — PLC I/O 매핑
 - `WPF_장비UI_이식_계획.md` — UI 이식 계획
