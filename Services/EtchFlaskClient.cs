@@ -110,6 +110,8 @@ public sealed class EtchAiDiagnosis
 {
     public bool Success { get; set; }
     public double AnomalyScore { get; set; }
+    public string? PredictedAlarm { get; set; }
+    public double PredictionConfidence { get; set; }
     public string? SuggestedAction { get; set; }
     public string? Note { get; set; }
     public bool Stub { get; set; }

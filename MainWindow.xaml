@@ -101,6 +101,8 @@
                             ToolTip="TwinCAT 없을 때 데모(가상 센서·TM 이송·로직 확인). 연결 시 실데이터 우선."/>
                     <Button x:Name="BtnDemoGuide" Content="데모 가이드" Style="{StaticResource HmiToolbarButton}"
                             Click="BtnDemoGuide_Click" ToolTip="3분 발표·검증 순서"/>
+                    <Button x:Name="BtnDemoScenario" Content="데모 진행" Style="{StaticResource HmiToolbarButton}"
+                            Click="BtnDemoScenario_Click" ToolTip="시뮬 허용·Start·검증 로그 자동 (약 10초)"/>
                 </WrapPanel>
             </Grid>
         </Border>
@@ -237,6 +239,13 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <StackPanel>
+                        <Border Style="{StaticResource HmiInfoBanner}" Background="#F5F3FF" BorderBrush="#C4B5FD" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="활성 레시피" FontWeight="SemiBold" Foreground="#5B21B6" FontSize="12"/>
+                                <TextBlock Text="{Binding ActiveRecipeText}" TextWrapping="Wrap"
+                                           FontSize="11" Foreground="#4C1D95" Margin="0,6,0,0" LineHeight="16"/>
+                            </StackPanel>
+                        </Border>
                         <Border Style="{StaticResource HmiInfoBanner}" Background="#FFFBEB" BorderBrush="#FDE68A" Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="인터락 허용 범위" FontWeight="SemiBold" Foreground="#92400E" FontSize="12"/>
@@ -272,6 +281,8 @@
                                            Foreground="{Binding AiScoreBrush}"/>
                                 <TextBlock Text="{Binding AiHintText}" TextWrapping="Wrap" Margin="0,6,0,0"
                                            FontSize="12" Foreground="#374151" LineHeight="18"/>
+                                <TextBlock Text="{Binding AiPredictedAlarmText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                           FontSize="12" FontWeight="SemiBold" Foreground="#7C2D12" LineHeight="18"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

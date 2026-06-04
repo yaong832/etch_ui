@@ -80,8 +80,10 @@ public sealed class MainViewModel : ViewModelBase
     private string _processStepCaption = string.Empty;
     private string _processStepDetailText = string.Empty;
 
+    private string _activeRecipeText = "레시피: (Start 후 갱신)";
     private string _aiScoreText = "—";
     private string _aiHintText = "Flask 서버 연결 후 표시됩니다.";
+    private string _aiPredictedAlarmText = "예상 알람: —";
     private Brush _aiScoreBrush = Brushes.DimGray;
 
     public ObservableCollection<string> LogLines { get; } = new();
@@ -472,6 +474,7 @@ public sealed class MainViewModel : ViewModelBase
     public void NotifyAppSettingsBindings()
     {
         Raise(nameof(InterlockThresholdsText));
+        Raise(nameof(ActiveRecipeText));
         Raise(nameof(SensorPressureRangeMin));
         Raise(nameof(SensorPressureRangeMax));
         Raise(nameof(SensorPressureScaleMax));
@@ -509,6 +512,12 @@ public sealed class MainViewModel : ViewModelBase
         set => SetField(ref _processStepDetailText, value);
     }
 
+    public string ActiveRecipeText
+    {
+        get => _activeRecipeText;
+        set => SetField(ref _activeRecipeText, value);
+    }
+
     public string AiScoreText
     {
         get => _aiScoreText;
@@ -519,6 +528,12 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => _aiHintText;
         set => SetField(ref _aiHintText, value);
+    }
+
+    public string AiPredictedAlarmText
+    {
+        get => _aiPredictedAlarmText;
+        set => SetField(ref _aiPredictedAlarmText, value);
     }
 
     public Brush AiScoreBrush

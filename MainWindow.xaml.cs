@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace etch_ui;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, DemoScenarioHost
 {
     private readonly MainViewModel _vm = new();
     private readonly EquipmentMotionBridge _motionBridge;
@@ -85,6 +85,7 @@ public partial class MainWindow : Window
     private double _lastAiScore = -1;
     private string _lastAiHint = "Flask AI 대기 중";
     private DateTime _nextAiHighScoreLogUtc = DateTime.MinValue;
+    private readonly DemoScenarioRunner _demoScenarioRunner = new();
     private DateTime _nextAiSnapshotUtc = DateTime.MinValue;
 
     private enum EquipmentState
@@ -203,6 +204,7 @@ public partial class MainWindow : Window
 
     private void OnWindowClosed()
     {
+        _demoScenarioRunner.Stop();
         _motionAnimator.Dispose();
         _plc.Dispose();
         _flask.Dispose();
@@ -957,6 +959,10 @@ public partial class MainWindow : Window
 
         ApplyProcessStepDisplay();
 
+        _vm.ActiveRecipeText = _state == EquipmentState.Running
+            ? $"▶ {ProcessRecipeRuntime.Active.SummaryText}"
+            : $"대기 · {ProcessRecipeRuntime.Active.Name} ({ProcessRecipeRuntime.Active.EtchPmIds.Count} PM)";
+
         IReadOnlyList<Equipment.Models.ModuleStateSnapshot> moduleSnapshots = BuildModuleSnapshots();
         _motionBridge.Sync(
             EffectiveAccessSafe,
@@ -1417,6 +1423,27 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
     }
 
+    private void BtnDemoScenario_Click(object sender, RoutedEventArgs e)
+    {
+        if (_demoScenarioRunner.IsRunning)
+        {
+            _demoScenarioRunner.Stop();
+            AddLog("데모 시나리오 중지");
+            BtnDemoScenario.Content = "데모 진행";
+            return;
+        }
+
+        BtnDemoScenario.Content = "데모 중지";
+        _demoScenarioRunner.Completed += OnDemoScenarioCompleted;
+        _demoScenarioRunner.Start(this);
+    }
+
+    private void OnDemoScenarioCompleted()
+    {
+        _demoScenarioRunner.Completed -= OnDemoScenarioCompleted;
+        BtnDemoScenario.Content = "데모 진행";
+    }
+
     private void BtnSimAllow_Click(object sender, RoutedEventArgs e)
     {
         _simulationFallbackEnabled = !_simulationFallbackEnabled;
@@ -1544,6 +1571,7 @@ public partial class MainWindow : Window
                 ? "AI 진단 대기 (sensor-data 수신 후 갱신)"
                 : "Flask 미연결 — AI 조언 없음";
             _vm.AiScoreBrush = Brushes.DimGray;
+            _vm.AiPredictedAlarmText = "예상 알람: —";
             return;
         }
 
@@ -1551,6 +1579,10 @@ public partial class MainWindow : Window
         _lastAiHint = diag.SuggestedAction ?? diag.Note ?? "—";
         _vm.AiScoreText = $"이상 점수: {diag.AnomalyScore:F2}" + (diag.Stub ? " (규칙 스텁)" : "");
         _vm.AiHintText = _lastAiHint;
+        string pred = diag.PredictedAlarm?.Trim().ToUpperInvariant() ?? "NONE";
+        _vm.AiPredictedAlarmText = pred is "" or "NONE"
+            ? "예상 알람: 없음 (정상 추세)"
+            : $"예상 알람: {pred} · 신뢰 {diag.PredictionConfidence:P0} (조언만)";
         _vm.AiScoreBrush = diag.AnomalyScore switch
         {
             >= 0.75 => Brushes.OrangeRed,
@@ -1613,4 +1645,31 @@ public partial class MainWindow : Window
     }
 
     private static string? CurrentUserName() => SessionContext.CurrentUser?.Username;
+
+    void DemoScenarioHost.Log(string message) => AddLog(message);
+
+    bool DemoScenarioHost.SimulationEnabled => _simulationFallbackEnabled;
+
+    void DemoScenarioHost.EnableSimulation()
+    {
+        if (_simulationFallbackEnabled)
+        {
+            return;
+        }
+
+        BtnSimAllow_Click(this, new RoutedEventArgs());
+    }
+
+    string DemoScenarioHost.EquipmentState => _state.ToString().ToUpperInvariant();
+
+    bool DemoScenarioHost.TryStartProcess(string source)
+    {
+        if (_state == EquipmentState.Running)
+        {
+            return true;
+        }
+
+        RequestStart(source);
+        return _state == EquipmentState.Running;
+    }
 }
