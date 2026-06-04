@@ -2,7 +2,7 @@
 
 > **전제:** [`MODULE_역할_정의.md`](MODULE_역할_정의.md) 공정 흐름  
 > **상태:** 용량·알고리즘 **미확정** — 아래 표의 “결정 필요” 항목을 채우면 스케줄러·레시피·가상 이송 순서가 정해짐  
-> **현재 WPF:** `FoupPickScheduler` + `TmTransferSimulator` (FOUP 25×3, Side Stg 25, 다음 FOUP 직결, PM tick) — **전역 스케줄러·레시피 엔진은 미구현**  
+> **현재 WPF:** `FoupPickScheduler` + `EfemTransferScheduler` + `VacuumTransferScheduler` + `TmTransferSimulator` (FOUP 25×3, Side Stg 25, 카세트 출하, 듀얼 블레이드) — **레시피 XML/Flask 엔진은 미구현**  
 > **정책 상세:** [`SCHEDULER_FOUP_PM_정책.md`](SCHEDULER_FOUP_PM_정책.md)
 
 ---
@@ -46,7 +46,7 @@
 | **C5** | PM 수용 | PM당 동시 몇 매? | **1매/챔버** | **1매** | ☐ |
 | **C6** | PM 내부 | Process+Strip 동시 vs PM 분리? | 라인마다 다름 | **PM1=Strip 전용, PM2~4=Etch** (확정) | ☑ |
 | **C7** | Side Storage | 최대 몇 매? | 설비 스펙 | **25** | ☑ |
-| **C8** | Side Stg 만석 | 만석 시 동작 | 다음 FOUP 직결 | **25 만석 시 BM→Side Stg HOLD** | ☑ |
+| **C8** | Side Stg 만석 | 만석 시 동작 | 카세트 교체 출하(가상) | **25 만석 시 BM→Side HOLD → swap 출하** | ☑ |
 | **C9** | Aligner | 동시 1매? | **1매** | **1매** | ☐ |
 | **C10** | 식각 PM 순서 | PM2→3→4 고정? 레시피별? | 레시피/레시피 | **레시피 스텝** (초기는 2→3→4 고정) | ☐ |
 
@@ -84,7 +84,7 @@
 ### 3.5 PM 1매 × 4 · PM2~4 동일 Etch
 
 - **PM2·3·4:** 동일 식각 레시피 → 챔버에 웨이퍼가 있으면 **병렬 식각** 가능 (TM 1매는 이송만 순차).
-- **PM1:** 2~4 **후가공 Strip**, 레시피 시간 **Etch보다 짧게** (시뮬: Strip 12 tick / Etch 30 tick, 튜닝).
+- **PM1:** 2~4 **후가공 Strip**, 레시피 시간 **Etch보다 짧게** (시뮬 기본: Strip **20** tick / Etch **75** tick, `EquipmentCapacityConfig`).
 - 1매 TM 데모 경로: `PM2→PM3→PM4→PM1` 순차 이송 + 구간별 `WaitProcess`.
 
 ### 3.6 Side Storage N매 + 외부 이송
@@ -120,7 +120,7 @@
 |-------|--------|--------------|
 | 0 | `EquipmentCapacityConfig` (json) | 없음 |
 | 1 | `Wafer` record + 상태 | 없음 (HasWaferAt region만) |
-| 2 | `ClusterScheduler` | 없음 |
+| 2 | `EfemTransferScheduler` / `VacuumTransferScheduler` | ✓ (단일 전역 `ClusterScheduler` 클래스 없음) |
 | 3 | `TransferPlanner` | 없음 (고정 큐) |
 | 4 | 시뮬/PLC | 데모 큐만 |
 | 5 | `Recipe` per PM | 없음 |

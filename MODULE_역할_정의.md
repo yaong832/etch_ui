@@ -66,7 +66,7 @@
 | 항목 | 내용 |
 |------|------|
 | **Side Storage** | **25매** 버퍼. BM 이후 Fume 제거·적치. |
-| **다음 공정 FOUP** | LP별 `NextProcessFoupA/B/C`와 **직결** — Side Stg에서 **바로** 다음 공정 FOUP으로 이송. |
+| **다음 공정 FOUP** | 도식·레거시(`NextProcessFoup*`). **실 이송 없음** — Side Stg **카세트 교체 출하**로 완료 처리. |
 | **FOUP 투입** | `FoupPickScheduler`: 잔량 많은 LP 우선, 동률 LP1→2→3, **풀 25매 LP는 다른 LP Lot 진행 중이면 LP1~3 공통 차단**. |
 
 ---

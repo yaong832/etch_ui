@@ -49,6 +49,21 @@ namespace etch_ui
                 return;
             }
 
+            if (e.Args.Any(a => a.Equals("--sim-dual-blade", StringComparison.OrdinalIgnoreCase)))
+            {
+                int ticks = 12000;
+                string? ticksArg = e.Args.FirstOrDefault(a => a.StartsWith("--ticks=", StringComparison.OrdinalIgnoreCase));
+                if (ticksArg is not null && int.TryParse(ticksArg.Split('=')[1], out int parsed) && parsed > 0)
+                {
+                    ticks = parsed;
+                }
+
+                SimulatorSmokeTester.Result result = SimulatorSmokeTester.RunDualBlade(ticks);
+                Console.WriteLine($"sim_dual_blade ticks={result.Ticks} success={result.Success} {result.Message}");
+                Shutdown(result.Success ? 0 : 5);
+                return;
+            }
+
             if (e.Args.Any(a => a.Equals("--sim-policy-batch", StringComparison.OrdinalIgnoreCase)))
             {
                 int runs = 20;

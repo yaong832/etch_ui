@@ -12,6 +12,10 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private double _vacuumBladeAngleDegrees;
     private double _vacuumBladeExtension = 0.65;
     private bool _vacuumCarryingWafer;
+    private bool _vacuumBladeSlotA;
+    private bool _vacuumBladeSlotB;
+    private int _vacuumActiveBladeSlot;
+    private bool _vacuumIsRotatingBlade;
     private double _efemBladeAngleDegrees;
     private double _efemBladeExtension = 0.65;
     private bool _efemCarryingWafer;
@@ -65,6 +69,30 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     {
         get => _vacuumCarryingWafer;
         set => SetField(ref _vacuumCarryingWafer, value);
+    }
+
+    public bool VacuumBladeSlotA
+    {
+        get => _vacuumBladeSlotA;
+        set => SetField(ref _vacuumBladeSlotA, value);
+    }
+
+    public bool VacuumBladeSlotB
+    {
+        get => _vacuumBladeSlotB;
+        set => SetField(ref _vacuumBladeSlotB, value);
+    }
+
+    public int VacuumActiveBladeSlot
+    {
+        get => _vacuumActiveBladeSlot;
+        set => SetField(ref _vacuumActiveBladeSlot, value);
+    }
+
+    public bool VacuumIsRotatingBlade
+    {
+        get => _vacuumIsRotatingBlade;
+        set => SetField(ref _vacuumIsRotatingBlade, value);
     }
 
     public double EfemBladeAngleDegrees
@@ -181,13 +209,12 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     public void ApplyWaferInventory(ClusterEquipmentState state)
     {
         int foupMax = state.Capacity.FoupSlotCount;
-        int alignMax = state.Capacity.AlignerSlotCount;
         int sideMax = state.Capacity.SideStorageSlotCount;
 
         Foup1InventoryText = FormatSlot(state.FoupPorts[0].RemainingInFoup, foupMax);
         Foup2InventoryText = FormatSlot(state.FoupPorts[1].RemainingInFoup, foupMax);
         Foup3InventoryText = FormatSlot(state.FoupPorts[2].RemainingInFoup, foupMax);
-        AlignerInventoryText = FormatSlot(state.AlignerBuffer.Count, alignMax);
+        AlignerInventoryText = FormatAlignerPresence(state.AlignerBuffer.Count);
         SideStorageInventoryText = FormatSlot(state.SideStorage.Count, sideMax);
 
         WaferInventorySummary =
@@ -206,6 +233,14 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     }
 
     private static string FormatSlot(int count, int capacity) => $"{count}/{capacity}";
+
+    private static string FormatAlignerPresence(int count) =>
+        count switch
+        {
+            0 => "비움",
+            1 => "적재",
+            _ => $"{count}매"
+        };
 
     /// <summary>로봇별 목표값 (다른 로봇 상태는 유지).</summary>
     public void SetRobotTargets(
@@ -291,16 +326,28 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         {
             VacuumTargetCarrying = false;
         }
+    }
 
-        IsEfemRobotActive = efemRegion is not null;
-        if (efemRegion is not null && vacuumRegion is null)
-        {
-            TmRegionLabel = RegionAngleHelper.FormatLabel(efemRegion.Value, TransferRobotKind.EfemAtmospheric);
-        }
-        else if (vacuumRegion is not null)
-        {
-            TmRegionLabel = RegionAngleHelper.FormatLabel(vacuumRegion.Value, TransferRobotKind.VacuumTm);
-        }
+    /// <summary>진공 TM — 슬롯별 회전각(앞/뒤 180°) 반영.</summary>
+    public void ApplyVacuumMotion(
+        EquipmentRegion region,
+        double extension,
+        bool carrying,
+        double angleDegrees,
+        int activeBladeSlot,
+        bool isRotatingBlade)
+    {
+        VacuumTargetAngleDegrees = angleDegrees;
+        VacuumTargetExtension = extension;
+        VacuumTargetCarrying = carrying;
+        VacuumActiveBladeSlot = activeBladeSlot;
+        VacuumIsRotatingBlade = isRotatingBlade;
+        TargetRegion = region;
+        TargetRobot = TransferRobotKind.VacuumTm;
+        IsVacuumTmActive = true;
+        string blade = activeBladeSlot == 0 ? "뒤·A" : "앞·B";
+        string rotate = isRotatingBlade ? " · 180° 회전" : string.Empty;
+        TmRegionLabel = $"{RegionAngleHelper.FormatLabel(region, TransferRobotKind.VacuumTm)} · {blade}{rotate}";
     }
 
     internal EquipmentRegion TargetRegion { get; private set; } = EquipmentRegion.TM;

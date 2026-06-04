@@ -30,7 +30,7 @@
 
 ### 2.2 가상 (소프트웨어)
 
-- `Services/Simulation/TmTransferSimulator.cs` — FOUP A→A→B→C→FOUP B  
+- `Services/Simulation/TmTransferSimulator.cs` — **3 FOUP(LP1~3)** · Aligner → BM → PM2~4(Etch) → PM1(Strip) → BM → Side Stg(25) → 카세트 출하 · LOT 75  
 - 참고: `D:\semitest\SemiconductorUi` (`TransferController`, `Form1TmProcessor`)  
 - 챔버 도어 열림 = 이송 Phase 전용 (`EquipmentMotionBridge`)
 

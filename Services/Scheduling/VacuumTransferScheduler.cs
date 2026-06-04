@@ -14,7 +14,10 @@ public sealed class VacuumTransferScheduler
         Queue<TransferJob> queue,
         TransferJob? activeJob,
         TransferJob? efemActiveJob,
-        IEnumerable<TransferJob>? efemQueued = null)
+        IEnumerable<TransferJob>? efemQueued = null,
+        RobotBladeSlots? vacuumBlades = null,
+        int vacuumBladeCapacity = 1,
+        bool restrictInbound = false)
     {
         if (activeJob is not null || queue.Count > 0)
         {
@@ -26,7 +29,12 @@ public sealed class VacuumTransferScheduler
             return 1;
         }
 
-        if (TryScheduleEtchPmToPm1Strip(state, queue))
+        if (restrictInbound)
+        {
+            return 0;
+        }
+
+        if (TryScheduleEtchPmToPm1Strip(state, queue, vacuumBlades, vacuumBladeCapacity))
         {
             return 1;
         }
@@ -79,8 +87,18 @@ public sealed class VacuumTransferScheduler
         return true;
     }
 
-    private bool TryScheduleEtchPmToPm1Strip(ClusterEquipmentState state, Queue<TransferJob> queue)
+    private bool TryScheduleEtchPmToPm1Strip(
+        ClusterEquipmentState state,
+        Queue<TransferJob> queue,
+        RobotBladeSlots? vacuumBlades,
+        int vacuumBladeCapacity)
     {
+        if (vacuumBladeCapacity >= 2 && vacuumBlades is not null)
+        {
+            int n = VacuumDualBladePlanner.TryScheduleEtchToPm1Batch(state, queue, vacuumBlades, h => LastHint = h);
+            return n > 0;
+        }
+
         if (!state.Pm1.IsEmpty)
         {
             LastHint = "TM · PM1 사용 중 (Etch→Strip 대기)";
@@ -103,7 +121,7 @@ public sealed class VacuumTransferScheduler
 
             src.PickupScheduled = true;
             state.Pm1.ReservedForIncoming = true;
-            Enqueue(queue, region, EquipmentRegion.ChamberA, w);
+            Enqueue(queue, region, EquipmentRegion.ChamberA, w, 0);
             LastHint = $"TM PM{RegionToPmNumber(region)} → PM1 Strip (#{w.Id})";
             return true;
         }
@@ -159,8 +177,19 @@ public sealed class VacuumTransferScheduler
         return true;
     }
 
-    private static void Enqueue(Queue<TransferJob> queue, EquipmentRegion pickup, EquipmentRegion dropoff, WaferTrack wafer) =>
-        queue.Enqueue(new TransferJob { Wafer = wafer, Pickup = pickup, Dropoff = dropoff });
+    private static void Enqueue(
+        Queue<TransferJob> queue,
+        EquipmentRegion pickup,
+        EquipmentRegion dropoff,
+        WaferTrack wafer,
+        int bladeSlot = VacuumDualBladePlanner.FrontBladeSlot) =>
+        queue.Enqueue(new TransferJob
+        {
+            Wafer = wafer,
+            Pickup = pickup,
+            Dropoff = dropoff,
+            BladeSlotIndex = bladeSlot
+        });
 
     private static int RegionToPmNumber(EquipmentRegion region) => region switch
     {

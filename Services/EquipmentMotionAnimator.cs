@@ -42,7 +42,8 @@ public sealed class EquipmentMotionAnimator : IDisposable
     private void OnTick(object? sender, EventArgs e)
     {
         _blinkTick++;
-        _vacuumCurrentAngle = LerpAngle(_vacuumCurrentAngle, _motion.VacuumTargetAngleDegrees, 0.05);
+        double vacAngleRatio = _motion.VacuumIsRotatingBlade ? 0.14 : 0.05;
+        _vacuumCurrentAngle = LerpAngle(_vacuumCurrentAngle, _motion.VacuumTargetAngleDegrees, vacAngleRatio);
         _vacuumCurrentExtension = Lerp(_vacuumCurrentExtension, _motion.VacuumTargetExtension, 0.075);
 
         _efemCurrentAngle = LerpAngle(_efemCurrentAngle, _motion.EfemTargetAngleDegrees, 0.05);

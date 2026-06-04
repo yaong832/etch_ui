@@ -58,6 +58,7 @@
 | [PROTO_실행순서.md](PROTO_실행순서.md) | 실행·데모·API |
 | [PLC_IO_매핑.md](PLC_IO_매핑.md) | DI/DO |
 | [WPF_장비UI_이식_계획.md](WPF_장비UI_이식_계획.md) | semitest ↔ 가상 이송 |
+| [SCHEDULER_FOUP_PM_정책.md](SCHEDULER_FOUP_PM_정책.md) | FOUP·PM·Side·듀얼 블레이드·헤드리스 시뮬 |
 | `C:\etchflask\ETCH_AI.md` | AI 모델·API |
 | [tools/ai/README.md](tools/ai/README.md) | 로컬 AI 학습 데이터 수집/변환/베이스라인 |
 

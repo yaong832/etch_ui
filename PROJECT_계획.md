@@ -97,7 +97,8 @@
 | FOUP·Wafer 큐 | `_waferAt` / 큐 확장 | **5** |
 | `IEG3268` | **제외** | — |
 
-**루트:** `FOUP A → Chamber A → B → C → FOUP B` (반복)  
+**가상 루트 (현재 코드):** LP1~3 FOUP → Aligner → BM → PM2~4(Etch) → PM1(Strip) → BM → Side Stg → 출하(카세트 교체) · 상세 [`SCHEDULER_FOUP_PM_정책.md`](SCHEDULER_FOUP_PM_정책.md)  
+**레거시 데모 문구:** semitest식 `FOUP A → Chamber A → B → C` — 단순 3챔버 루프, **현재 스케줄과 다름**  
 **가상 도어:** `WaitDoorPickupOpen` / `WaitDoorDropoffOpen` 시 해당 Region만 열림 표시.
 
 ---

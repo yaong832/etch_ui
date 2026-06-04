@@ -62,16 +62,26 @@ public sealed class EquipmentMotionBridge
             _motion.ApplyWaferInventory(transfer.ClusterState);
             _motion.VacuumBladeCapacity = transfer.VacuumBladeCapacity;
             _motion.EfemBladeCapacity = transfer.EfemBladeCapacity;
+            bool vacActive = transfer.IsVacuumBusy || transfer.CarryingWafer;
             _motion.SetDualRobotTargets(
                 transfer.IsEfemBusy ? transfer.EfemRegion : EquipmentRegion.EfemRobot,
                 transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
                 transfer.IsEfemBusy && transfer.EfemCarryingWafer,
-                transfer.IsVacuumBusy ? transfer.TmRegion : EquipmentRegion.TM,
-                transfer.IsVacuumBusy ? transfer.BladeExtension : 0.65,
-                transfer.IsVacuumBusy && transfer.CarryingWafer,
+                vacActive ? transfer.TmRegion : EquipmentRegion.TM,
+                vacActive ? transfer.BladeExtension : 0.65,
+                transfer.CarryingWafer,
                 hardwareMode: false);
+            _motion.ApplyVacuumMotion(
+                vacActive ? transfer.TmRegion : EquipmentRegion.TM,
+                vacActive ? transfer.BladeExtension : 0.65,
+                transfer.CarryingWafer,
+                transfer.VacuumFacingAngleDegrees,
+                transfer.VacuumActiveBladeSlot,
+                transfer.VacuumIsRotatingBlade);
+            _motion.VacuumBladeSlotA = transfer.VacuumCarryingSlotA;
+            _motion.VacuumBladeSlotB = transfer.VacuumCarryingSlotB;
             _motion.IsEfemRobotActive = transfer.IsEfemBusy;
-            _motion.IsVacuumTmActive = transfer.IsVacuumBusy;
+            _motion.IsVacuumTmActive = vacActive;
             _motion.TmRegionLabel = FormatDualRobotLabel(transfer);
 
             _motion.FoupAHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupA);
@@ -96,8 +106,10 @@ public sealed class EquipmentMotionBridge
 
         _motion.ResetWaferInventory();
 
-        _motion.VacuumBladeCapacity = 1;
+        _motion.VacuumBladeCapacity = EquipmentCapacityConfig.Default.VacuumBladeSlotCount;
         _motion.EfemBladeCapacity = 1;
+        _motion.VacuumBladeSlotA = false;
+        _motion.VacuumBladeSlotB = false;
 
         _motion.ChamberADoorClosed = true;
         _motion.ChamberBDoorClosed = true;

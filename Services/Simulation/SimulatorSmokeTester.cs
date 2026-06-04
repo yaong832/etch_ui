@@ -98,6 +98,88 @@ public static class SimulatorSmokeTester
         ]);
     }
 
+    public static Result RunDualBlade(int ticks = 12000)
+    {
+        if (ticks <= 0)
+        {
+            return new Result { Success = false, Message = "ticks must be > 0" };
+        }
+
+        EquipmentCapacityConfig cfg = new()
+        {
+            FoupSlotCount = 25,
+            SideStorageSlotCount = 25,
+            EtchProcessTicks = 12,
+            StripProcessTicks = 6,
+            VacuumBladeSlotCount = 2
+        };
+
+        var sim = new TmTransferSimulator(cfg, vacuumBladeCapacity: 2);
+        sim.StartDemoLoop();
+        sim.SeedDualBladePipelineProbe();
+
+        try
+        {
+            for (int i = 0; i < ticks; i++)
+            {
+                sim.Tick();
+                ValidateState(sim.ClusterState);
+            }
+        }
+        catch (Exception ex)
+        {
+            return new Result { Success = false, Ticks = ticks, Message = $"dual-blade failed: {ex.Message}" };
+        }
+
+        DualBladePipelineMetrics m = sim.DualBladeMetrics;
+        if (m.MaxBladesOccupied < 2)
+        {
+            return new Result
+            {
+                Success = false,
+                Ticks = ticks,
+                Message = $"dual-blade: max occupied {m.MaxBladesOccupied}/2"
+            };
+        }
+
+        if (!m.BothSlotsUsed)
+        {
+            return new Result
+            {
+                Success = false,
+                Ticks = ticks,
+                Message = $"dual-blade: slot A={m.SlotAPlaceCount} B={m.SlotBPlaceCount}"
+            };
+        }
+
+        if (m.ChainPickupCount < 1)
+        {
+            return new Result
+            {
+                Success = false,
+                Ticks = ticks,
+                Message = $"dual-blade: chain pickups {m.ChainPickupCount}"
+            };
+        }
+
+        if (m.RotateBladeCount < 1)
+        {
+            return new Result
+            {
+                Success = false,
+                Ticks = ticks,
+                Message = $"dual-blade: 180° rotates {m.RotateBladeCount}"
+            };
+        }
+
+        return new Result
+        {
+            Success = true,
+            Ticks = ticks,
+            Message = $"ok max={m.MaxBladesOccupied} chain={m.ChainPickupCount} rot={m.RotateBladeCount} A={m.SlotAPlaceCount} B={m.SlotBPlaceCount} batch={m.DualBatchEnqueueCount}"
+        };
+    }
+
     public static Result RunBatch(int runs, int ticksPerRun)
     {
         if (runs <= 0 || ticksPerRun <= 0)

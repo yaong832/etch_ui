@@ -14,8 +14,8 @@
 | `TmVisualizationControl` 16ms | `EquipmentMotionAnimator` 16ms | ✓ |
 | `TransferController` + 틱 시뮬 | `TmTransferSimulator` + 1초 `Tick()` | ✓ |
 | `Form1TmProcessor` (시뮬 분기) | `MainWindow` RUNNING 시 이송 | ✓ |
-| `ChamberController` 공정 시간 | 미구현 | Phase 2 (`PROJECT_계획` §4) |
-| FOUP 25슬롯 | `_waferAt` 단순 추적 | Phase 5 |
+| `ChamberController` 공정 시간 | `PmChamberState.RemainingProcessTicks` + `EquipmentCapacityConfig` | ✓ (시뮬) |
+| FOUP 25슬롯 | `FoupPortState` + `FoupPickScheduler` | ✓ (시뮬) |
 | **IEG3268** / `TmHardwareController` | **범위 밖** (실 TM 없음) | **제외** |
 
 ---
@@ -38,7 +38,8 @@
 
 - Load Lock: **접촉 센서** → `LoadLockDoorClosed` only  
 - Chamber A/B/C 도어: `TmTransferSimulator.IsVirtualDoorClosed`  
-- 기본 루트: `FOUP A → Chamber A → B → C → FOUP B` (루프)  
+- 클러스터 루트: FOUP×3 → Aligner → BM ↔ 진공 TM(PM2~4→PM1) → Side Stg → 출하 (`SCHEDULER_FOUP_PM_정책.md`)  
+- 진공 TM **듀얼 블레이드(2슬롯)** 도식: 슬롯 A/B, `VacuumBladeSlotCount = 2`  
 - 챔버 램프: RUNNING/WARNING/READY 패턴 (`ChamberLampVisual`)  
 - 참고 파일: `Services/Simulation/TmTransferSimulator.cs`, `Services/EquipmentMotionBridge.cs`
 

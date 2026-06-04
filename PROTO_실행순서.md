@@ -190,3 +190,36 @@
 | Maint | ✓ | 3 | 관리자 |
 
 
+
+## 헤드리스 시뮬 (정책·LOT 회귀)
+
+
+
+WPF UI 없이 스케줄·상태만 검증:
+
+
+
+```powershell
+cd D:\WPFProject\etch_ui
+dotnet run -- --sim-smoke --ticks=5000
+dotnet run -- --sim-policy-batch --runs=10 --ticks=5000
+dotnet run -- --sim-report --ticks=250000
+```
+
+
+
+| 항목 | 설명 |
+|------|------|
+| LOT 75 | Side Stg 25매 × **3회** 카세트 출하 후 완료 (`LotCompletionTracker`) |
+| `lot=0/75` 장시간 | tick 부족·시뮬 처리량 이슈 가능 — **현장 상시 정체와 동일하지 않음** (상세 `SCHEDULER_FOUP_PM_정책.md` §5) |
+| 확인 우선순위 | ① smoke/batch 성공 ② UI RUNNING ③ 필요 시 `--ticks` 확대 |
+
+
+
+## 스케줄·정책 문서
+
+
+
+- [`SCHEDULER_FOUP_PM_정책.md`](SCHEDULER_FOUP_PM_정책.md) — FOUP·PM·Side·듀얼 블레이드·시뮬 (코드와 동기화)
+
+

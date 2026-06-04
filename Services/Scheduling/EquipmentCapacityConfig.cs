@@ -13,6 +13,9 @@ public sealed class EquipmentCapacityConfig
     public int AlignerSlotCount { get; init; } = DefaultAlignerSlotCount;
     public int LoadLockSlotCount { get; init; } = DefaultLoadLockSlotCount;
 
+    /// <summary>진공 TM 블레이드 슬롯 수 (듀얼=2).</summary>
+    public int VacuumBladeSlotCount { get; init; } = 2;
+
     /// <summary>PM2~4 식각 — TM 이송(~50tick)보다 길게 잡아 2·3·4 병렬 가동이 보이도록.</summary>
     public int EtchProcessTicks { get; init; } = 75;
 
