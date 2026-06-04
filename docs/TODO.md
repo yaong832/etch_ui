@@ -44,7 +44,7 @@
 ### 6. 인터락·알람·상태기
 
 - [x] `appsettings.json` 인터락·압력 스케일 — 관리자 **설정** 창 (`InterlockSettingsWindow`)
-- [x] 가상 시뮬 **레시피 tick** (Etch/Strip/Align) — 설정 UI · 다음 Start 반영
+- [x] 가상 시뮬 **레시피** — XML (`Recipes/default.process.xml`) · PM 순서 · tick · Flask `recipe` POST
 - [ ] `AlarmCatalog` A001~A006 문구·조치 가이드 보강
 - [x] `ProcessStepLadderControl` ↔ `SimPhase`·PhaseHint 동기화
 - [x] FOUP LP1~3 잔량 ProgressBar · PM (가상) / Load Lock (실접촉) 라벨

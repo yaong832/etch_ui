@@ -142,6 +142,20 @@ public sealed class EtchTelemetryPayload
     public string? Username { get; set; }
     /// <summary>모듈별 상태 (LP · BM · TM · PM · EFEM).</summary>
     public List<ModuleTelemetryModule>? Modules { get; set; }
+
+    /// <summary>활성 공정 레시피 요약 (XML/appsettings).</summary>
+    public ProcessRecipeTelemetry? Recipe { get; set; }
+}
+
+public sealed class ProcessRecipeTelemetry
+{
+    public string Id { get; set; } = "default";
+    public string Name { get; set; } = string.Empty;
+    public string Version { get; set; } = "1";
+    public string EtchPmSequence { get; set; } = "PM2,PM3,PM4";
+    public int EtchProcessTicks { get; set; }
+    public int StripProcessTicks { get; set; }
+    public int AlignProcessTicks { get; set; }
 }
 
 /// <summary>Flask JSON용 모듈 상태 (camelCase).</summary>

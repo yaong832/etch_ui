@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using etch_ui.Configuration;
 using etch_ui.Plc;
 using etch_ui.Security;
 using etch_ui.Services;
@@ -1182,11 +1183,13 @@ public partial class MainWindow : Window
 
         _state = EquipmentState.Running;
         _lotCompleteHandled = false;
+        ProcessRecipeRuntime.ReloadFromAppSettings();
         EquipmentCapacityConfig capacity = AppSettings.CreateCapacityConfig();
         _transferSim.StartDemoLoop(capacity);
+        ProcessRecipeDefinition recipe = ProcessRecipeRuntime.Active;
         AppendEvent( "RUNNING", null,
-            $"{source}: 운전 시작 (Etch={capacity.EtchProcessTicks} Strip={capacity.StripProcessTicks} tick)");
-        AddLog($"{source}: RUNNING · Etch {capacity.EtchProcessTicks} / Strip {capacity.StripProcessTicks} tick");
+            $"{source}: 운전 시작 · {recipe.SummaryText}");
+        AddLog($"{source}: RUNNING · {recipe.Name} · {recipe.SummaryText}");
         SyncViewModel();
     }
 
@@ -1285,6 +1288,21 @@ public partial class MainWindow : Window
         AddLog($"{source}: 일반 모드 — 상태 {_state}");
     }
 
+    private static ProcessRecipeTelemetry BuildRecipeTelemetry()
+    {
+        ProcessRecipeDefinition r = ProcessRecipeRuntime.Active;
+        return new ProcessRecipeTelemetry
+        {
+            Id = r.Id,
+            Name = r.Name,
+            Version = r.Version,
+            EtchPmSequence = ProcessRecipePmMapping.FormatSequence(r.EtchPmIds),
+            EtchProcessTicks = r.EtchProcessTicks,
+            StripProcessTicks = r.StripProcessTicks,
+            AlignProcessTicks = r.AlignProcessTicks
+        };
+    }
+
     private async Task PublishFlaskAsync()
     {
         try
@@ -1318,7 +1336,8 @@ public partial class MainWindow : Window
                     DoorClosed = m.DoorClosed,
                     HasWafer = m.HasWafer,
                     Detail = m.Detail
-                }).ToList()
+                }).ToList(),
+                Recipe = BuildRecipeTelemetry()
             };
 
             if (dataSource != "offline")

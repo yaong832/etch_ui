@@ -90,8 +90,30 @@
                 </Border>
                 <Border Style="{StaticResource HmiCard}" Padding="14" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock Text="가상 시뮬 레시피 (PM 가공 tick)" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <TextBlock Text="다음 Start부터 반영 · PM2~4=Etch, PM1=Strip, Aligner=정렬" Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <TextBlock Text="공정 레시피 (XML + tick)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Text="Recipes/default.process.xml · 다음 Start부터 tick·PM 순서 반영" Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="레시피 이름" Style="{StaticResource HmiCaption}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="TxtRecipeName" Height="32" VerticalContentAlignment="Center" Margin="0,0,0,6"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="식각 PM 순서" Style="{StaticResource HmiCaption}" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="TxtEtchPmSeq" Height="32" VerticalContentAlignment="Center" Margin="0,0,0,6"
+                                     ToolTip="예: PM2,PM3,PM4 또는 PM2→PM4→PM3"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="XML 경로" Style="{StaticResource HmiCaption}" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" x:Name="TxtRecipeXmlPath" TextWrapping="Wrap" FontSize="11" Foreground="#64748B" Margin="0,6,0,0"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Button Content="XML 불러오기" Style="{StaticResource HmiSecondaryButton}" Margin="0,0,8,0" Click="BtnLoadXml_Click"/>
+                            <Button Content="XML보내기" Style="{StaticResource HmiSecondaryButton}" Click="BtnExportXml_Click"/>
+                        </StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="130"/>

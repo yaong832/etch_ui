@@ -25,6 +25,12 @@ public static class AppSettings
     public static double PressureMtorrAtRawMax { get; private set; } = 1000.0;
     public static int PressureDecimals { get; private set; } = 1;
 
+    public static string RecipeId { get; private set; } = "default";
+    public static string RecipeName { get; private set; } = "기본 식각";
+    public static string RecipeVersion { get; private set; } = "1";
+    public static string RecipeDescription { get; private set; } = string.Empty;
+    public static string EtchPmSequence { get; private set; } = "PM2,PM3,PM4";
+
     public static int EtchProcessTicks { get; private set; } = 120;
     public static int StripProcessTicks { get; private set; } = 28;
     public static int AlignProcessTicks { get; private set; } = 2;
@@ -66,9 +72,15 @@ public static class AppSettings
         PressureDecimals = Math.Clamp(ps.Decimals, 0, 3);
 
         ProcessRecipeSettings recipe = snapshot.ProcessRecipe;
+        RecipeId = recipe.RecipeId.Trim();
+        RecipeName = recipe.RecipeName.Trim();
+        RecipeVersion = recipe.RecipeVersion.Trim();
+        RecipeDescription = recipe.Description?.Trim() ?? string.Empty;
+        EtchPmSequence = recipe.EtchPmSequence.Trim();
         EtchProcessTicks = recipe.EtchProcessTicks;
         StripProcessTicks = recipe.StripProcessTicks;
         AlignProcessTicks = recipe.AlignProcessTicks;
+        ProcessRecipeRuntime.ReloadFromAppSettings();
     }
 
     /// <summary>가상 이송 시뮬용 용량(레시피 tick + 기본 슬롯·TM 동작).</summary>

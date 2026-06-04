@@ -121,6 +121,17 @@ public static class AppSettingsPersistence
             return false;
         }
 
+        if (!ProcessRecipePmMapping.TryValidateSequence(recipe.EtchPmSequence, out errorMessage))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(recipe.RecipeName))
+        {
+            errorMessage = "레시피 이름을 입력하세요.";
+            return false;
+        }
+
         return true;
     }
 
@@ -149,6 +160,7 @@ public static class AppSettingsPersistence
             string json = JsonSerializer.Serialize(snapshot, WriteOptions);
             File.WriteAllText(SettingsFilePath, json);
             AppSettings.ReloadFromDisk();
+            ProcessRecipeXml.SyncFromSnapshot(snapshot);
             return true;
         }
         catch (Exception ex)

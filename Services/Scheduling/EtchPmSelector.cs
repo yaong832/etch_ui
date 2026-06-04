@@ -1,3 +1,4 @@
+using etch_ui.Configuration;
 using etch_ui.Equipment.Models;
 
 namespace etch_ui.Services.Scheduling;
@@ -7,12 +8,14 @@ namespace etch_ui.Services.Scheduling;
 /// </summary>
 public static class EtchPmSelector
 {
-    private static readonly EquipmentRegion[] EtchOrder =
-    [
-        EquipmentRegion.ChamberB,
-        EquipmentRegion.ChamberC,
-        EquipmentRegion.ChamberD
-    ];
+    private static EquipmentRegion[] EtchOrder => ProcessRecipeRuntime.Active.ResolveEtchRegions();
+
+    private static bool UsesDefaultEtchOrder()
+    {
+        EquipmentRegion[] order = EtchOrder;
+        EquipmentRegion[] d = ProcessRecipePmMapping.DefaultEtchRegions;
+        return order.Length == d.Length && order.Zip(d).All(p => p.First == p.Second);
+    }
 
     public static bool IsEtchRegion(EquipmentRegion region) =>
         region is EquipmentRegion.ChamberB or EquipmentRegion.ChamberC or EquipmentRegion.ChamberD;
@@ -52,6 +55,11 @@ public static class EtchPmSelector
     /// <summary>BM→Etch 투입 · Ready 표시용 — 다음 1슬롯만 반환.</summary>
     public static EquipmentRegion? SelectNextPipelineTarget(IReadOnlyDictionary<EquipmentRegion, PmChamberState> chambers)
     {
+        if (!UsesDefaultEtchOrder())
+        {
+            return SelectNextByRecipeOrder(chambers);
+        }
+
         bool pm2Busy = IsBusy(chambers, EquipmentRegion.ChamberB);
         bool pm3Busy = IsBusy(chambers, EquipmentRegion.ChamberC);
         bool pm4Busy = IsBusy(chambers, EquipmentRegion.ChamberD);
@@ -122,4 +130,18 @@ public static class EtchPmSelector
 
     private static bool CanAccept(IReadOnlyDictionary<EquipmentRegion, PmChamberState> chambers, EquipmentRegion region) =>
         chambers.TryGetValue(region, out PmChamberState? ch) && ch.IsEmpty;
+
+    /// <summary>레시피 EtchPipeline 순서 — 비어 있는 첫 PM 슬롯.</summary>
+    private static EquipmentRegion? SelectNextByRecipeOrder(IReadOnlyDictionary<EquipmentRegion, PmChamberState> chambers)
+    {
+        foreach (EquipmentRegion region in EtchOrder)
+        {
+            if (CanAccept(chambers, region))
+            {
+                return region;
+            }
+        }
+
+        return null;
+    }
 }

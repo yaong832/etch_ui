@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
+using Microsoft.Win32;
 using etch_ui.Configuration;
 using etch_ui.Security;
 using etch_ui.Services;
@@ -47,9 +49,13 @@ public partial class InterlockSettingsWindow : Window
         TxtMtorrAtMax.Text = s.PressureScale.MtorrAtRawMax.ToString(CultureInfo.InvariantCulture);
         TxtDecimals.Text = s.PressureScale.Decimals.ToString(CultureInfo.InvariantCulture);
 
-        TxtEtchTicks.Text = s.ProcessRecipe.EtchProcessTicks.ToString(CultureInfo.InvariantCulture);
-        TxtStripTicks.Text = s.ProcessRecipe.StripProcessTicks.ToString(CultureInfo.InvariantCulture);
-        TxtAlignTicks.Text = s.ProcessRecipe.AlignProcessTicks.ToString(CultureInfo.InvariantCulture);
+        ProcessRecipeSettings r = s.ProcessRecipe;
+        TxtRecipeName.Text = r.RecipeName;
+        TxtEtchPmSeq.Text = r.EtchPmSequence;
+        TxtRecipeXmlPath.Text = ProcessRecipeXml.DefaultRecipePath;
+        TxtEtchTicks.Text = r.EtchProcessTicks.ToString(CultureInfo.InvariantCulture);
+        TxtStripTicks.Text = r.StripProcessTicks.ToString(CultureInfo.InvariantCulture);
+        TxtAlignTicks.Text = r.AlignProcessTicks.ToString(CultureInfo.InvariantCulture);
     }
 
     private bool TryReadForm(out AppSettingsSnapshot snapshot, out string error)
@@ -139,9 +145,22 @@ public partial class InterlockSettingsWindow : Window
             return false;
         }
 
+        snapshot.ProcessRecipe.RecipeName = TxtRecipeName.Text.Trim();
+        snapshot.ProcessRecipe.EtchPmSequence = TxtEtchPmSeq.Text.Trim();
         snapshot.ProcessRecipe.EtchProcessTicks = etchTicks;
         snapshot.ProcessRecipe.StripProcessTicks = stripTicks;
         snapshot.ProcessRecipe.AlignProcessTicks = alignTicks;
+        if (!ProcessRecipePmMapping.TryValidateSequence(snapshot.ProcessRecipe.EtchPmSequence, out error))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(snapshot.ProcessRecipe.RecipeName))
+        {
+            error = "레시피 이름을 입력하세요.";
+            return false;
+        }
+
         return true;
     }
 
@@ -197,15 +216,82 @@ public partial class InterlockSettingsWindow : Window
         _snapshot = snapshot;
         string actor = SessionContext.CurrentUser?.Username ?? "?";
         ProcessRecipeSettings r = snapshot.ProcessRecipe;
+        ProcessRecipeRuntime.ApplySnapshot(snapshot.ProcessRecipe);
         string auditMsg =
             $"설정 저장: 압력 {snapshot.Interlock.PressureMtorrMin}-{snapshot.Interlock.PressureMtorrMax} mTorr, " +
-            $"레시피 Etch={r.EtchProcessTicks} Strip={r.StripProcessTicks} Align={r.AlignProcessTicks}";
+            $"레시피 {r.RecipeName} [{r.EtchPmSequence}] Etch={r.EtchProcessTicks} Strip={r.StripProcessTicks}";
         _databaseService.AppendEventLog(actor, null, null, auditMsg);
         ForwardSettingsEvent(actor, auditMsg);
 
         TxtMsg.Foreground = System.Windows.Media.Brushes.ForestGreen;
         TxtMsg.Text = "저장되었습니다. 인터락은 즉시 반영, 레시피 tick은 다음 Start부터 적용됩니다.";
         DialogResult = true;
+    }
+
+    private void BtnLoadXml_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Process Recipe XML|*.xml|All|*.*",
+            InitialDirectory = Path.GetDirectoryName(ProcessRecipeXml.DefaultRecipePath),
+            FileName = Path.GetFileName(ProcessRecipeXml.DefaultRecipePath)
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            ProcessRecipeDefinition def = ProcessRecipeXml.Load(dialog.FileName);
+            ProcessRecipeSettings s = def.ToSettings();
+            TxtRecipeName.Text = s.RecipeName;
+            TxtEtchPmSeq.Text = s.EtchPmSequence;
+            TxtEtchTicks.Text = s.EtchProcessTicks.ToString(CultureInfo.InvariantCulture);
+            TxtStripTicks.Text = s.StripProcessTicks.ToString(CultureInfo.InvariantCulture);
+            TxtAlignTicks.Text = s.AlignProcessTicks.ToString(CultureInfo.InvariantCulture);
+            TxtRecipeXmlPath.Text = dialog.FileName;
+            TxtMsg.Foreground = System.Windows.Media.Brushes.DimGray;
+            TxtMsg.Text = $"XML 불러옴: {def.Name} (저장을 눌러야 반영)";
+        }
+        catch (Exception ex)
+        {
+            TxtMsg.Foreground = System.Windows.Media.Brushes.DarkRed;
+            TxtMsg.Text = $"XML 읽기 실패: {ex.Message}";
+        }
+    }
+
+    private void BtnExportXml_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryReadForm(out AppSettingsSnapshot snapshot, out string parseErr))
+        {
+            TxtMsg.Text = parseErr;
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Process Recipe XML|*.xml",
+            FileName = "default.process.xml",
+            InitialDirectory = Path.GetDirectoryName(ProcessRecipeXml.DefaultRecipePath)
+        };
+        string path = dialog.ShowDialog(this) == true
+            ? dialog.FileName
+            : ProcessRecipeXml.DefaultRecipePath;
+
+        try
+        {
+            ProcessRecipeDefinition def = ProcessRecipeDefinition.FromSettings(snapshot.ProcessRecipe);
+            ProcessRecipeXml.Save(path, def);
+            TxtRecipeXmlPath.Text = path;
+            TxtMsg.Foreground = System.Windows.Media.Brushes.ForestGreen;
+            TxtMsg.Text = $"XML 저장됨: {path}";
+        }
+        catch (Exception ex)
+        {
+            TxtMsg.Foreground = System.Windows.Media.Brushes.DarkRed;
+            TxtMsg.Text = $"XML 저장 실패: {ex.Message}";
+        }
     }
 
     private void BtnDefaults_Click(object sender, RoutedEventArgs e)

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProcessRecipe id="default" version="1" name="기본 식각">
+  <Description>PM2→PM3→PM4 식각 파이프라인 후 PM1 Strip · Aligner 정렬</Description>
+  <Timing>
+    <Etch unit="tick">120</Etch>
+    <Strip unit="tick">28</Strip>
+    <Align unit="tick">2</Align>
+  </Timing>
+  <EtchPipeline>
+    <Step pm="PM2" enabled="true" />
+    <Step pm="PM3" enabled="true" />
+    <Step pm="PM4" enabled="true" />
+  </EtchPipeline>
+  <Strip pm="PM1" />
+</ProcessRecipe>

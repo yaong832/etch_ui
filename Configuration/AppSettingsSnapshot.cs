@@ -67,12 +67,24 @@ public sealed class PressureScaleSettings
 /// <summary>가상 시뮬 PM·Aligner 가공 tick (다음 Start부터 반영).</summary>
 public sealed class ProcessRecipeSettings
 {
+    public string RecipeId { get; set; } = "default";
+    public string RecipeName { get; set; } = "기본 식각";
+    public string RecipeVersion { get; set; } = "1";
+    public string? Description { get; set; }
+    /// <summary>식각 PM 순서 (예: PM2,PM3,PM4).</summary>
+    public string EtchPmSequence { get; set; } = "PM2,PM3,PM4";
+
     public int EtchProcessTicks { get; set; } = 120;
     public int StripProcessTicks { get; set; } = 28;
     public int AlignProcessTicks { get; set; } = 2;
 
     public static ProcessRecipeSettings FromCurrent() => new()
     {
+        RecipeId = AppSettings.RecipeId,
+        RecipeName = AppSettings.RecipeName,
+        RecipeVersion = AppSettings.RecipeVersion,
+        Description = AppSettings.RecipeDescription,
+        EtchPmSequence = AppSettings.EtchPmSequence,
         EtchProcessTicks = AppSettings.EtchProcessTicks,
         StripProcessTicks = AppSettings.StripProcessTicks,
         AlignProcessTicks = AppSettings.AlignProcessTicks
