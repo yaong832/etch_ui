@@ -66,6 +66,10 @@
 
 | `GET /api/etch/history` · `events` · `summary` | 이력 |
 
+| `GET /api/etch/modules/latest?source=demo\|live` | 모듈 상태 (WPF `modules[]`) |
+
+| `GET /api/etch/recipe/active?source=demo\|live` | 활성 레시피 (WPF `recipe`) |
+
 | `GET /api/etch/ai/status` | AI 모델 상태 |
 
 | `POST /api/etch/ai/predict` | 추론 (스텁/실모델) |
