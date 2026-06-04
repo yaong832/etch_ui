@@ -35,6 +35,32 @@ public sealed class EtchFlaskClient : IDisposable
         }
     }
 
+    public async Task<bool> TryPostEtchEventsAsync(
+        IReadOnlyList<FlaskEventItem> items,
+        string dataSource,
+        CancellationToken cancellationToken = default)
+    {
+        if (items.Count == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            var body = new { dataSource, items };
+            string json = JsonSerializer.Serialize(body, JsonOptions);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using HttpResponseMessage response = await _http
+                .PostAsync($"{BaseUrl.TrimEnd('/')}/api/etch/events", content, cancellationToken)
+                .ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task<bool> TryPostEtchSensorDataAsync(EtchTelemetryPayload payload)
     {
         try
@@ -101,6 +127,8 @@ public sealed class EtchTelemetryPayload
     public string DataSource { get; set; } = "offline";
     /// <summary>시뮬 허용 + TwinCAT 미사용 데모 모드.</summary>
     public bool BenchMode { get; set; }
+    /// <summary>관리자 유지보수 모드 — 공정 Start 차단·인터락 미적용(모니터링만).</summary>
+    public bool MaintenanceMode { get; set; }
     public string LastUpdate { get; set; } = string.Empty;
     public double Temperature { get; set; }
     public double Humidity { get; set; }
@@ -117,6 +145,16 @@ public sealed class EtchTelemetryPayload
 }
 
 /// <summary>Flask JSON용 모듈 상태 (camelCase).</summary>
+public sealed class FlaskEventItem
+{
+    public string Time { get; set; } = string.Empty;
+    public string Kind { get; set; } = "hmi_event";
+    public string Message { get; set; } = string.Empty;
+    public string? EquipmentState { get; set; }
+    public string? AlarmCode { get; set; }
+    public string? Username { get; set; }
+}
+
 public sealed class ModuleTelemetryModule
 {
     public string Id { get; set; } = string.Empty;

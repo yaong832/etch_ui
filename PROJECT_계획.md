@@ -240,7 +240,7 @@
 | 순서 | Phase | 작업 |
 |:----:|:-----:|------|
 | 1 | M0 | 모듈 상태 집계 + Flask `modules[]` POST ✅ |
-| 2 | M2 | Flask `modules/latest` + 웹 테이블 |
+| 2 | M2 | Flask `modules/latest` + 웹 테이블 ✅ |
 | 3 | M3 | AI-1 이상 + AI-2 알람 예측 |
 | 4 | M4 | 참고 클러스터 UI 도식 (EFEM·PM4) |
 | 5 | 3.3 | WPF 레시피·인터락 설정 |

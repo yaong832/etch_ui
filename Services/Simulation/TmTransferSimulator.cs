@@ -55,8 +55,8 @@ public sealed class TmTransferSimulator
         public bool Carrying => Blades.OccupiedCount > 0;
     }
 
-    private readonly EquipmentCapacityConfig _capacity;
-    private readonly ClusterEquipmentState _state;
+    private EquipmentCapacityConfig _capacity;
+    private ClusterEquipmentState _state;
     private readonly EfemTransferScheduler _efemScheduler = new();
     private readonly VacuumTransferScheduler _vacuumScheduler = new();
     private readonly RobotRun _efem;
@@ -116,9 +116,21 @@ public sealed class TmTransferSimulator
     public int LotTargetCount => _state.Lot.TargetCount;
     public ThroughputKpiSnapshot KpiSnapshot => _kpi.Snapshot(_state.Lot);
 
-    public void StartDemoLoop()
+    /// <summary>Stop 상태에서만 호출. 클러스터 상태를 새 용량으로 재생성.</summary>
+    public void ApplyCapacity(EquipmentCapacityConfig capacity)
+    {
+        _capacity = capacity ?? EquipmentCapacityConfig.Default;
+        _state = new ClusterEquipmentState(_capacity);
+    }
+
+    public void StartDemoLoop(EquipmentCapacityConfig? capacity = null)
     {
         Stop();
+        if (capacity is not null)
+        {
+            ApplyCapacity(capacity);
+        }
+
         LotCompleteAchieved = false;
         _running = true;
         _kpi.Reset();

@@ -52,6 +52,10 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private string _foup1InventoryText = "—";
     private string _foup2InventoryText = "—";
     private string _foup3InventoryText = "—";
+    private int _foup1Remaining;
+    private int _foup2Remaining;
+    private int _foup3Remaining;
+    private int _foupSlotCapacity = 25;
     private string _alignerInventoryText = "—";
     private string _sideStorageInventoryText = "—";
     private string _waferInventorySummary = "웨이퍼 잔량 · RUNNING 후 표시";
@@ -223,6 +227,10 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     public string Foup1InventoryText { get => _foup1InventoryText; set => SetField(ref _foup1InventoryText, value); }
     public string Foup2InventoryText { get => _foup2InventoryText; set => SetField(ref _foup2InventoryText, value); }
     public string Foup3InventoryText { get => _foup3InventoryText; set => SetField(ref _foup3InventoryText, value); }
+    public int Foup1Remaining { get => _foup1Remaining; private set => SetField(ref _foup1Remaining, value); }
+    public int Foup2Remaining { get => _foup2Remaining; private set => SetField(ref _foup2Remaining, value); }
+    public int Foup3Remaining { get => _foup3Remaining; private set => SetField(ref _foup3Remaining, value); }
+    public int FoupSlotCapacity { get => _foupSlotCapacity; private set => SetField(ref _foupSlotCapacity, value); }
     public string AlignerInventoryText { get => _alignerInventoryText; set => SetField(ref _alignerInventoryText, value); }
     public string SideStorageInventoryText { get => _sideStorageInventoryText; set => SetField(ref _sideStorageInventoryText, value); }
     public string WaferInventorySummary { get => _waferInventorySummary; set => SetField(ref _waferInventorySummary, value); }
@@ -232,9 +240,13 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         int foupMax = state.Capacity.FoupSlotCount;
         int sideMax = state.Capacity.SideStorageSlotCount;
 
-        Foup1InventoryText = FormatSlot(state.FoupPorts[0].RemainingInFoup, foupMax);
-        Foup2InventoryText = FormatSlot(state.FoupPorts[1].RemainingInFoup, foupMax);
-        Foup3InventoryText = FormatSlot(state.FoupPorts[2].RemainingInFoup, foupMax);
+        FoupSlotCapacity = foupMax;
+        Foup1Remaining = state.FoupPorts[0].RemainingInFoup;
+        Foup2Remaining = state.FoupPorts[1].RemainingInFoup;
+        Foup3Remaining = state.FoupPorts[2].RemainingInFoup;
+        Foup1InventoryText = FormatSlot(Foup1Remaining, foupMax);
+        Foup2InventoryText = FormatSlot(Foup2Remaining, foupMax);
+        Foup3InventoryText = FormatSlot(Foup3Remaining, foupMax);
         AlignerInventoryText = FormatAlignerPresence(state.AlignerBuffer.Count);
         SideStorageInventoryText = FormatSlot(state.SideStorage.Count, sideMax);
 
@@ -248,6 +260,10 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         Foup1InventoryText = "—";
         Foup2InventoryText = "—";
         Foup3InventoryText = "—";
+        Foup1Remaining = 0;
+        Foup2Remaining = 0;
+        Foup3Remaining = 0;
+        FoupSlotCapacity = 25;
         AlignerInventoryText = "—";
         SideStorageInventoryText = "—";
         WaferInventorySummary = "웨이퍼 잔량 · RUNNING 후 표시";

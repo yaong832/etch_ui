@@ -157,11 +157,17 @@ public sealed class EquipmentMotionBridge
         }
         else
         {
-            _motion.SetTargets(EquipmentRegion.TM, 0.65, false, hardwareMode: false, TransferRobotKind.VacuumTm);
-            _motion.ServoHint = loadLockContactValid
-                ? "가상 TM · 접촉 센서 연동"
-                : "가상 TM · 접촉 미측정";
+            ParkVirtualTmHome(loadLockContactValid);
         }
+    }
+
+    private void ParkVirtualTmHome(bool loadLockContactValid)
+    {
+        _motion.SetDualRobotTargets(null, 0.65, false, null, 0.65, false, hardwareMode: false);
+        _motion.SetTargets(EquipmentRegion.TM, 0.65, false, hardwareMode: false, TransferRobotKind.VacuumTm);
+        _motion.ServoHint = loadLockContactValid
+            ? "정지 · TM 홈 (Load Lock 측)"
+            : "정지 · TM 홈 (접촉 미측정)";
     }
 
     private void UpdateChamberLamps(bool running, bool warning, bool ready, bool lampRun)

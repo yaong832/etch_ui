@@ -63,6 +63,10 @@ public sealed class MainViewModel : ViewModelBase
     private bool _canStop;
     private bool _canReset;
     private bool _canMaint;
+    private bool _maintenanceModeActive;
+    private string _maintButtonText = "⚙  유지보수";
+    private string _maintenanceBannerText = string.Empty;
+    private bool _maintenanceBannerVisible;
 
     private double _sensorPressureValue;
     private double _sensorVibrationValue;
@@ -73,6 +77,8 @@ public sealed class MainViewModel : ViewModelBase
 
     private int _processStepIndex;
     private bool _processStepWarning;
+    private string _processStepCaption = string.Empty;
+    private string _processStepDetailText = string.Empty;
 
     private string _aiScoreText = "—";
     private string _aiHintText = "Flask 서버 연결 후 표시됩니다.";
@@ -382,6 +388,30 @@ public sealed class MainViewModel : ViewModelBase
         set => SetField(ref _canMaint, value);
     }
 
+    public bool MaintenanceModeActive
+    {
+        get => _maintenanceModeActive;
+        set => SetField(ref _maintenanceModeActive, value);
+    }
+
+    public string MaintButtonText
+    {
+        get => _maintButtonText;
+        set => SetField(ref _maintButtonText, value);
+    }
+
+    public string MaintenanceBannerText
+    {
+        get => _maintenanceBannerText;
+        set => SetField(ref _maintenanceBannerText, value);
+    }
+
+    public bool MaintenanceBannerVisible
+    {
+        get => _maintenanceBannerVisible;
+        set => SetField(ref _maintenanceBannerVisible, value);
+    }
+
     public double PressureSparkYMin => 0;
 
     public double PressureSparkYMax
@@ -438,6 +468,23 @@ public sealed class MainViewModel : ViewModelBase
     public double SensorHumiRangeMax => AppSettings.HumiMax;
     public double SensorHumiScaleMax => 100;
 
+    /// <summary>appsettings 저장 후 인터락 요약·센서 범위 바인딩 갱신.</summary>
+    public void NotifyAppSettingsBindings()
+    {
+        Raise(nameof(InterlockThresholdsText));
+        Raise(nameof(SensorPressureRangeMin));
+        Raise(nameof(SensorPressureRangeMax));
+        Raise(nameof(SensorPressureScaleMax));
+        Raise(nameof(SensorVibrationRangeMax));
+        Raise(nameof(SensorVibrationScaleMax));
+        Raise(nameof(SensorTempRangeMin));
+        Raise(nameof(SensorTempRangeMax));
+        Raise(nameof(SensorTempScaleMin));
+        Raise(nameof(SensorTempScaleMax));
+        Raise(nameof(SensorHumiRangeMin));
+        Raise(nameof(SensorHumiRangeMax));
+    }
+
     public int ProcessStepIndex
     {
         get => _processStepIndex;
@@ -448,6 +495,18 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => _processStepWarning;
         set => SetField(ref _processStepWarning, value);
+    }
+
+    public string ProcessStepCaption
+    {
+        get => _processStepCaption;
+        set => SetField(ref _processStepCaption, value);
+    }
+
+    public string ProcessStepDetailText
+    {
+        get => _processStepDetailText;
+        set => SetField(ref _processStepDetailText, value);
     }
 
     public string AiScoreText

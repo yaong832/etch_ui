@@ -1,0 +1,36 @@
+<Window x:Class="etch_ui.MaintenanceToolsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="유지보수 · 정비 도구"
+        Height="420"
+        Width="440"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="{StaticResource HmiFont}"
+        Background="{StaticResource HmiCanvasBrush}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="정비 도구 (관리자)" FontSize="18" FontWeight="Bold"/>
+            <TextBlock Text="공정 Start는 차단됩니다. 가상 장비·Load Lock 표시만 조정합니다."
+                       Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+        </StackPanel>
+        <Border Grid.Row="1" Style="{StaticResource HmiCard}" Padding="14">
+            <StackPanel>
+                <TextBlock Text="Load Lock (도식)" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <CheckBox x:Name="ChkVirtualLoadLockClosed" Content="가상 Load Lock 닫힘 표시"
+                          Margin="0,0,0,14" Checked="ChkVirtualLoadLockClosed_Changed"
+                          Unchecked="ChkVirtualLoadLockClosed_Changed"/>
+                <TextBlock Text="가상 이송 (데모·시뮬 허용 시)" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <Button Content="이송 1틱 진행" Style="{StaticResource HmiPrimaryButton}"
+                        Click="BtnSimTick_Click" Margin="0,0,0,8"/>
+                <TextBlock x:Name="TxtSimHint" Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+        <Button Grid.Row="2" Content="닫기" Style="{StaticResource HmiSecondaryButton}"
+                HorizontalAlignment="Right" IsCancel="True" Click="BtnClose_Click"/>
+    </Grid>
+</Window>

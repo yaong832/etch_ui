@@ -4,11 +4,13 @@
              MinHeight="100">
     <Border Background="#F8FAFC" BorderBrush="{StaticResource HmiBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10">
         <StackPanel x:Name="StepsPanel">
-            <TextBlock x:Name="Step0" Text="① LL 대기" FontSize="12" Margin="0,3"/>
-            <TextBlock x:Name="Step1" Text="② LL 준비" FontSize="12" Margin="0,3"/>
-            <TextBlock x:Name="Step2" Text="③ Chamber 운전" FontSize="12" Margin="0,3"/>
-            <TextBlock x:Name="Step3" Text="④ 경고/복구" FontSize="12" Margin="0,3"/>
-            <TextBlock x:Name="Step4" Text="⑤ 점검/알람" FontSize="12" Margin="0,3"/>
+            <TextBlock x:Name="Step0" Text="① LL / 도어 대기" FontSize="12" Margin="0,3"/>
+            <TextBlock x:Name="Step1" Text="② 이송·픽업·드롭" FontSize="12" Margin="0,3"/>
+            <TextBlock x:Name="Step2" Text="③ PM 가공·이송" FontSize="12" Margin="0,3"/>
+            <TextBlock x:Name="Step3" Text="④ 경고·환경 편향" FontSize="12" Margin="0,3"/>
+            <TextBlock x:Name="Step4" Text="⑤ 점검·알람·Maint" FontSize="12" Margin="0,3"/>
+            <TextBlock x:Name="TxtDetail" Text="" FontSize="11" Foreground="#475569" TextWrapping="Wrap"
+                       Margin="0,8,0,0" LineHeight="16"/>
         </StackPanel>
     </Border>
 </UserControl>

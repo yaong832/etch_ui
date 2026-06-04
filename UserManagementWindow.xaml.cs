@@ -127,6 +127,28 @@ public partial class UserManagementWindow : Window
         RefreshGrid();
     }
 
+    private void BtnResetPassword_Click(object sender, RoutedEventArgs e)
+    {
+        TxtRegisterMsg.Text = string.Empty;
+        TxtRegisterMsg.Foreground = System.Windows.Media.Brushes.DarkRed;
+
+        if (GrdUsers.SelectedItem is not UserListRow row)
+        {
+            TxtRegisterMsg.Text = "목록에서 계정을 선택하세요.";
+            return;
+        }
+
+        var dialog = new PasswordChangeWindow(_databaseService, row.Id, row.Username)
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            TxtRegisterMsg.Foreground = System.Windows.Media.Brushes.ForestGreen;
+            TxtRegisterMsg.Text = $"{row.Username} 비밀번호 재설정 완료";
+        }
+    }
+
     private void BtnClose_Click(object sender, RoutedEventArgs e)
     {
         Close();

@@ -126,8 +126,10 @@
                     <Border x:Name="LoadPort1Box" Style="{StaticResource MachineModuleBorder}" BorderBrush="{Binding LoadPort1Panel.StatusBrush}">
                         <Grid>
                             <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
-                            <TextBlock Text="LP1" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
+                            <TextBlock Text="LP1 · FOUP" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
                                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <ProgressBar Minimum="0" Maximum="{Binding FoupSlotCapacity}" Value="{Binding Foup1Remaining}"
+                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom"/>
                             <TextBlock Text="{Binding Foup1InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                             <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
@@ -141,8 +143,10 @@
                     <Border x:Name="LoadPort2Box" Style="{StaticResource MachineModuleBorder}" BorderBrush="{Binding LoadPort2Panel.StatusBrush}">
                         <Grid>
                             <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
-                            <TextBlock Text="LP2" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
+                            <TextBlock Text="LP2 · FOUP" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
                                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <ProgressBar Minimum="0" Maximum="{Binding FoupSlotCapacity}" Value="{Binding Foup2Remaining}"
+                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom"/>
                             <TextBlock Text="{Binding Foup2InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                             <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
@@ -156,8 +160,10 @@
                     <Border x:Name="LoadPort3Box" Style="{StaticResource MachineModuleBorder}" BorderBrush="{Binding LoadPort3Panel.StatusBrush}">
                         <Grid>
                             <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
-                            <TextBlock Text="LP3" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
+                            <TextBlock Text="LP3 · FOUP" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
                                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <ProgressBar Minimum="0" Maximum="{Binding FoupSlotCapacity}" Value="{Binding Foup3Remaining}"
+                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom"/>
                             <TextBlock Text="{Binding Foup3InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                             <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
@@ -179,7 +185,7 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Border Background="{StaticResource DarkHeaderBrush}" CornerRadius="6,6,0,0" Padding="6,4">
-                                <TextBlock Text="BM · Load Lock" Foreground="White" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="BM · Load Lock (실접촉)" Foreground="White" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
                             </Border>
                             <Border Grid.Row="1" Margin="12,10,12,8" Background="#CBD5E1" CornerRadius="5"
                                     BorderBrush="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorBrush}}" BorderThickness="2"/>
@@ -213,7 +219,7 @@
                                     </Style>
                                 </Rectangle.Style>
                             </Rectangle>
-                            <TextBlock Text="PM1 · Strip" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                            <TextBlock Text="PM1 · Strip (가상)" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
                                        HorizontalAlignment="Center" Foreground="#1E293B"/>
                             <Ellipse Width="22" Height="22" Margin="0,52,0,0"
                                      HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -244,7 +250,7 @@
                                     </Style>
                                 </Rectangle.Style>
                             </Rectangle>
-                            <TextBlock Text="PM2 · Etch" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                            <TextBlock Text="PM2 · Etch (가상)" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
                                        HorizontalAlignment="Center" Foreground="#1E293B"/>
                             <Ellipse Width="22" Height="22" Margin="0,52,0,0"
                                      HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -275,7 +281,7 @@
                                     </Style>
                                 </Rectangle.Style>
                             </Rectangle>
-                            <TextBlock Text="PM3 · Etch" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                            <TextBlock Text="PM3 · Etch (가상)" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
                                        HorizontalAlignment="Center" Foreground="#1E293B"/>
                             <Ellipse Width="22" Height="22" Margin="0,52,0,0"
                                      HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -305,7 +311,7 @@
                                     </Style>
                                 </Rectangle.Style>
                             </Rectangle>
-                            <TextBlock Text="PM4 · Etch" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                            <TextBlock Text="PM4 · Etch (가상)" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
                                        HorizontalAlignment="Center" Foreground="#1E293B"/>
                             <Ellipse Width="22" Height="22" Margin="0,52,0,0"
                                      HorizontalAlignment="Center" VerticalAlignment="Top"

@@ -42,9 +42,20 @@
 
 
 
-1. `C:\etchflask\run_flask.bat`
+1. (선택) `C:\etchflask\run_flask.bat` — 미실행 시 HMI만 동작, Flask 상태 **OFF**
 
 2. `etch_ui.sln` → F5 · 로그인 `admin` / `Admin1234`
+
+### TwinCAT 없이 (시뮬만)
+
+1. `appsettings.json` → `"SimulationEnabled": true` 또는 로그인 후 **시뮬 허용** ON
+
+2. **Start**로 가상 이송 확인 · 헤드리스 검증:
+
+```bash
+dotnet run --project etch_ui.csproj -- --sim-smoke --ticks=2500
+dotnet run --project etch_ui.csproj -- --sim-report --ticks=40000
+```
 
 
 
@@ -66,6 +77,8 @@
 
 
 
-`appsettings.json` — Flask URL, ADS 포트, `SimulationEnabled`, `Interlock`, `PressureScale`
+`appsettings.json` — Flask URL, ADS 포트, `SimulationEnabled`, `Interlock`, `PressureScale`, `ProcessRecipe`
+
+Flask 이력 DB: `C:\etchflask\data\etch_monitoring.db` · WPF 로컬: `data/etch_hmi.db` (`telemetry_samples`)
 
 

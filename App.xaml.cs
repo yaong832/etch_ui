@@ -34,6 +34,24 @@ namespace etch_ui
                 return;
             }
 
+            if (e.Args.Any(a => a.Equals("--sim-app-settings", StringComparison.OrdinalIgnoreCase)))
+            {
+                int ticks = 30_000;
+                string? ticksArg = e.Args.FirstOrDefault(a => a.StartsWith("--ticks=", StringComparison.OrdinalIgnoreCase));
+                if (ticksArg is not null && int.TryParse(ticksArg.Split('=')[1], out int parsed) && parsed > 0)
+                {
+                    ticks = parsed;
+                }
+
+                AppSettings.ReloadFromDisk();
+                var capacity = AppSettings.CreateCapacityConfig();
+                SimulatorSmokeTester.Result result = SimulatorSmokeTester.Run(ticks, capacity, report: true);
+                Console.WriteLine($"sim_app_settings success={result.Success} etch={capacity.EtchProcessTicks} strip={capacity.StripProcessTicks}");
+                Console.WriteLine(result.Report ?? result.Message);
+                Shutdown(result.Success ? 0 : 7);
+                return;
+            }
+
             if (e.Args.Any(a => a.Equals("--sim-smoke", StringComparison.OrdinalIgnoreCase)))
             {
                 int ticks = 2000;

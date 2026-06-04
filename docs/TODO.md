@@ -35,22 +35,25 @@
 
 ### 5. 보안·계정 (`Security/`)
 
-- [ ] 기본 비밀번호 변경 안내·첫 로그인 시 비밀번호 변경 (WPF만)
-- [ ] `PasswordPolicy` 강화
-- [ ] 이벤트/알람 DB 조회 UI
+- [x] 관리자 전용 계정 등록 (공개 가입 없음)
+- [x] 본인 비밀번호 변경 · 관리자 비밀번호 재설정
+- [x] 이벤트·알람 DB 조회 UI
+- [ ] `PasswordPolicy` 강화 (특수문자·만료 등)
 - [ ] 역할별 버튼 숨김 (관리자만 사용자 관리 등) 점검
 
 ### 6. 인터락·알람·상태기
 
-- [ ] `appsettings.json` `Interlock` 범위 조정
+- [x] `appsettings.json` 인터락·압력 스케일 — 관리자 **설정** 창 (`InterlockSettingsWindow`)
+- [x] 가상 시뮬 **레시피 tick** (Etch/Strip/Align) — 설정 UI · 다음 Start 반영
 - [ ] `AlarmCatalog` A001~A006 문구·조치 가이드 보강
-- [ ] `ProcessStepLadderControl`과 장비 상태 동기화
-- [ ] 유지보수 모드·Start/Stop/Reset 동작 정리
+- [x] `ProcessStepLadderControl` ↔ `SimPhase`·PhaseHint 동기화
+- [x] FOUP LP1~3 잔량 ProgressBar · PM (가상) / Load Lock (실접촉) 라벨
+- [x] 유지보수 모드 — 진입 시 이송 정지·인터락 완화 표시·Flask `MaintenanceMode`
 
 ### 7. 시뮬레이션 모드 (PLC 없이 데모)
 
-- [ ] `SimulationEnabled` / 「시뮬 허용」 버튼 동작 정리
-- [ ] 시뮬 센서 값·상태 전환 시나리오 (발표용 데모 버튼 등)
+- [x] 「시뮬 허용」 + **데모 가이드** 창 (3분 시나리오)
+- [ ] 시뮬 센서 값·상태 전환 자동 시나리오 버튼
 - [ ] EtherCAT 미연결 시 화면 메시지·가이드 통일
 
 ### 8. 아키텍처 리팩터링
@@ -66,15 +69,18 @@
 
 - [ ] `PlcAdsService` 심볼·비트 매핑 (`PLC_IO_매핑.md`와 일치)
 - [ ] ADS 재연결·타임아웃 튜닝
-- [ ] 압력 스케일링 (`PlcAnalogScaling`, `AppSettings.PressureScale`)
+- [x] 압력 스케일링 (`PlcAnalogScaling`, `AppSettings` / 설정 UI)
 - [ ] 램프 DO·버튼 DI 엣지 처리
 
-### 10. Flask 클라이언트만 (`Services/EtchFlaskClient.cs`)
+### 10. Flask 클라이언트 (`Services/EtchFlaskClient.cs`)
 
-- [ ] 연결 실패 시 UI 메시지·재시도 간격
-- [ ] POST 실패 로그 스로틀 정리
-- [ ] 기존 API 스펙 그대로 payload 필드 정리 (`SensorsLive`, `EquipmentState` 등)
-- [ ] Flask 없이도 HMI 전 기능 동작 + 「Flask: 오프라인」 표시
+- [x] `MaintenanceMode` · 모듈 배열 POST
+- [x] `POST /api/etch/events` — WPF 이벤트 전달 (Phase 3.6)
+- [x] 로컬 `telemetry_samples` (Flask OFF 시에도 샘플 보존)
+- [x] POST 실패 로그 스로틀 · Flask OFF 표시
+- [x] `GET /api/etch/modules/latest` (Flask)
+- [x] Flask 웹 **모듈 상태** 탭 (테이블·미니 그리드)
+- [x] 설정 저장 확인 + **관리자 비밀번호 재확인** + Flask `settings_change` 이벤트
 
 ---
 

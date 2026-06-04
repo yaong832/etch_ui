@@ -47,6 +47,13 @@
                         </Border>
                         <Button x:Name="BtnEventLog" Content="이벤트 로그" Style="{StaticResource HmiToolbarButton}"
                                 Click="BtnEventLog_Click" ToolTip="SQLite 이벤트 이력"/>
+                        <Button x:Name="BtnAlarmHistory" Content="알람 이력" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnAlarmHistory_Click" ToolTip="SQLite 알람 발생·해제"/>
+                        <Button x:Name="BtnChangePassword" Content="비밀번호" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnChangePassword_Click" ToolTip="본인 비밀번호 변경"/>
+                        <Button x:Name="BtnSettings" Content="설정" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnSettings_Click" ToolTip="인터락·압력 appsettings (관리자)"
+                                Visibility="{Binding ShowUserManage, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         <Button x:Name="BtnUserManage" Content="사용자" Style="{StaticResource HmiToolbarButton}"
                                 Click="BtnUserManage_Click"
                                 Visibility="{Binding ShowUserManage, Converter={StaticResource BooleanToVisibilityConverter}}"/>
@@ -84,10 +91,16 @@
                             <TextBlock Text="{Binding LastUpdateText}" Style="{StaticResource HmiStatusChipValue}"/>
                         </StackPanel>
                     </Border>
+                    <Border Background="#4C1D95" CornerRadius="8" Padding="12,6" Margin="0,0,8,0"
+                            Visibility="{Binding MaintenanceBannerVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{Binding MaintenanceBannerText}" Foreground="#EDE9FE" FontWeight="SemiBold" FontSize="12"/>
+                    </Border>
                     <Button x:Name="BtnSimAllow" Content="{Binding SimAllowButtonText}"
                             Style="{StaticResource HmiToolbarButton}" Margin="0,0,0,0"
                             Click="BtnSimAllow_Click"
                             ToolTip="TwinCAT 없을 때 데모(가상 센서·TM 이송·로직 확인). 연결 시 실데이터 우선."/>
+                    <Button x:Name="BtnDemoGuide" Content="데모 가이드" Style="{StaticResource HmiToolbarButton}"
+                            Click="BtnDemoGuide_Click" ToolTip="3분 발표·검증 순서"/>
                 </WrapPanel>
             </Grid>
         </Border>
@@ -282,7 +295,9 @@
                         </ListBox>
                         <TextBlock Text="공정 스텝 (가상 이송)" Style="{StaticResource HmiCaption}" Margin="0,12,0,6"/>
                         <controls:ProcessStepLadderControl ActiveStepIndex="{Binding ProcessStepIndex}"
-                            IsWarningStep="{Binding ProcessStepWarning}"/>
+                            IsWarningStep="{Binding ProcessStepWarning}"
+                            ActiveStepCaption="{Binding ProcessStepCaption}"
+                            StepDetailText="{Binding ProcessStepDetailText}"/>
                     </StackPanel>
                 </Grid>
             </Grid>
@@ -324,7 +339,7 @@
                         </UniformGrid>
                     </Border>
                     <TextBlock Text="공정 조작" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
-                    <UniformGrid Columns="1" Rows="4">
+                    <UniformGrid Columns="1" Rows="5">
                         <Button x:Name="BtnStart" Content="▶  시작" Style="{StaticResource HmiBtnStart}"
                                 MinHeight="52" Margin="4,4,4,4"
                                 Click="BtnStart_Click" IsEnabled="{Binding CanStart}"
@@ -335,9 +350,24 @@
                         <Button x:Name="BtnReset" Content="↺  알람 리셋" Style="{StaticResource HmiBtnReset}"
                                 MinHeight="52" Margin="4,4,4,4"
                                 Click="BtnReset_Click" IsEnabled="{Binding CanReset}"/>
-                        <Button x:Name="BtnMaint" Content="⚙  유지보수" Style="{StaticResource HmiBtnMaint}"
+                        <Button x:Name="BtnMaintTools" Content="정비 도구"
+                                MinHeight="44" Margin="4,4,4,4"
+                                Style="{StaticResource HmiSecondaryButton}"
+                                Click="BtnMaintTools_Click"
+                                Visibility="{Binding MaintenanceBannerVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button x:Name="BtnMaint" Content="{Binding MaintButtonText}"
                                 MinHeight="52" Margin="4,4,4,4"
-                                Click="BtnMaint_Click" IsEnabled="{Binding CanMaint}"/>
+                                Click="BtnMaint_Click" IsEnabled="{Binding CanMaint}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource HmiBtnMaint}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding MaintenanceModeActive}" Value="True">
+                                            <Setter Property="Background" Value="#7C3AED"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </UniformGrid>
                 </StackPanel>
             </Grid>

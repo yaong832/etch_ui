@@ -1,0 +1,34 @@
+<Window x:Class="etch_ui.AdminReauthWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="관리자 확인"
+        Height="280"
+        Width="400"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        FontFamily="{StaticResource HmiFont}"
+        Background="{StaticResource HmiCanvasBrush}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="관리자 비밀번호 확인" FontSize="18" FontWeight="Bold" Foreground="{StaticResource HmiTextPrimaryBrush}"/>
+            <TextBlock Text="설정 저장을 위해 현재 로그인한 관리자 비밀번호를 입력하세요."
+                       Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+        </StackPanel>
+        <Border Grid.Row="1" Style="{StaticResource HmiCard}" Padding="16">
+            <StackPanel>
+                <TextBlock Text="비밀번호" Style="{StaticResource HmiCaption}" Margin="0,0,0,6"/>
+                <PasswordBox x:Name="TxtPassword" Height="34" VerticalContentAlignment="Center"/>
+                <TextBlock x:Name="TxtMsg" Foreground="#DC2626" TextWrapping="Wrap" MinHeight="20" Margin="0,12,0,0" FontSize="13"/>
+            </StackPanel>
+        </Border>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="확인" Style="{StaticResource HmiPrimaryButton}" Margin="0,0,8,0" Click="BtnOk_Click" IsDefault="True"/>
+            <Button Content="취소" Style="{StaticResource HmiSecondaryButton}" IsCancel="True" Click="BtnCancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -23,7 +23,7 @@
                 <StackPanel>
                     <TextBlock Text="ETCH LOAD LOCK HMI" Foreground="#64748B" FontSize="11" FontWeight="SemiBold"/>
                     <TextBlock Text="장비 제어 시스템 로그인" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,6,0,0"/>
-                    <TextBlock Text="승인된 계정으로 로그인하세요." Foreground="#94A3B8" FontSize="12" Margin="0,8,0,0"/>
+                    <TextBlock Text="관리자가 발급한 계정으로만 로그인할 수 있습니다." Foreground="#94A3B8" FontSize="12" Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -47,7 +47,8 @@
                         <TextBlock Text="• 비밀번호: 최소 8자, 영문과 숫자 포함" Style="{StaticResource HmiCardSubtitle}" Margin="0,4,0,0"/>
                         <TextBlock Text="• 관리자: 알람 리셋·유지보수·사용자 관리" Style="{StaticResource HmiCardSubtitle}" Margin="0,2,0,0"/>
                         <TextBlock Text="• 작업자: 모니터링·Start/Stop" Style="{StaticResource HmiCardSubtitle}" Margin="0,2,0,0"/>
-                        <TextBlock Text="• 초기 계정 — admin / Admin1234 · worker / Worker1234" Style="{StaticResource HmiCardSubtitle}" Margin="0,6,0,0"/>
+                        <TextBlock Text="• 공개 가입 없음 — 계정은 관리자가 등록합니다." Style="{StaticResource HmiCardSubtitle}" Margin="0,4,0,0"/>
+                        <TextBlock Text="• 초기 계정 — admin / Admin1234 · worker / Worker1234" Style="{StaticResource HmiCardSubtitle}" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

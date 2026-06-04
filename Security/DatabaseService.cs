@@ -362,4 +362,171 @@ public sealed class DatabaseService
 
         return list;
     }
+
+    public bool TryVerifyUserPassword(int userId, string password)
+    {
+        using SqliteConnection connection = new(ConnectionString);
+        connection.Open();
+
+        using SqliteCommand readCommand = connection.CreateCommand();
+        readCommand.CommandText = "SELECT password_hash FROM users WHERE id = $id AND is_active = 1";
+        readCommand.Parameters.AddWithValue("$id", userId);
+        object? scalar = readCommand.ExecuteScalar();
+        if (scalar is null or DBNull)
+        {
+            return false;
+        }
+
+        string storedHash = Convert.ToString(scalar) ?? string.Empty;
+        return PasswordHasher.VerifyPassword(password, storedHash);
+    }
+
+    public bool TryChangeOwnPassword(int userId, string currentPassword, string newPassword, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        if (!PasswordPolicy.IsValid(newPassword, out string policyMessage))
+        {
+            errorMessage = policyMessage;
+            return false;
+        }
+
+        using SqliteConnection connection = new(ConnectionString);
+        connection.Open();
+
+        using SqliteCommand readCommand = connection.CreateCommand();
+        readCommand.CommandText = "SELECT password_hash FROM users WHERE id = $id AND is_active = 1";
+        readCommand.Parameters.AddWithValue("$id", userId);
+        object? scalar = readCommand.ExecuteScalar();
+        if (scalar is null or DBNull)
+        {
+            errorMessage = "계정을 찾을 수 없습니다.";
+            return false;
+        }
+
+        string storedHash = Convert.ToString(scalar) ?? string.Empty;
+        if (!PasswordHasher.VerifyPassword(currentPassword, storedHash))
+        {
+            errorMessage = "현재 비밀번호가 올바르지 않습니다.";
+            return false;
+        }
+
+        return TryUpdatePasswordHash(connection, userId, newPassword, out errorMessage);
+    }
+
+    public bool TrySetPasswordByAdmin(int targetUserId, string newPassword, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        if (!PasswordPolicy.IsValid(newPassword, out string policyMessage))
+        {
+            errorMessage = policyMessage;
+            return false;
+        }
+
+        using SqliteConnection connection = new(ConnectionString);
+        connection.Open();
+
+        using SqliteCommand checkCommand = connection.CreateCommand();
+        checkCommand.CommandText = "SELECT COUNT(1) FROM users WHERE id = $id";
+        checkCommand.Parameters.AddWithValue("$id", targetUserId);
+        long exists = (long)(checkCommand.ExecuteScalar() ?? 0);
+        if (exists == 0)
+        {
+            errorMessage = "대상 사용자를 찾을 수 없습니다.";
+            return false;
+        }
+
+        return TryUpdatePasswordHash(connection, targetUserId, newPassword, out errorMessage);
+    }
+
+    private static bool TryUpdatePasswordHash(SqliteConnection connection, int userId, string newPassword, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        using SqliteCommand updateCommand = connection.CreateCommand();
+        updateCommand.CommandText = "UPDATE users SET password_hash = $hash WHERE id = $id";
+        updateCommand.Parameters.AddWithValue("$hash", PasswordHasher.HashPassword(newPassword));
+        updateCommand.Parameters.AddWithValue("$id", userId);
+        return updateCommand.ExecuteNonQuery() > 0;
+    }
+
+    public long AppendAlarmHistory(string alarmCode, string? note = null)
+    {
+        using SqliteConnection connection = new(ConnectionString);
+        connection.Open();
+        using SqliteCommand insertCommand = connection.CreateCommand();
+        insertCommand.CommandText = """
+            INSERT INTO alarm_history (alarm_code, occurred_at, note)
+            VALUES ($code, $occurred_at, $note);
+            SELECT last_insert_rowid();
+            """;
+        insertCommand.Parameters.AddWithValue("$code", alarmCode.Trim().ToUpperInvariant());
+        insertCommand.Parameters.AddWithValue("$occurred_at", DateTime.UtcNow.ToString("o"));
+        insertCommand.Parameters.AddWithValue("$note", (object?)note ?? DBNull.Value);
+        return (long)(insertCommand.ExecuteScalar() ?? 0L);
+    }
+
+    public void TryResolveOpenAlarm(string alarmCode, string? resolvedBy, string? note = null)
+    {
+        using SqliteConnection connection = new(ConnectionString);
+        connection.Open();
+        using SqliteCommand updateCommand = connection.CreateCommand();
+        updateCommand.CommandText = """
+            UPDATE alarm_history
+            SET resolved_at = $resolved_at,
+                resolved_by = $resolved_by,
+                note = COALESCE($note, note)
+            WHERE alarm_code = $code AND resolved_at IS NULL
+            """;
+        updateCommand.Parameters.AddWithValue("$code", alarmCode.Trim().ToUpperInvariant());
+        updateCommand.Parameters.AddWithValue("$resolved_at", DateTime.UtcNow.ToString("o"));
+        updateCommand.Parameters.AddWithValue("$resolved_by", (object?)resolvedBy ?? DBNull.Value);
+        updateCommand.Parameters.AddWithValue("$note", (object?)note ?? DBNull.Value);
+        updateCommand.ExecuteNonQuery();
+    }
+
+    public List<AlarmHistoryRow> GetRecentAlarmHistory(int limit = 200)
+    {
+        int n = Math.Clamp(limit, 1, 2000);
+        List<AlarmHistoryRow> list = [];
+        using SqliteConnection connection = new(ConnectionString);
+        connection.Open();
+        using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, alarm_code, occurred_at, resolved_at, resolved_by, note
+            FROM alarm_history
+            ORDER BY id DESC
+            LIMIT $limit
+            """;
+        command.Parameters.AddWithValue("$limit", n);
+
+        using SqliteDataReader reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            string code = reader.GetString(1);
+            string occurred = FormatTimestamp(reader.GetString(2));
+            string? resolved = reader.IsDBNull(3) ? null : FormatTimestamp(reader.GetString(3));
+            AlarmCatalog.AlarmInfo? info = AlarmCatalog.TryGet(code);
+            list.Add(new AlarmHistoryRow
+            {
+                Id = reader.GetInt64(0),
+                AlarmCode = code,
+                OccurredAtDisplay = occurred,
+                ResolvedAtDisplay = resolved,
+                ResolvedBy = reader.IsDBNull(4) ? null : reader.GetString(4),
+                Note = reader.IsDBNull(5) ? null : reader.GetString(5),
+                SummaryDisplay = info?.Title ?? code
+            });
+        }
+
+        return list;
+    }
+
+    private static string FormatTimestamp(string raw)
+    {
+        if (DateTime.TryParse(raw, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime utc))
+        {
+            return utc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        return raw;
+    }
 }

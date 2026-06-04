@@ -19,8 +19,8 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="사용자 등록 · 계정 관리" FontSize="20" FontWeight="Bold" Foreground="{StaticResource HmiTextPrimaryBrush}"/>
-            <TextBlock Text="관리자 전용. 작업자는 모니터링·Start/Stop만 가능합니다."
+            <TextBlock Text="계정 관리 (관리자 전용)" FontSize="20" FontWeight="Bold" Foreground="{StaticResource HmiTextPrimaryBrush}"/>
+            <TextBlock Text="공개 가입 없음 — 관리자가 계정을 등록·비활성·비밀번호 재설정합니다."
                        Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap"/>
         </StackPanel>
 
@@ -68,8 +68,9 @@
         </Border>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button x:Name="BtnResetPassword" Content="비밀번호 재설정" Style="{StaticResource HmiSecondaryButton}" Margin="0,0,10,0" Click="BtnResetPassword_Click"/>
             <Button x:Name="BtnToggleActive" Content="사용/비활성 전환" Style="{StaticResource HmiSecondaryButton}" Margin="0,0,10,0" Click="BtnToggleActive_Click"/>
-            <Button x:Name="BtnRegister" Content="회원 등록" Style="{StaticResource HmiPrimaryButton}" Margin="0,0,10,0" Click="BtnRegister_Click"/>
+            <Button x:Name="BtnRegister" Content="계정 등록" Style="{StaticResource HmiPrimaryButton}" Margin="0,0,10,0" Click="BtnRegister_Click"/>
             <Button Content="닫기" Style="{StaticResource HmiSecondaryButton}" IsCancel="True" Click="BtnClose_Click"/>
         </StackPanel>
     </Grid>

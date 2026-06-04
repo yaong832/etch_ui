@@ -92,17 +92,19 @@ etch_ui/
 |------|------|
 | PLC·인터락·알람·버튼·램프 | ✅ |
 | `TmTransferSimulator` + 도식 | ✅ |
-| Flask 텔레메트리·웹 | ✅ (AI 탭 스텁) |
+| Flask 텔레메트리·웹 | ✅ (AI 탭 스텁 · **모듈 상태** 탭) |
 | 접촉 열림 시 이송 정지 | 🔜 Phase 1.2 |
-| DB 이벤트/알람 UI | 🔜 Phase 3 |
-| AI `latest` + WPF 조언 패널 | 🔜 Phase 4 |
+| DB 이벤트·알람 이력 UI | ✅ |
+| 계정: 관리자 등록·비밀번호 변경/재설정 (공개 가입 없음) | ✅ |
+| AI `latest` + WPF 조언 패널 | ✅ (스텁·규칙) / 본격 ML 🔜 |
 | IEG3268·실 TM | ❌ 범위 밖 |
 
 ### 6.1 Flask·AI (현재)
 
 - `POST /api/etch/sensor-data`, `GET /api/sensors`
+- `GET /api/etch/modules/latest`, `GET/POST /api/etch/events`
 - `GET /api/etch/ai/status`, `POST /api/etch/ai/predict` (스텁)
-- 웹 `etch_dashboard.html` — AI 진단 탭
+- 웹 `etch_dashboard.html` — AI 진단 · **모듈 상태** 탭
 - 상세: `C:\etchflask\ETCH_AI.md`
 
 ---
@@ -114,7 +116,7 @@ etch_ui/
 | **0** | 기반 ✅ |
 | **1** | 실장비 신뢰도 (접촉→이송 정지 등) |
 | **2** | 가상 도식·(접촉)/(가상) 라벨 |
-| **3** | DB·설정 UI·Flask 이력 영구화 |
+| **3** | DB·설정 UI·Flask 이력·웹 모듈 테이블 🟡 (레시피 XML·승인 워크플로 잔여) |
 | **4** | **AI:** Flask 엔진 + WPF·웹 표시 |
 | **5** | semitest 심화 (선택) |
 
