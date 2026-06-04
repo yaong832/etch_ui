@@ -46,18 +46,31 @@ public static class TransferStateMutator
 
         if (dropoff == EquipmentRegion.SideStorage)
         {
+            if (!state.SideStorage.TryEnqueue(wafer))
+            {
+                throw new InvalidOperationException($"Side Stg full on dropoff · wafer #{wafer.Id}");
+            }
+
             return;
         }
 
         if (dropoff == EquipmentRegion.Aligner)
         {
-            state.AlignerBuffer.TryEnqueue(wafer, processTicks);
+            if (!state.AlignerBuffer.TryEnqueue(wafer, processTicks))
+            {
+                throw new InvalidOperationException($"Aligner full on dropoff · wafer #{wafer.Id}");
+            }
+
             return;
         }
 
         if (dropoff == EquipmentRegion.LoadLock)
         {
-            state.LoadLockBuffer.TryEnqueue(wafer, 0);
+            if (!state.LoadLockBuffer.TryEnqueue(wafer, 0))
+            {
+                throw new InvalidOperationException($"BM full on dropoff · wafer #{wafer.Id}");
+            }
+
             return;
         }
 

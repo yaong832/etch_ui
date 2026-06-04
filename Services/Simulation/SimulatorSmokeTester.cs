@@ -37,15 +37,22 @@ public static class SimulatorSmokeTester
             return new Result { Success = false, Ticks = ticks, Message = admissionError };
         }
 
+        if (!ValidateVacuumInboundPolicy(out string inboundError))
+        {
+            return new Result { Success = false, Ticks = ticks, Message = inboundError };
+        }
+
         var sim = new TmTransferSimulator(capacity);
         sim.StartDemoLoop();
 
         int maxSideStorage = 0;
         try
         {
+            int motionSteps = capacity?.VacuumMotionStepsPerUiTick
+                ?? EquipmentCapacityConfig.Default.VacuumMotionStepsPerUiTick;
             for (int i = 0; i < ticks; i++)
             {
-                sim.Tick();
+                sim.Tick(motionSteps);
                 ValidateState(sim.ClusterState);
                 maxSideStorage = Math.Max(maxSideStorage, sim.SideStorageOccupancy);
             }
@@ -61,18 +68,37 @@ public static class SimulatorSmokeTester
             };
         }
 
+        string reportText = report ? BuildReport(sim, ticks, maxSideStorage) : null;
+        if (report
+            && ticks >= 120_000
+            && sim.LotCompletedCount == 0
+            && !sim.LotCompleteAchieved
+            && sim.ClusterState.SideStorage.Count == 0
+            && sim.ClusterState.FoupPorts.Sum(p => p.RemainingInFoup) >= sim.ClusterState.Capacity.FoupSlotCount * 3 - 2)
+        {
+            return new Result
+            {
+                Success = false,
+                Ticks = ticks,
+                MaxSideStorage = maxSideStorage,
+                Message = "pipeline stall: no wafer reached Side Stg (check PM1/TM queue)",
+                Report = reportText
+            };
+        }
+
         return new Result
         {
             Success = true,
             Ticks = ticks,
             MaxSideStorage = maxSideStorage,
             Message = "ok",
-            Report = report ? BuildReport(sim, ticks, maxSideStorage) : null
+            Report = reportText
         };
     }
 
     public static string BuildReport(TmTransferSimulator sim, int ticks, int maxSideStorage)
     {
+        (int efemQ, int vacQ, int vacPending, int vacBlades) = sim.GetQueueDiagnostics();
         ClusterEquipmentState s = sim.ClusterState;
         int foupRem = s.FoupPorts.Sum(p => p.RemainingInFoup);
         int inflight = s.FoupPorts.Sum(p => p.InFlightCount);
@@ -94,8 +120,73 @@ public static class SimulatorSmokeTester
             $"etch_pm_busy={etchBusy}/3",
             $"lot_done={sim.LotCompleteAchieved}",
             $"kpi={kpi}",
-            $"hint={sim.PhaseHint}"
+            $"hint={sim.PhaseHint}",
+            $"q=efem{efemQ}/vac{vacQ} pend{vacPending} blade{vacBlades}",
+            $"efem_max_blades={sim.MaxEfemBladesOccupied}",
+            $"pipeline={DiagnosePipeline(s)}"
         ]);
+    }
+
+    private static string DiagnosePipeline(ClusterEquipmentState s)
+    {
+        var parts = new List<string>
+        {
+            $"side={s.SideStorage.Count}",
+            $"align={s.AlignerBuffer.Count}",
+            $"bm={s.LoadLockBuffer.Count}"
+        };
+
+        foreach (KeyValuePair<EquipmentRegion, PmChamberState> kv in s.Chambers)
+        {
+            WaferTrack? w = kv.Value.CurrentWafer;
+            if (w is null)
+            {
+                continue;
+            }
+
+            parts.Add(
+                $"{kv.Key}=#{w.Id} e={w.HasCompletedEtch} s={w.HasCompletedStrip} t={kv.Value.RemainingProcessTicks} ps={kv.Value.PickupScheduled} ri={kv.Value.ReservedForIncoming}");
+        }
+
+        return string.Join(" ", parts);
+    }
+
+    /// <summary>EFEM 듀얼(2슬롯) 가정 시뮬 — 동시 2매 적재가 발생하는지 검증.</summary>
+    public static Result RunEfemDualBladeAudit(int ticks = 40_000)
+    {
+        if (ticks <= 0)
+        {
+            return new Result { Success = false, Message = "ticks must be > 0" };
+        }
+
+        var cfg = new EquipmentCapacityConfig { EfemBladeSlotCount = 2 };
+        var sim = new TmTransferSimulator(cfg, efemBladeCapacity: 2);
+        sim.StartDemoLoop();
+
+        try
+        {
+            int motionSteps = cfg.VacuumMotionStepsPerUiTick;
+            for (int i = 0; i < ticks; i++)
+            {
+                sim.Tick(motionSteps);
+                ValidateState(sim.ClusterState);
+            }
+        }
+        catch (Exception ex)
+        {
+            return new Result { Success = false, Ticks = ticks, Message = $"efem-audit failed: {ex.Message}" };
+        }
+
+        bool dualNeeded = sim.MaxEfemBladesOccupied >= 2;
+        return new Result
+        {
+            Success = true,
+            Ticks = ticks,
+            Message = dualNeeded
+                ? $"efem dual used: max_blades={sim.MaxEfemBladesOccupied}"
+                : $"efem dual NOT needed: max_blades={sim.MaxEfemBladesOccupied}/2 (serial FOUP→BM)",
+            Report = BuildReport(sim, ticks, sim.SideStorageOccupancy)
+        };
     }
 
     public static Result RunDualBlade(int ticks = 12000)
@@ -250,6 +341,17 @@ public static class SimulatorSmokeTester
             return false;
         }
 
+        ports[0].RemainingInFoup = 0;
+        ports[0].InFlightCount = 25;
+        ports[1].RemainingInFoup = 25;
+        ports[2].RemainingInFoup = 25;
+        selected = scheduler.SelectNextPickSource();
+        if (selected?.PortId != LoadPortId.Lp2)
+        {
+            error = "FOUP policy mismatch: LP1 drain-only inflight should allow LP2 full FOUP";
+            return false;
+        }
+
         return true;
     }
 
@@ -314,6 +416,43 @@ public static class SimulatorSmokeTester
         if (EtchPmSelector.SelectNextPipelineTarget(chambers) is not null)
         {
             error = "pipeline: all busy should return null";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static bool ValidateVacuumInboundPolicy(out string error)
+    {
+        var blades = new RobotBladeSlots(2);
+        blades.Place(VacuumDualBladePlanner.BackBladeSlot, new WaferTrack(LoadPortId.Lp1, EquipmentRegion.FoupA));
+
+        if (VacuumInboundPolicy.ShouldRestrictBmPickup(blades, 2, [], []))
+        {
+            error = "inbound: pre-etch on back slot should allow BM pickup";
+            return false;
+        }
+
+        var pending = new Queue<TransferJob>();
+        pending.Enqueue(new TransferJob
+        {
+            Wafer = blades.Get(VacuumDualBladePlanner.BackBladeSlot)!,
+            Pickup = EquipmentRegion.ChamberB,
+            Dropoff = EquipmentRegion.ChamberA,
+            BladeSlotIndex = VacuumDualBladePlanner.BackBladeSlot
+        });
+
+        if (!VacuumInboundPolicy.ShouldRestrictBmPickup(blades, 2, pending, []))
+        {
+            error = "inbound: PM1 pending drop should block BM pickup";
+            return false;
+        }
+
+        blades.Place(VacuumDualBladePlanner.FrontBladeSlot, new WaferTrack(LoadPortId.Lp1, EquipmentRegion.FoupA));
+        if (!VacuumInboundPolicy.ShouldRestrictBmPickup(blades, 2, [], []))
+        {
+            error = "inbound: dual full blades should block BM pickup";
             return false;
         }
 

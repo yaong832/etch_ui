@@ -353,7 +353,7 @@ public static class ModuleStateAggregator
         bool alignPhase = transferActive && ctx.Transfer is not null
             && (ctx.Transfer.TmRegion == EquipmentRegion.Aligner || atAligner);
         int alignCount = ctx.Transfer?.ClusterState.AlignerBuffer.Count ?? 0;
-        int alignCap = ctx.Transfer?.ClusterState.Capacity.AlignerSlotCount ?? 5;
+        int alignCap = ctx.Transfer?.ClusterState.Capacity.AlignerSlotCount ?? EquipmentCapacityConfig.DefaultAlignerSlotCount;
 
         ModuleOperationalState st = globalAlarm ? ModuleOperationalState.Alarm
             : alignPhase ? ModuleOperationalState.Running

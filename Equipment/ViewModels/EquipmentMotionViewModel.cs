@@ -19,6 +19,9 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private double _efemBladeAngleDegrees;
     private double _efemBladeExtension = 0.65;
     private bool _efemCarryingWafer;
+    private bool _efemBladeSlotA;
+    private bool _efemBladeSlotB;
+    private int _efemActiveBladeSlot;
     private Brush _waferBrush = Brushes.Wheat;
     private string _tmRegionLabel = "TM";
     private string _servoHint = "시뮬/논리";
@@ -111,6 +114,24 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     {
         get => _efemCarryingWafer;
         set => SetField(ref _efemCarryingWafer, value);
+    }
+
+    public bool EfemBladeSlotA
+    {
+        get => _efemBladeSlotA;
+        set => SetField(ref _efemBladeSlotA, value);
+    }
+
+    public bool EfemBladeSlotB
+    {
+        get => _efemBladeSlotB;
+        set => SetField(ref _efemBladeSlotB, value);
+    }
+
+    public int EfemActiveBladeSlot
+    {
+        get => _efemActiveBladeSlot;
+        set => SetField(ref _efemActiveBladeSlot, value);
     }
 
     public Brush WaferBrush
@@ -248,9 +269,10 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         EquipmentRegion region,
         double extension,
         bool carrying,
-        bool hardwareMode)
+        bool hardwareMode,
+        int bladeSlot = VacuumDualBladePlanner.FrontBladeSlot)
     {
-        double angle = RegionAngleHelper.ToDegrees(region, robot, hardwareMode);
+        double angle = VacuumDualBladePlanner.AngleForBlade(region, robot, bladeSlot);
         if (robot == TransferRobotKind.EfemAtmospheric)
         {
             EfemTargetAngleDegrees = angle;
@@ -297,7 +319,9 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         EquipmentRegion? vacuumRegion,
         double vacuumExtension,
         bool vacuumCarrying,
-        bool hardwareMode)
+        bool hardwareMode,
+        int efemBladeSlot = VacuumDualBladePlanner.FrontBladeSlot,
+        int vacuumBladeSlot = VacuumDualBladePlanner.FrontBladeSlot)
     {
         if (efemRegion is not null)
         {
@@ -306,7 +330,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
                 efemRegion.Value,
                 efemExtension,
                 efemCarrying,
-                hardwareMode);
+                hardwareMode,
+                efemBladeSlot);
         }
         else
         {
@@ -320,12 +345,32 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
                 vacuumRegion.Value,
                 vacuumExtension,
                 vacuumCarrying,
-                hardwareMode);
+                hardwareMode,
+                vacuumBladeSlot);
         }
         else
         {
             VacuumTargetCarrying = false;
         }
+    }
+
+    /// <summary>EFEM TM — 슬롯별 회전각(앞/뒤 180°) 반영.</summary>
+    public void ApplyEfemMotion(
+        EquipmentRegion region,
+        double extension,
+        bool carrying,
+        double angleDegrees,
+        int activeBladeSlot)
+    {
+        EfemTargetAngleDegrees = angleDegrees;
+        EfemTargetExtension = extension;
+        EfemTargetCarrying = carrying;
+        EfemActiveBladeSlot = activeBladeSlot;
+        TargetRegion = region;
+        TargetRobot = TransferRobotKind.EfemAtmospheric;
+        IsEfemRobotActive = true;
+        string blade = activeBladeSlot == 0 ? "뒤·A" : "앞·B";
+        TmRegionLabel = $"{RegionAngleHelper.FormatLabel(region, TransferRobotKind.EfemAtmospheric)} · {blade}";
     }
 
     /// <summary>진공 TM — 슬롯별 회전각(앞/뒤 180°) 반영.</summary>

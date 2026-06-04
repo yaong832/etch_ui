@@ -9,11 +9,13 @@ namespace etch_ui.Equipment.Views;
 
 public partial class EquipmentSchematicControl : UserControl
 {
-    private const double TmBaseBlade = 50;
-    private const double TmMaxBlade = 168;
-    private const double TmRetractBlade = 28;
-    private const double EfemBaseBlade = 36;
-    private const double EfemMaxBlade = 118;
+    private const double TmBaseBlade = 56;
+    private const double TmMaxBlade = 178;
+    private const double TmRetractBlade = 48;
+    private const double EfemBaseBlade = 48;
+    private const double EfemMaxBlade = 132;
+    private const double EfemHubX = 150;
+    private const double VacHubX = 170;
     private const double BladeWaferDiameter = 14;
     private const double EfemWaferDiameter = 12;
     private EquipmentMotionViewModel? _bound;
@@ -59,6 +61,10 @@ public partial class EquipmentSchematicControl : UserControl
             or nameof(EquipmentMotionViewModel.EfemBladeAngleDegrees)
             or nameof(EquipmentMotionViewModel.EfemBladeExtension)
             or nameof(EquipmentMotionViewModel.EfemCarryingWafer)
+            or nameof(EquipmentMotionViewModel.EfemBladeSlotA)
+            or nameof(EquipmentMotionViewModel.EfemBladeSlotB)
+            or nameof(EquipmentMotionViewModel.EfemActiveBladeSlot)
+            or nameof(EquipmentMotionViewModel.EfemBladeCapacity)
             or nameof(EquipmentMotionViewModel.IsVacuumDualBlade)
             or nameof(EquipmentMotionViewModel.VacuumBladeCapacity)
             or nameof(EquipmentMotionViewModel.IsEfemDualBlade)
@@ -92,20 +98,115 @@ public partial class EquipmentSchematicControl : UserControl
             return;
         }
 
+        const double armY = 15;
+        const double armH = 10;
+        const double slotTipInset = 10;
+
         double efemNorm = Math.Clamp((_bound.EfemBladeExtension - 0.4) / 1.2, 0, 1);
         EfemRotate.Angle = _bound.EfemBladeAngleDegrees;
-        double efemLen = EfemBaseBlade + efemNorm * (EfemMaxBlade - EfemBaseBlade);
-        EfemBladeRailTop.Width = efemLen;
-        EfemBladeRailBottom.Width = EfemBaseBlade;
-        Canvas.SetLeft(EfemBladeTipTop, Math.Max(0, efemLen - 2));
-        Canvas.SetLeft(EfemBladeTipBottom, Math.Max(0, EfemBaseBlade - 2));
-        Canvas.SetLeft(EfemBladeCenterPad, Math.Max(0, efemLen - 8));
-        double efemWaferCenterX = Math.Max(EfemWaferDiameter / 2, efemLen - 2);
-        double efemWaferCenterY = 6 + EfemWaferDiameter / 2;
-        PlaceWaferDisc(WaferOnEfemBlade, efemWaferCenterX, efemWaferCenterY, EfemWaferDiameter);
-        WaferOnEfemBlade.Visibility = _bound.EfemCarryingWafer ? Visibility.Visible : Visibility.Collapsed;
-        WaferOnEfemBladeB.Visibility = Visibility.Collapsed;
+        double efemLenExtend = EfemBaseBlade + efemNorm * (EfemMaxBlade - EfemBaseBlade);
+
+        if (_bound.IsEfemDualBlade)
+        {
+            SetSingleBladeVis(
+                EfemBladeRailTop,
+                EfemBladeRailBottom,
+                EfemBladeTipTop,
+                EfemBladeTipBottom,
+                EfemBladeCenterPad,
+                Visibility.Collapsed);
+            SetDualBladeVis(
+                EfemBladeHubPad,
+                EfemBladeRailFront,
+                EfemBladeRailBack,
+                EfemBladeTipFront,
+                EfemBladeTipBack,
+                EfemBladeSlotA,
+                EfemBladeSlotB,
+                EfemBladeSlotALabel,
+                EfemBladeSlotBLabel,
+                Visibility.Visible);
+
+            EfemBladeSlotA.Opacity = _bound.EfemActiveBladeSlot == 0 || _bound.EfemBladeSlotA ? 0.9 : 0.35;
+            EfemBladeSlotB.Opacity = _bound.EfemActiveBladeSlot == 1 || _bound.EfemBladeSlotB ? 0.9 : 0.35;
+
+            bool efemBusy = _bound.IsEfemRobotActive;
+            int activeSlot = _bound.EfemActiveBladeSlot;
+            double frontLen = ResolveArmLength(efemBusy, activeSlot == 1, efemLenExtend);
+            double backLen = ResolveArmLength(efemBusy, activeSlot == 0, efemLenExtend);
+
+            LayoutSymmetricDualArm(
+                front: true,
+                frontLen,
+                backLen,
+                EfemHubX,
+                armY,
+                armH,
+                slotTipInset,
+                EfemBladeRailFront,
+                EfemBladeRailBack,
+                EfemBladeTipFront,
+                EfemBladeTipBack,
+                EfemBladeSlotA,
+                EfemBladeSlotB,
+                EfemBladeSlotALabel,
+                EfemBladeSlotBLabel);
+
+            double waferCenterY = armY + armH / 2;
+            if (_bound.EfemBladeSlotB)
+            {
+                PlaceWaferDisc(WaferOnEfemBladeB, EfemHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter);
+            }
+
+            if (_bound.EfemBladeSlotA)
+            {
+                PlaceWaferDisc(WaferOnEfemBlade, EfemHubX - backLen + slotTipInset, waferCenterY, BladeWaferDiameter);
+            }
+        }
+        else
+        {
+            SetDualBladeVis(
+                EfemBladeHubPad,
+                EfemBladeRailFront,
+                EfemBladeRailBack,
+                EfemBladeTipFront,
+                EfemBladeTipBack,
+                EfemBladeSlotA,
+                EfemBladeSlotB,
+                EfemBladeSlotALabel,
+                EfemBladeSlotBLabel,
+                Visibility.Collapsed);
+            SetSingleBladeVis(
+                EfemBladeRailTop,
+                EfemBladeRailBottom,
+                EfemBladeTipTop,
+                EfemBladeTipBottom,
+                EfemBladeCenterPad,
+                Visibility.Visible);
+
+            double efemLen = efemLenExtend;
+            EfemBladeRailTop.Width = efemLen;
+            EfemBladeRailBottom.Visibility = Visibility.Collapsed;
+            EfemBladeTipBottom.Visibility = Visibility.Collapsed;
+            Canvas.SetLeft(EfemBladeRailTop, EfemHubX);
+            Canvas.SetTop(EfemBladeRailTop, 8);
+            Canvas.SetLeft(EfemBladeTipTop, EfemHubX + efemLen - 6);
+            Canvas.SetLeft(EfemBladeCenterPad, EfemHubX + efemLen - 14);
+            double slotLeft = EfemHubX + efemLen - 4;
+            if (_bound.EfemBladeSlotA || _bound.EfemCarryingWafer)
+            {
+                PlaceWaferDisc(WaferOnEfemBlade, slotLeft, 8 + 5, BladeWaferDiameter);
+            }
+
+            WaferOnEfemBladeB.Visibility = Visibility.Collapsed;
+        }
+
         Panel.SetZIndex(WaferOnEfemBlade, 20);
+        Panel.SetZIndex(WaferOnEfemBladeB, 20);
+        bool showEfemA = _bound.EfemBladeSlotA
+            || (!_bound.IsEfemDualBlade && _bound.EfemCarryingWafer);
+        WaferOnEfemBlade.Visibility = showEfemA ? Visibility.Visible : Visibility.Collapsed;
+        WaferOnEfemBladeB.Visibility = _bound.EfemBladeSlotB ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void RefreshVacuumRobot()
@@ -115,7 +216,6 @@ public partial class EquipmentSchematicControl : UserControl
             return;
         }
 
-        const double vacHubX = 170;
         const double vacArmY = 15;
         const double vacArmH = 10;
         const double slotTipInset = 10;
@@ -127,87 +227,90 @@ public partial class EquipmentSchematicControl : UserControl
 
         if (dualVac)
         {
-            Visibility singleHidden = Visibility.Collapsed;
-            BladeRailTop.Visibility = singleHidden;
-            BladeRailBottom.Visibility = singleHidden;
-            BladeTipTop.Visibility = singleHidden;
-            BladeTipBottom.Visibility = singleHidden;
-            BladeCenterPad.Visibility = singleHidden;
-
-            Visibility dualVis = Visibility.Visible;
-            BladeHubPad.Visibility = dualVis;
-            BladeRailFront.Visibility = dualVis;
-            BladeRailBack.Visibility = dualVis;
-            BladeTipFront.Visibility = dualVis;
-            BladeTipBack.Visibility = dualVis;
-            BladeSlotA.Visibility = dualVis;
-            BladeSlotB.Visibility = dualVis;
-            BladeSlotALabel.Visibility = dualVis;
-            BladeSlotBLabel.Visibility = dualVis;
+            SetSingleBladeVis(
+                BladeRailTop,
+                BladeRailBottom,
+                BladeTipTop,
+                BladeTipBottom,
+                BladeCenterPad,
+                Visibility.Collapsed);
+            SetDualBladeVis(
+                BladeHubPad,
+                BladeRailFront,
+                BladeRailBack,
+                BladeTipFront,
+                BladeTipBack,
+                BladeSlotA,
+                BladeSlotB,
+                BladeSlotALabel,
+                BladeSlotBLabel,
+                Visibility.Visible);
             BladeSlotA.Opacity = _bound.VacuumActiveBladeSlot == 0 || _bound.VacuumBladeSlotA ? 0.9 : 0.35;
             BladeSlotB.Opacity = _bound.VacuumActiveBladeSlot == 1 || _bound.VacuumBladeSlotB ? 0.9 : 0.35;
             BladeHubPad.Opacity = _bound.VacuumIsRotatingBlade ? 0.6 : 0.95;
 
             bool vacBusy = _bound.IsVacuumTmActive;
             int activeSlot = _bound.VacuumActiveBladeSlot;
-            double frontLen = vacBusy && activeSlot == 1 ? vacLenExtend : TmRetractBlade;
-            double backLen = vacBusy && activeSlot == 0 ? vacLenExtend : TmRetractBlade;
+            double frontLen = ResolveArmLength(vacBusy, activeSlot == 1, vacLenExtend);
+            double backLen = ResolveArmLength(vacBusy, activeSlot == 0, vacLenExtend);
 
-            LayoutDualVacuumArm(
+            LayoutSymmetricDualArm(
                 front: true,
-                armLen: frontLen,
-                vacHubX,
+                frontLen,
+                backLen,
+                VacHubX,
                 vacArmY,
                 vacArmH,
-                slotTipInset);
-            LayoutDualVacuumArm(
-                front: false,
-                armLen: backLen,
-                vacHubX,
-                vacArmY,
-                vacArmH,
-                slotTipInset);
+                slotTipInset,
+                BladeRailFront,
+                BladeRailBack,
+                BladeTipFront,
+                BladeTipBack,
+                BladeSlotA,
+                BladeSlotB,
+                BladeSlotALabel,
+                BladeSlotBLabel);
 
             double waferCenterY = vacArmY + vacArmH / 2;
             if (_bound.VacuumBladeSlotB)
             {
-                double frontTipX = vacHubX + frontLen - slotTipInset;
-                PlaceWaferDisc(WaferOnBladeB, frontTipX, waferCenterY, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnBladeB, VacHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter);
             }
 
             if (_bound.VacuumBladeSlotA)
             {
-                double backTipX = vacHubX - backLen + slotTipInset;
-                PlaceWaferDisc(WaferOnBlade, backTipX, waferCenterY, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnBlade, VacHubX - backLen + slotTipInset, waferCenterY, BladeWaferDiameter);
             }
         }
         else
         {
-            Visibility dualHidden = Visibility.Collapsed;
-            BladeHubPad.Visibility = dualHidden;
-            BladeRailFront.Visibility = dualHidden;
-            BladeRailBack.Visibility = dualHidden;
-            BladeTipFront.Visibility = dualHidden;
-            BladeTipBack.Visibility = dualHidden;
-            BladeSlotA.Visibility = dualHidden;
-            BladeSlotB.Visibility = dualHidden;
-            BladeSlotALabel.Visibility = dualHidden;
-            BladeSlotBLabel.Visibility = dualHidden;
-
-            BladeRailTop.Visibility = Visibility.Visible;
-            BladeRailBottom.Visibility = Visibility.Collapsed;
-            BladeTipTop.Visibility = Visibility.Visible;
-            BladeTipBottom.Visibility = Visibility.Collapsed;
-            BladeCenterPad.Visibility = Visibility.Visible;
+            SetDualBladeVis(
+                BladeHubPad,
+                BladeRailFront,
+                BladeRailBack,
+                BladeTipFront,
+                BladeTipBack,
+                BladeSlotA,
+                BladeSlotB,
+                BladeSlotALabel,
+                BladeSlotBLabel,
+                Visibility.Collapsed);
+            SetSingleBladeVis(
+                BladeRailTop,
+                BladeRailBottom,
+                BladeTipTop,
+                BladeTipBottom,
+                BladeCenterPad,
+                Visibility.Visible);
 
             double vacLen = vacLenExtend;
             BladeRailTop.Width = vacLen;
-            Canvas.SetLeft(BladeRailTop, vacHubX);
+            Canvas.SetLeft(BladeRailTop, VacHubX);
             Canvas.SetTop(BladeRailTop, 8);
-            double tipLeft = vacHubX + vacLen - 6;
+            double tipLeft = VacHubX + vacLen - 6;
             Canvas.SetLeft(BladeTipTop, tipLeft);
-            Canvas.SetLeft(BladeCenterPad, vacHubX + vacLen - 14);
-            double slotLeft = vacHubX + vacLen - 4;
+            Canvas.SetLeft(BladeCenterPad, VacHubX + vacLen - 14);
+            double slotLeft = VacHubX + vacLen - 4;
             BladeSlotB.Visibility = Visibility.Collapsed;
 
             if (_bound.VacuumBladeSlotA || _bound.VacuumCarryingWafer)
@@ -226,39 +329,94 @@ public partial class EquipmentSchematicControl : UserControl
         WaferOnBladeB.Visibility = _bound.VacuumBladeSlotB ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void LayoutDualVacuumArm(
+    private static double ResolveArmLength(bool robotBusy, bool isActiveArm, double extendLen)
+    {
+        if (!robotBusy)
+        {
+            return TmBaseBlade;
+        }
+
+        return isActiveArm ? extendLen : TmRetractBlade;
+    }
+
+    private static void SetSingleBladeVis(
+        Rectangle railTop,
+        Rectangle railBottom,
+        Rectangle tipTop,
+        Rectangle tipBottom,
+        Rectangle centerPad,
+        Visibility visibility)
+    {
+        railTop.Visibility = visibility;
+        railBottom.Visibility = visibility;
+        tipTop.Visibility = visibility;
+        tipBottom.Visibility = visibility;
+        centerPad.Visibility = visibility;
+    }
+
+    private static void SetDualBladeVis(
+        Rectangle hub,
+        Rectangle railFront,
+        Rectangle railBack,
+        Rectangle tipFront,
+        Rectangle tipBack,
+        Rectangle slotA,
+        Rectangle slotB,
+        TextBlock labelA,
+        TextBlock labelB,
+        Visibility visibility)
+    {
+        hub.Visibility = visibility;
+        railFront.Visibility = visibility;
+        railBack.Visibility = visibility;
+        tipFront.Visibility = visibility;
+        tipBack.Visibility = visibility;
+        slotA.Visibility = visibility;
+        slotB.Visibility = visibility;
+        labelA.Visibility = visibility;
+        labelB.Visibility = visibility;
+    }
+
+    private static void LayoutSymmetricDualArm(
         bool front,
-        double armLen,
+        double frontLen,
+        double backLen,
         double hubX,
         double armY,
         double armH,
-        double slotTipInset)
+        double slotTipInset,
+        Rectangle railFront,
+        Rectangle railBack,
+        Rectangle tipFront,
+        Rectangle tipBack,
+        Rectangle slotA,
+        Rectangle slotB,
+        TextBlock labelA,
+        TextBlock labelB)
     {
-        if (front)
-        {
-            BladeRailFront.Width = armLen;
-            BladeRailFront.Height = armH;
-            Canvas.SetLeft(BladeRailFront, hubX);
-            Canvas.SetTop(BladeRailFront, armY);
-            Canvas.SetLeft(BladeTipFront, hubX + armLen - 8);
-            Canvas.SetTop(BladeTipFront, armY - 1);
-            Canvas.SetLeft(BladeSlotB, hubX + armLen - slotTipInset);
-            Canvas.SetTop(BladeSlotB, armY - 1);
-            Canvas.SetLeft(BladeSlotBLabel, hubX + armLen - slotTipInset);
-            Canvas.SetTop(BladeSlotBLabel, armY - 13);
-            return;
-        }
+        railFront.Width = frontLen;
+        railFront.Height = armH;
+        Canvas.SetLeft(railFront, hubX);
+        Canvas.SetTop(railFront, armY);
+        Canvas.SetLeft(tipFront, hubX + frontLen - 8);
+        Canvas.SetTop(tipFront, armY - 1);
+        Canvas.SetLeft(slotB, hubX + frontLen - slotTipInset);
+        Canvas.SetTop(slotB, armY - 1);
+        Canvas.SetLeft(labelB, hubX + frontLen - slotTipInset);
+        Canvas.SetTop(labelB, armY - 13);
 
-        BladeRailBack.Width = armLen;
-        BladeRailBack.Height = armH;
-        Canvas.SetLeft(BladeRailBack, hubX - armLen);
-        Canvas.SetTop(BladeRailBack, armY);
-        Canvas.SetLeft(BladeTipBack, hubX - armLen - 16);
-        Canvas.SetTop(BladeTipBack, armY - 1);
-        Canvas.SetLeft(BladeSlotA, hubX - armLen + slotTipInset - 14);
-        Canvas.SetTop(BladeSlotA, armY - 1);
-        Canvas.SetLeft(BladeSlotALabel, hubX - armLen + slotTipInset - 14);
-        Canvas.SetTop(BladeSlotALabel, armY - 13);
+        railBack.Width = backLen;
+        railBack.Height = armH;
+        Canvas.SetLeft(railBack, hubX - backLen);
+        Canvas.SetTop(railBack, armY);
+        Canvas.SetLeft(tipBack, hubX - backLen - 16);
+        Canvas.SetTop(tipBack, armY - 1);
+        Canvas.SetLeft(slotA, hubX - backLen + slotTipInset - 14);
+        Canvas.SetTop(slotA, armY - 1);
+        Canvas.SetLeft(labelA, hubX - backLen + slotTipInset - 14);
+        Canvas.SetTop(labelA, armY - 13);
+
+        _ = front;
     }
 
     private static void PlaceWaferDisc(Ellipse wafer, double centerX, double centerY, double diameter)

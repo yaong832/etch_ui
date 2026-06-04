@@ -39,7 +39,7 @@ public sealed class TmTransferSimulator
         public readonly RobotBladeSlots Blades;
         public EquipmentRegion Region = EquipmentRegion.TM;
         public double Extension = 0.65;
-        public double FacingAngleDegrees = -125;
+        public double FacingAngleDegrees;
         public double TargetFacingAngleDegrees;
         public int ActiveBladeSlot = VacuumDualBladePlanner.FrontBladeSlot;
         public bool LegIsPickup = true;
@@ -48,6 +48,7 @@ public sealed class TmTransferSimulator
         {
             Robot = robot;
             Blades = new RobotBladeSlots(bladeCapacity);
+            FacingAngleDegrees = robot == TransferRobotKind.EfemAtmospheric ? -90 : -125;
         }
 
         public bool IsBusy => Active is not null;
@@ -87,15 +88,23 @@ public sealed class TmTransferSimulator
     public int VacuumBladeCapacity => _vacuumBladeCapacity;
     public int EfemBladeCapacity => _efemBladeCapacity;
     public double VacuumFacingAngleDegrees => _vacuum.FacingAngleDegrees;
+    public double EfemFacingAngleDegrees => _efem.FacingAngleDegrees;
     public int VacuumActiveBladeSlot => _vacuum.ActiveBladeSlot;
     public bool VacuumIsRotatingBlade => _vacuum.Phase == SimPhase.RotateBlade;
     public DualBladePipelineMetrics DualBladeMetrics => _dualBladeMetrics;
+
+    public (int EfemQueue, int VacQueue, int VacPending, int VacBlades) GetQueueDiagnostics() =>
+        (_efem.Queue.Count, _vacuum.Queue.Count, _vacuum.PendingDropoffs.Count, _vacuum.Blades.OccupiedCount);
 
     public bool IsEfemBusy => _efem.IsBusy;
     public bool IsVacuumBusy => _vacuum.IsBusy;
     public EquipmentRegion EfemRegion => _efem.Region;
     public double EfemExtension => _efem.Extension;
     public bool EfemCarryingWafer => _efem.Carrying;
+    public bool EfemCarryingSlotA => _efem.Blades.HasWafer(0);
+    public bool EfemCarryingSlotB => _efem.Blades.HasWafer(1);
+    public int EfemActiveBladeSlot => _efem.ActiveBladeSlot;
+    public int MaxEfemBladesOccupied { get; private set; }
 
     public string PhaseHint { get; private set; } = "가상 이송 · 대기";
     public int SideStorageOccupancy => _state.SideStorage.Count;
@@ -114,6 +123,7 @@ public sealed class TmTransferSimulator
         _running = true;
         _kpi.Reset();
         _dualBladeMetrics.Reset();
+        MaxEfemBladesOccupied = 0;
         _vacuum.FacingAngleDegrees = -125;
         _vacuum.ActiveBladeSlot = VacuumDualBladePlanner.FrontBladeSlot;
         _state.ResetForDemo();
@@ -154,28 +164,58 @@ public sealed class TmTransferSimulator
         _state.ResetForDemo();
     }
 
-    public void Tick()
+    public void Tick(int vacuumMotionSteps = 1)
     {
         if (!_running)
         {
             return;
         }
 
+        int motionSteps = Math.Max(1, vacuumMotionSteps);
+
         _state.DecrementProcessTimes();
+        ClearStalePmReservations();
+
+        if (_running && !_state.Lot.IsTargetMet)
+        {
+            foreach (FoupPortState port in _state.FoupPorts)
+            {
+                _state.PickScheduler.SimulateRemountIfEmpty(port.PortId);
+            }
+        }
 
         if (!_efem.IsBusy)
         {
-            TrySchedule(_efem, _efemScheduler);
+            if (_efem.Queue.Count > 0 && _efem.Active is null)
+            {
+                StartNextJob(_efem);
+            }
+            else
+            {
+                TrySchedule(_efem, _efemScheduler);
+            }
         }
 
         if (!_vacuum.IsBusy)
         {
-            TrySchedule(_vacuum, _vacuumScheduler);
+            if (_vacuum.Queue.Count > 0 && _vacuum.Active is null)
+            {
+                StartNextJob(_vacuum);
+            }
+            else
+            {
+                TrySchedule(_vacuum, _vacuumScheduler);
+            }
+
             TryResumePendingDrops(_vacuum);
         }
 
         AdvanceRobot(_efem);
-        AdvanceRobot(_vacuum);
+        MaxEfemBladesOccupied = Math.Max(MaxEfemBladesOccupied, _efem.Blades.OccupiedCount);
+        for (int step = 0; step < motionSteps; step++)
+        {
+            AdvanceRobot(_vacuum);
+        }
 
         _kpi.OnTick(_state, _efem.IsBusy || _efem.Carrying, _vacuum.IsBusy || _vacuum.Carrying);
 
@@ -248,7 +288,11 @@ public sealed class TmTransferSimulator
 
     private void TrySchedule(RobotRun run, VacuumTransferScheduler scheduler)
     {
-        bool restrictInbound = run.Blades.OccupiedCount > 0 || run.PendingDropoffs.Count > 0;
+        bool restrictInbound = VacuumInboundPolicy.ShouldRestrictBmPickup(
+            run.Blades,
+            _vacuumBladeCapacity,
+            run.PendingDropoffs,
+            run.Queue);
         int queuedBefore = run.Queue.Count;
         scheduler.TryScheduleOne(
             _state,
@@ -275,7 +319,17 @@ public sealed class TmTransferSimulator
         }
 
         TransferJob next = run.PendingDropoffs.Peek();
-        if (next.Dropoff == EquipmentRegion.ChamberA && !CanPlaceOnPm1())
+        if (next.Dropoff == EquipmentRegion.ChamberA && !CanPlaceOnPm1() && run.Queue.Count == 0)
+        {
+            return;
+        }
+
+        if (next.Dropoff == EquipmentRegion.LoadLock && _state.LoadLockBuffer.IsFull && run.Queue.Count == 0)
+        {
+            return;
+        }
+
+        if (next.Dropoff == EquipmentRegion.Aligner && _state.AlignerBuffer.IsFull && run.Queue.Count == 0)
         {
             return;
         }
@@ -292,13 +346,49 @@ public sealed class TmTransferSimulator
 
         if (run.PendingDropoffs.Count > 0)
         {
-            TransferJob drop = run.PendingDropoffs.Dequeue();
+            TransferJob drop = run.PendingDropoffs.Peek();
             if (drop.Dropoff == EquipmentRegion.ChamberA && !CanPlaceOnPm1())
             {
-                run.PendingDropoffs.Enqueue(drop);
+                if (run.Queue.Count > 0)
+                {
+                    run.Active = run.Queue.Dequeue();
+                    if (TryBeginVacuumLeg(run, run.Active, isPickup: true))
+                    {
+                        return;
+                    }
+
+                    Enter(run, SimPhase.MoveToPickup, 4, run.Active.Pickup, 0.65, run.Carrying, "PM1 대기 중 · 큐 픽업");
+                    return;
+                }
+
                 return;
             }
 
+            if (drop.Dropoff == EquipmentRegion.LoadLock && _state.LoadLockBuffer.IsFull && run.Queue.Count > 0)
+            {
+                run.Active = run.Queue.Dequeue();
+                if (TryBeginVacuumLeg(run, run.Active, isPickup: true))
+                {
+                    return;
+                }
+
+                Enter(run, SimPhase.MoveToPickup, 4, run.Active.Pickup, 0.65, run.Carrying, "BM 만석 · 큐 픽업");
+                return;
+            }
+
+            if (drop.Dropoff == EquipmentRegion.Aligner && _state.AlignerBuffer.IsFull && run.Queue.Count > 0)
+            {
+                run.Active = run.Queue.Dequeue();
+                if (TryBeginVacuumLeg(run, run.Active, isPickup: true))
+                {
+                    return;
+                }
+
+                Enter(run, SimPhase.MoveToPickup, 4, run.Active.Pickup, 0.65, run.Carrying, "Aligner 만석 · 큐 픽업");
+                return;
+            }
+
+            drop = run.PendingDropoffs.Dequeue();
             run.Active = drop;
             if (TryBeginVacuumLeg(run, drop, isPickup: false))
             {
@@ -330,15 +420,17 @@ public sealed class TmTransferSimulator
 
     private bool TryBeginVacuumLeg(RobotRun run, TransferJob job, bool isPickup)
     {
+        int storageSlot = ResolveStorageSlot(run, job.BladeSlotIndex);
+        int angleSlot = ResolveAngleSlot(run, job.BladeSlotIndex);
         if (run.Robot != TransferRobotKind.VacuumTm || _vacuumBladeCapacity < 2)
         {
-            run.ActiveBladeSlot = job.BladeSlotIndex;
+            run.ActiveBladeSlot = storageSlot;
             return false;
         }
 
         EquipmentRegion face = isPickup ? job.Pickup : job.Dropoff;
-        double targetAngle = VacuumDualBladePlanner.AngleForBlade(face, job.BladeSlotIndex);
-        run.ActiveBladeSlot = job.BladeSlotIndex;
+        double targetAngle = VacuumDualBladePlanner.AngleForBlade(face, run.Robot, angleSlot);
+        run.ActiveBladeSlot = storageSlot;
         run.LegIsPickup = isPickup;
 
         if (Math.Abs(NormalizeAngleDiff(targetAngle - run.FacingAngleDegrees)) < 10.0)
@@ -349,7 +441,7 @@ public sealed class TmTransferSimulator
 
         run.TargetFacingAngleDegrees = targetAngle;
         run.Phase = SimPhase.RotateBlade;
-        run.TicksLeft = 12;
+        run.TicksLeft = _capacity.VacuumRotateTicks;
         run.Region = face;
         run.Extension = 0.65;
         _dualBladeMetrics.RotateBladeCount++;
@@ -384,7 +476,8 @@ public sealed class TmTransferSimulator
         {
             if (run.Phase == SimPhase.RotateBlade && run.Robot == TransferRobotKind.VacuumTm)
             {
-                run.FacingAngleDegrees += NormalizeAngleDiff(run.TargetFacingAngleDegrees - run.FacingAngleDegrees) * 0.28;
+                run.FacingAngleDegrees += NormalizeAngleDiff(run.TargetFacingAngleDegrees - run.FacingAngleDegrees)
+                    * _capacity.VacuumRotateStepRatio;
             }
 
             run.TicksLeft--;
@@ -423,8 +516,9 @@ public sealed class TmTransferSimulator
                 break;
             case SimPhase.PickupGrip:
                 TransferStateMutator.OnPickup(_state, pickup, job.Wafer);
-                run.Blades.Place(job.BladeSlotIndex, job.Wafer);
-                _dualBladeMetrics.OnBladePlace(job.BladeSlotIndex, run.Blades.OccupiedCount);
+                int placeSlot = ResolveStorageSlot(run, job.BladeSlotIndex);
+                run.Blades.Place(placeSlot, job.Wafer);
+                _dualBladeMetrics.OnBladePlace(placeSlot, run.Blades.OccupiedCount);
                 Enter(run, SimPhase.PickupRetract, 4, pickup, 0.65, true, "픽업 후퇴");
                 break;
             case SimPhase.PickupRetract:
@@ -441,6 +535,24 @@ public sealed class TmTransferSimulator
                 StartNextJob(run);
                 break;
             case SimPhase.MoveToDropoff:
+                if (dropoff == EquipmentRegion.LoadLock && _state.LoadLockBuffer.IsFull)
+                {
+                    run.PendingDropoffs.Enqueue(job);
+                    run.Active = null;
+                    run.Phase = SimPhase.Idle;
+                    ParkRobotAtHome(run);
+                    break;
+                }
+
+                if (dropoff == EquipmentRegion.Aligner && _state.AlignerBuffer.IsFull)
+                {
+                    run.PendingDropoffs.Enqueue(job);
+                    run.Active = null;
+                    run.Phase = SimPhase.Idle;
+                    ParkRobotAtHome(run);
+                    break;
+                }
+
                 if (dropoff == EquipmentRegion.ChamberA && !CanPlaceOnPm1())
                 {
                     run.PendingDropoffs.Enqueue(job);
@@ -464,8 +576,26 @@ public sealed class TmTransferSimulator
                 Enter(run, SimPhase.DropoffRelease, 2, dropoff, 1.18, true, $"{Label(dropoff)} 웨이퍼 릴리즈");
                 break;
             case SimPhase.DropoffRelease:
+                if (dropoff == EquipmentRegion.LoadLock && _state.LoadLockBuffer.IsFull)
+                {
+                    run.PendingDropoffs.Enqueue(job);
+                    run.Active = null;
+                    run.Phase = SimPhase.Idle;
+                    ParkRobotAtHome(run);
+                    break;
+                }
+
+                if (dropoff == EquipmentRegion.Aligner && _state.AlignerBuffer.IsFull)
+                {
+                    run.PendingDropoffs.Enqueue(job);
+                    run.Active = null;
+                    run.Phase = SimPhase.Idle;
+                    ParkRobotAtHome(run);
+                    break;
+                }
+
                 TransferStateMutator.OnDropoff(_state, dropoff, job.Wafer, ProcessTicksFor(dropoff));
-                run.Blades.Remove(job.BladeSlotIndex);
+                run.Blades.Remove(ResolveStorageSlot(run, job.BladeSlotIndex));
                 if (dropoff == EquipmentRegion.ChamberA)
                 {
                     _state.Pm1.ReservedForIncoming = false;
@@ -554,6 +684,26 @@ public sealed class TmTransferSimulator
         StartNextJob(run);
     }
 
+    private int MotionTicksFor(RobotRun run, SimPhase phase, int legacyDefault)
+    {
+        if (run.Robot != TransferRobotKind.VacuumTm)
+        {
+            return legacyDefault;
+        }
+
+        return phase switch
+        {
+            SimPhase.RotateBlade => _capacity.VacuumRotateTicks,
+            SimPhase.PickupGrip or SimPhase.DropoffRelease => _capacity.VacuumGripTicks,
+            SimPhase.WaitDoorPickupClose or SimPhase.WaitDoorDropoffClose => _capacity.VacuumDoorTicks,
+            SimPhase.MoveToPickup or SimPhase.MoveToDropoff
+                or SimPhase.PickupRetract or SimPhase.DropoffRetract => _capacity.VacuumMoveTicks,
+            SimPhase.WaitDoorPickupOpen or SimPhase.WaitDoorDropoffOpen => _capacity.VacuumDoorTicks,
+            SimPhase.PickupExtend or SimPhase.DropoffExtend => _capacity.VacuumExtendTicks,
+            _ => Math.Max(1, legacyDefault / 2)
+        };
+    }
+
     private int ProcessTicksFor(EquipmentRegion dropoff) => dropoff switch
     {
         EquipmentRegion.ChamberA => _capacity.StripProcessTicks,
@@ -565,13 +715,15 @@ public sealed class TmTransferSimulator
     private void Enter(RobotRun run, SimPhase phase, int ticks, EquipmentRegion region, double ext, bool carrying, string hint)
     {
         run.Phase = phase;
-        run.TicksLeft = ticks;
+        run.TicksLeft = MotionTicksFor(run, phase, ticks);
         run.Region = region;
         run.Extension = ext;
-        if (run.Robot == TransferRobotKind.VacuumTm && run.Active is TransferJob job)
+        if (run.Active is TransferJob job)
         {
-            run.ActiveBladeSlot = job.BladeSlotIndex;
-            run.FacingAngleDegrees = VacuumDualBladePlanner.AngleForBlade(region, job.BladeSlotIndex);
+            int storageSlot = ResolveStorageSlot(run, job.BladeSlotIndex);
+            int angleSlot = ResolveAngleSlot(run, job.BladeSlotIndex);
+            run.ActiveBladeSlot = storageSlot;
+            run.FacingAngleDegrees = VacuumDualBladePlanner.AngleForBlade(region, run.Robot, angleSlot);
         }
 
         _ = carrying;
@@ -625,6 +777,48 @@ public sealed class TmTransferSimulator
 
         return $"{efem} | {vac}";
     }
+
+    private void ClearStalePmReservations()
+    {
+        foreach (PmChamberState ch in _state.Chambers.Values)
+        {
+            if (ch.CurrentWafer is null && ch.ReservedForIncoming)
+            {
+                ch.ReservedForIncoming = false;
+            }
+
+            if (ch.CurrentWafer is null && ch.PickupScheduled)
+            {
+                ch.PickupScheduled = false;
+            }
+            else if (ch.CurrentWafer is not null
+                     && ch.RemainingProcessTicks <= 0
+                     && ch.PickupScheduled
+                     && !_vacuum.IsBusy
+                     && _vacuum.Active is null
+                     && _vacuum.Queue.Count == 0
+                     && _vacuum.PendingDropoffs.Count == 0)
+            {
+                ch.PickupScheduled = false;
+            }
+        }
+
+        if (!_efem.IsBusy && _efem.Queue.Count == 0)
+        {
+            _state.AlignerBuffer.ResetPickupScheduledFlags();
+            _state.LoadLockBuffer.ResetPickupScheduledFlags();
+        }
+    }
+
+    private int ResolveStorageSlot(RobotRun run, int jobSlot) =>
+        run.Robot == TransferRobotKind.EfemAtmospheric && _efemBladeCapacity < 2
+            ? VacuumDualBladePlanner.BackBladeSlot
+            : jobSlot;
+
+    private int ResolveAngleSlot(RobotRun run, int jobSlot) =>
+        run.Robot == TransferRobotKind.EfemAtmospheric && _efemBladeCapacity < 2
+            ? VacuumDualBladePlanner.FrontBladeSlot
+            : jobSlot;
 
     private static void ParkRobotAtHome(RobotRun run)
     {

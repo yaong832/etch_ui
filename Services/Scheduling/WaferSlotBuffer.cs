@@ -81,6 +81,15 @@ public sealed class WaferSlotBuffer
     public int CountMatching(Func<WaferTrack, bool> predicate) =>
         _entries.Count(e => predicate(e.Wafer));
 
+    /// <summary>로봇 대기열이 비었는데 플래그만 남은 경우 해제 (시뮬 교착 방지).</summary>
+    public void ResetPickupScheduledFlags()
+    {
+        foreach (Entry entry in _entries)
+        {
+            entry.PickupScheduled = false;
+        }
+    }
+
     private sealed class Entry(WaferTrack wafer, int remainingTicks)
     {
         public WaferTrack Wafer { get; } = wafer;

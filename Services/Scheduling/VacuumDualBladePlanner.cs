@@ -81,12 +81,15 @@ public static class VacuumDualBladePlanner
         return scheduled;
     }
 
-    /// <summary>슬롯별 TM 회전각 — 앞=포트 방위, 뒤=+180°.</summary>
-    public static double AngleForBlade(EquipmentRegion faceRegion, int bladeSlot)
+    /// <summary>슬롯별 TM 회전각 — 앞(+X)=포트 방위, 뒤(-X)=+180° (EFEM·진공 공통).</summary>
+    public static double AngleForBlade(EquipmentRegion faceRegion, TransferRobotKind robot, int bladeSlot)
     {
-        double portAngle = RegionAngleHelper.ToDegrees(faceRegion, TransferRobotKind.VacuumTm);
+        double portAngle = RegionAngleHelper.ToDegrees(faceRegion, robot);
         return bladeSlot == BackBladeSlot ? NormalizeAngle(portAngle + 180.0) : portAngle;
     }
+
+    public static double AngleForBlade(EquipmentRegion faceRegion, int bladeSlot) =>
+        AngleForBlade(faceRegion, TransferRobotKind.VacuumTm, bladeSlot);
 
     public static string SlotLabel(int bladeSlot) => bladeSlot == BackBladeSlot ? "뒤·A" : "앞·B";
 

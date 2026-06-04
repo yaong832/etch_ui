@@ -18,7 +18,8 @@ public partial class MainWindow : Window
     private readonly MainViewModel _vm = new();
     private readonly EquipmentMotionBridge _motionBridge;
     private readonly EquipmentMotionAnimator _motionAnimator;
-    private readonly TmTransferSimulator _transferSim = new();
+    private readonly TmTransferSimulator _transferSim = new(
+        efemBladeCapacity: etch_ui.Services.Scheduling.EquipmentCapacityConfig.Default.EfemBladeSlotCount);
     private bool _lotCompleteHandled;
     private readonly DatabaseService _db;
     private readonly PlcAdsService _plc = new();
@@ -249,7 +250,7 @@ public partial class MainWindow : Window
 
         if (_state == EquipmentState.Running)
         {
-            _transferSim.Tick();
+            _transferSim.Tick(etch_ui.Services.Scheduling.EquipmentCapacityConfig.Default.VacuumMotionStepsPerUiTick);
             if (_transferSim.LotCompleteAchieved)
             {
                 HandleLotComplete();

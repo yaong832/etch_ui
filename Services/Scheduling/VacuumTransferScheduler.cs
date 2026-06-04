@@ -19,14 +19,28 @@ public sealed class VacuumTransferScheduler
         int vacuumBladeCapacity = 1,
         bool restrictInbound = false)
     {
-        if (activeJob is not null || queue.Count > 0)
+        if (activeJob is not null)
         {
             return 0;
+        }
+
+        // BM 만석 + PM1 Strip 완료 대기 시 BM→Etch로 슬롯 확보 후 Strip 인입.
+        if (state.LoadLockBuffer.IsFull
+            && state.Pm1.IsReadyForPickup
+            && state.Pm1.CurrentWafer?.HasCompletedStrip == true
+            && TryScheduleBmToEtchPm(state, queue, efemActiveJob, efemQueued, vacuumBlades, vacuumBladeCapacity))
+        {
+            return 1;
         }
 
         if (TrySchedulePmStripToBm(state, queue, efemActiveJob, efemQueued))
         {
             return 1;
+        }
+
+        if (queue.Count > 0)
+        {
+            return 0;
         }
 
         if (restrictInbound)
@@ -39,7 +53,7 @@ public sealed class VacuumTransferScheduler
             return 1;
         }
 
-        if (TryScheduleBmToEtchPm(state, queue, efemActiveJob, efemQueued))
+        if (TryScheduleBmToEtchPm(state, queue, efemActiveJob, efemQueued, vacuumBlades, vacuumBladeCapacity))
         {
             return 1;
         }
@@ -133,7 +147,9 @@ public sealed class VacuumTransferScheduler
         ClusterEquipmentState state,
         Queue<TransferJob> queue,
         TransferJob? efemActiveJob,
-        IEnumerable<TransferJob>? efemQueued)
+        IEnumerable<TransferJob>? efemQueued,
+        RobotBladeSlots? vacuumBlades,
+        int vacuumBladeCapacity)
     {
         if (!LoadLockTransferGate.CanSchedule(
                 TransferRobotKind.VacuumTm,
@@ -172,8 +188,12 @@ public sealed class VacuumTransferScheduler
         }
 
         dst.ReservedForIncoming = true;
-        Enqueue(queue, EquipmentRegion.LoadLock, etchTarget.Value, w);
-        LastHint = $"TM BM → PM{RegionToPmNumber(etchTarget.Value)} (#{w.Id})";
+        int bladeSlot = vacuumBladeCapacity >= 2 && vacuumBlades is not null
+            ? VacuumInboundPolicy.PickBmToEtchBladeSlot(vacuumBlades, vacuumBladeCapacity, queue)
+            : VacuumDualBladePlanner.FrontBladeSlot;
+        Enqueue(queue, EquipmentRegion.LoadLock, etchTarget.Value, w, bladeSlot);
+        string slotTag = vacuumBladeCapacity >= 2 ? $" · {VacuumDualBladePlanner.SlotLabel(bladeSlot)}" : string.Empty;
+        LastHint = $"TM BM → PM{RegionToPmNumber(etchTarget.Value)}{slotTag} (#{w.Id})";
         return true;
     }
 

@@ -5,7 +5,8 @@ namespace etch_ui.Services.Scheduling;
 /// 1) FOUP 내 남은 매수가 많은 LP 우선
 /// 2) 동률이면 LP1 → LP2 → LP3
 /// 3) 풀 FOUP 차단(전 LP 공통): 잔량이 슬롯 만매(25)인 LP는,
-///    다른 LP에 진행 중 Lot(잔량 &lt; 25 또는 장내 InFlight)이 있으면 픽업 불가
+///    다른 LP에 **FOUP 잔량이 남은** 진행 Lot(잔량 1~24 또는 잔량+InFlight)이 있으면 픽업 불가
+///    (잔량 0·InFlight만 남은 LP는 마무리 중이므로 다음 풀 FOUP 허용)
 /// </summary>
 public sealed class FoupPickScheduler
 {
@@ -55,8 +56,8 @@ public sealed class FoupPickScheduler
         _ports.Any(p =>
             p.PortId != exclude.PortId
             && p.IsMounted
-            && (p.InFlightCount > 0
-                || (p.RemainingInFoup > 0 && p.RemainingInFoup < _foupSlotCount)));
+            && p.RemainingInFoup > 0
+            && (p.InFlightCount > 0 || p.RemainingInFoup < _foupSlotCount));
 
     /// <summary>풀 FOUP 차단은 매 선택 시 IsEligible로 계산 (상태 플래그 불필요).</summary>
     public void RefreshFreshMountBlocks()

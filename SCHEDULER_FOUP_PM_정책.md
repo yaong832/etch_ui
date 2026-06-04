@@ -24,7 +24,8 @@
 
 | 이 LP | 픽업 불가 조건 |
 |-------|----------------|
-| 잔량 **= 25매(풀)** | **다른 LP** 중 하나라도 `잔량 1~24` **또는** `장내 InFlight > 0` |
+| 잔량 **= 25매(풀)** | **다른 LP**에 `잔량 > 0` 이면서 (`잔량 1~24` **또는** `InFlight > 0`) |
+| (예외) | 다른 LP가 `잔량 0`·`InFlight`만 남은 경우 → 마무리 중으로 보고 풀 FOUP 픽업 **허용** |
 
 - 재장착 직후 LP1뿐 아니라, **손대지 않은 25매 FOUP(LP2/LP3)** 도 다른 LP Lot이 진행 중이면 **대기**
 - **첫 투입**(3 FOUP 모두 25매·미개시)은 서로 “부분 Lot”이 없으므로 **LP1부터** 시작 (동률 LP1→2→3)
@@ -43,8 +44,9 @@
 
 | PM | 역할 | 시뮬 tick (기본) |
 |----|------|------------------|
-| **PM2~4** | 동일 **식각(Etch)** | `EtchProcessTicks = 75` (기본, `EquipmentCapacityConfig`) |
-| **PM1** | **Strip만** (식각 완료 후 후공정) | `StripProcessTicks = 20` (기본) |
+| **PM2~4** | 동일 **식각(Etch)** | `EtchProcessTicks = 120` (기본 · TM 이송과 **분리**) |
+| **PM1** | **Strip만** (식각 완료 후 후공정) | `StripProcessTicks = 28` (기본) |
+| **진공 TM** | PM 구간 이송 | `VacuumMoveTicks` 등 · UI `VacuumMotionStepsPerUiTick=5` (1초당 모션 5스텝, PM 가공 1스텝) |
 
 - PM당 수용 **1매** → 가공 중인 PM에는 **투입 불가** (별도 플래그 없이 물리 조건).
 - 「PM1 가공 중 다른 PM 투입」이 아니라, **Strip은 PM1에서만** 한다는 뜻.
@@ -105,6 +107,7 @@ FOUP 3×25매와 궁합이 좋음. **회전 블레이드 양끝 2슬롯** 가정
 
 | 항목 | 값 |
 |------|-----|
+| Aligner | **1매** (`AlignerSlotCount = 1`, 실장비 정렬) |
 | 용량 | **25매** (`SideStorageSlotCount`) |
 | 이송 | Strip 완료 웨이퍼: **BM → Side Stg** (`EfemTransferScheduler`) |
 | 만석 | 25매 시 **BM→Side Stg HOLD** · `PerformSideStorageCassetteSwap()`로 **25매 일괄 출하** |

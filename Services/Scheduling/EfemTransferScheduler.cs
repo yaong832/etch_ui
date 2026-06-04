@@ -3,7 +3,7 @@ using etch_ui.Equipment.Models;
 namespace etch_ui.Services.Scheduling;
 
 /// <summary>
-/// Load Lock 좌측 · EFEM TM: FOUP → Aligner(5) → BM(2) → Side Stg(25) → 카세트 교체 출하.
+/// Load Lock 좌측 · EFEM TM: FOUP → Aligner(1) → BM(2) → Side Stg(25) → 카세트 교체 출하.
 /// </summary>
 public sealed class EfemTransferScheduler
 {
@@ -16,7 +16,12 @@ public sealed class EfemTransferScheduler
         TransferJob? vacuumActiveJob,
         IEnumerable<TransferJob>? vacuumQueued = null)
     {
-        if (activeJob is not null || queue.Count > 0)
+        if (activeJob is not null)
+        {
+            return 0;
+        }
+
+        if (queue.Count > 0)
         {
             return 0;
         }
@@ -96,7 +101,7 @@ public sealed class EfemTransferScheduler
             return false;
         }
 
-        if (!state.LoadLockBuffer.TryMarkPickupScheduled(w) || !state.SideStorage.TryEnqueue(w))
+        if (!state.LoadLockBuffer.TryMarkPickupScheduled(w))
         {
             return false;
         }
@@ -152,6 +157,15 @@ public sealed class EfemTransferScheduler
     {
         if (state.AlignerBuffer.IsFull)
         {
+            LastHint = state.AlignerBuffer.HasWafer
+                ? "EFEM · Aligner 적재 중 · FOUP HOLD"
+                : "EFEM · Aligner 만석 · FOUP HOLD";
+            return false;
+        }
+
+        if (state.LoadLockBuffer.IsFull)
+        {
+            LastHint = "EFEM · BM 만석 · FOUP HOLD";
             return false;
         }
 

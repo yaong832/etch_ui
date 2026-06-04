@@ -63,14 +63,27 @@ public sealed class EquipmentMotionBridge
             _motion.VacuumBladeCapacity = transfer.VacuumBladeCapacity;
             _motion.EfemBladeCapacity = transfer.EfemBladeCapacity;
             bool vacActive = transfer.IsVacuumBusy || transfer.CarryingWafer;
+            bool efemActive = transfer.IsEfemBusy || transfer.EfemCarryingWafer;
             _motion.SetDualRobotTargets(
-                transfer.IsEfemBusy ? transfer.EfemRegion : EquipmentRegion.EfemRobot,
+                efemActive ? transfer.EfemRegion : null,
                 transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
-                transfer.IsEfemBusy && transfer.EfemCarryingWafer,
-                vacActive ? transfer.TmRegion : EquipmentRegion.TM,
+                transfer.EfemCarryingWafer,
+                vacActive ? transfer.TmRegion : null,
                 vacActive ? transfer.BladeExtension : 0.65,
                 transfer.CarryingWafer,
-                hardwareMode: false);
+                hardwareMode: false,
+                transfer.EfemActiveBladeSlot,
+                transfer.VacuumActiveBladeSlot);
+            if (efemActive)
+            {
+                _motion.ApplyEfemMotion(
+                    transfer.IsEfemBusy ? transfer.EfemRegion : EquipmentRegion.EfemRobot,
+                    transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
+                    transfer.EfemCarryingWafer,
+                    transfer.EfemFacingAngleDegrees,
+                    transfer.EfemActiveBladeSlot);
+            }
+
             _motion.ApplyVacuumMotion(
                 vacActive ? transfer.TmRegion : EquipmentRegion.TM,
                 vacActive ? transfer.BladeExtension : 0.65,
@@ -80,7 +93,10 @@ public sealed class EquipmentMotionBridge
                 transfer.VacuumIsRotatingBlade);
             _motion.VacuumBladeSlotA = transfer.VacuumCarryingSlotA;
             _motion.VacuumBladeSlotB = transfer.VacuumCarryingSlotB;
-            _motion.IsEfemRobotActive = transfer.IsEfemBusy;
+            _motion.EfemBladeSlotA = transfer.EfemCarryingSlotA;
+            _motion.EfemBladeSlotB = transfer.EfemCarryingSlotB;
+            _motion.EfemActiveBladeSlot = transfer.EfemActiveBladeSlot;
+            _motion.IsEfemRobotActive = efemActive;
             _motion.IsVacuumTmActive = vacActive;
             _motion.TmRegionLabel = FormatDualRobotLabel(transfer);
 
@@ -107,9 +123,12 @@ public sealed class EquipmentMotionBridge
         _motion.ResetWaferInventory();
 
         _motion.VacuumBladeCapacity = EquipmentCapacityConfig.Default.VacuumBladeSlotCount;
-        _motion.EfemBladeCapacity = 1;
+        _motion.EfemBladeCapacity = EquipmentCapacityConfig.Default.EfemBladeSlotCount;
         _motion.VacuumBladeSlotA = false;
         _motion.VacuumBladeSlotB = false;
+        _motion.EfemBladeSlotA = false;
+        _motion.EfemBladeSlotB = false;
+        _motion.EfemActiveBladeSlot = VacuumDualBladePlanner.FrontBladeSlot;
 
         _motion.ChamberADoorClosed = true;
         _motion.ChamberBDoorClosed = true;
