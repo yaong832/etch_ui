@@ -1,32 +1,44 @@
-# AI 데이터 수집/학습 파이프라인 (로컬)
+# AI 학습·배포 (식각 HMI)
 
-## 1) WPF 실행으로 데이터 수집
+## 시뮬만으로 기본 모델 만들기 (권장)
 
-- 앱 실행 후 `data/ai_training_snapshots.jsonl`에 1초 주기로 스냅샷이 쌓입니다.
-- 경로(디버그 기준): `bin/Debug/net8.0-windows/data/ai_training_snapshots.jsonl`
-
-## 2) JSONL -> CSV 변환
+1. WPF: **시뮬 허용** → **Start** → **5분+** RUNNING  
+2. PowerShell:
 
 ```powershell
-python tools/ai/export_training_dataset.py `
-  --input bin/Debug/net8.0-windows/data/ai_training_snapshots.jsonl `
-  --output tools/ai/output/training_dataset.csv
+cd d:\WPFProject\etch_ui
+pip install scikit-learn joblib numpy
+.\tools\ai\train_from_sim.ps1 -Deploy -Archive
 ```
 
-## 3) 베이스라인 학습/평가
+3. Flask 재시작 → `GET /api/etch/ai/status` (`ready: true`)
+
+**경로 상세:** [`docs/AI_학습_모델_경로.md`](../../docs/AI_학습_모델_경로.md)
+
+## 합성 데이터 (시뮬 없이)
 
 ```powershell
-python tools/ai/train_baseline.py `
-  --dataset tools/ai/output/training_dataset.csv `
-  --model-out tools/ai/output/baseline_model.json
+python tools/ai/generate_synthetic_dataset.py -n 3000
+python tools/ai/train_sklearn.py
+.\tools\ai\deploy_model.ps1
 ```
 
-## 출력물
+## 스크립트
 
-- `tools/ai/output/training_dataset.csv`: 학습 피처 데이터셋
-- `tools/ai/output/baseline_model.json`: 규칙 임계치 + 평가 지표(accuracy/precision/recall)
+| 파일 | 역할 |
+|------|------|
+| `export_training_dataset.py` | `ai_training_snapshots.jsonl` → CSV |
+| `train_sklearn.py` | RF 학습 → `output/models/` |
+| `train_from_sim.ps1` | export + train (+선택 deploy) |
+| `deploy_model.ps1` | → `C:\etchflask\models\etch` |
+| `alarm_labels.py` | CSV `alarm_class` 도출 |
 
-## 참고
+## WPF 수집 경로
 
-- 현재 베이스라인은 **규칙 기반 분류기**입니다.
-- 다음 단계에서 Flask AI 엔드포인트에 붙일 때는 이 파일의 임계치를 로딩해 점수화를 시작하면 됩니다.
+- 런타임: `{exe}/data/ai_training_snapshots.jsonl`
+- 디버그 예: `bin/Debug/net8.0-windows/data/ai_training_snapshots.jsonl`
+
+## API (Flask)
+
+- `POST /api/etch/sensor-data` — 저장 시 ML/스텁 자동 갱신
+- `GET /api/etch/ai/latest`, `/api/etch/ai/status`

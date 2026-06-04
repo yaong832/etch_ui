@@ -94,6 +94,14 @@
 
 ---
 
+## B-2. AI 시뮬 학습 (WPF JSONL → sklearn)
+
+- [x] 시뮬 1Hz JSONL 수집 (`data/ai_training_snapshots.jsonl`)
+- [x] `train_from_sim.ps1` · 경로 문서 [`docs/AI_학습_모델_경로.md`](AI_학습_모델_경로.md)
+- [ ] 시뮬 5분+ 수집 후 재학습·Flask 배포 검증 (로컬)
+
+---
+
 ## C. 보류 (Flask 저장소 또는 2단계 HW 필요)
 
 | 항목 | 이유 |

@@ -10,7 +10,7 @@
 | 계층 | 역할 |
 |------|------|
 | **실장비 (A)** | 압력·진동·온습도, **Load Lock 접촉**, **버튼 4개**, **램프 4개** |
-| **WPF (B)** | 인터락·조작·가상 도식(`TmTransferSimulator`)·**(예정) AI 조언 표시** |
+| **WPF (B)** | 인터락·조작·가상 도식(`TmTransferSimulator`)·**AI 조언 표시 (Flask ML/스텁)** |
 | **Flask (C)** | 원격 조회·이력·**AI 추론 엔진** |
 
 **하지 않는 것:** 실 TM(IEG3268), 챔버 실도어, AI의 Start/인터락 자동 제어, WPF 내 ML 학습.
@@ -80,7 +80,7 @@ etch_ui/
 | 영역 | 비율 | 내용 |
 |------|------|------|
 | 좌 5* | | 가상 도식, 알람, **실측** 센서 |
-| 중 3* | | 인터락, 공정 스텝, **(예정) AI 조언** |
+| 중 3* | | 인터락, 공정 스텝, **AI 조언 (ML/스텁)** |
 | 우 2.2* | | 램프, **버튼 4개** |
 | 하단 | ~140px | 로그 |
 
@@ -92,18 +92,19 @@ etch_ui/
 |------|------|
 | PLC·인터락·알람·버튼·램프 | ✅ |
 | `TmTransferSimulator` + 도식 | ✅ |
-| Flask 텔레메트리·웹 | ✅ (AI 탭 스텁 · **모듈 상태** 탭) |
-| 접촉 열림 시 이송 정지 | 🔜 Phase 1.2 |
+| Flask 텔레메트리·웹 | ✅ (AI·**모듈 상태**·레시피 탭) |
+| 접촉 열림 시 이송 정지 | 코드 있음 · 현장 검증 🔜 |
 | DB 이벤트·알람 이력 UI | ✅ |
 | 계정: 관리자 등록·비밀번호 변경/재설정 (공개 가입 없음) | ✅ |
-| AI `latest` + WPF 조언 패널 | ✅ (스텁·규칙) / 본격 ML 🔜 |
+| AI `latest` + WPF 조언 패널 | ✅ **sklearn ML** + 규칙 스텁 폴백 |
+| 시뮬 JSONL → `train_from_sim.ps1` 재학습 | ✅ |
 | IEG3268·실 TM | ❌ 범위 밖 |
 
 ### 6.1 Flask·AI (현재)
 
 - `POST /api/etch/sensor-data`, `GET /api/sensors`
 - `GET /api/etch/modules/latest`, `GET/POST /api/etch/events`
-- `GET /api/etch/ai/status`, `POST /api/etch/ai/predict` (스텁)
+- `GET /api/etch/ai/status`, `POST /api/etch/ai/predict` (**sklearn** + 스텁 폴백)
 - 웹 `etch_dashboard.html` — AI 진단 · **모듈 상태** 탭
 - 상세: `C:\etchflask\ETCH_AI.md`
 
@@ -117,7 +118,7 @@ etch_ui/
 | **1** | 실장비 신뢰도 (접촉→이송 정지 등) |
 | **2** | 가상 도식·(접촉)/(가상) 라벨 |
 | **3** | DB·설정 UI·Flask 이력·웹 모듈·**레시피 XML** ✅ |
-| **4** | **AI:** Flask 엔진 + WPF·웹 표시 |
+| **4** | **AI:** Flask sklearn + WPF·웹 표시 ✅ (재학습·현장 검증 🔜) |
 | **5** | semitest 심화 (선택) |
 
 ---
@@ -141,7 +142,9 @@ etch_ui/
 | 문서 | 용도 |
 |------|------|
 | **`PROJECT_계획.md`** | 전체 계획·Phase·AI §10 |
+| **`PROJECT_진행상황.md`** | 진행 상황·Git·AI 파이프라인 |
 | **PROJECT_개요.md** | 본 문서 (현황) |
+| `docs/AI_학습_모델_경로.md` | 시뮬 학습·재학습 경로 |
 | `WPF_장비UI_이식_계획.md` | semitest ↔ 가상 이송 |
 | `PROTO_실행순서.md` | 실행·데모 |
 | `PLC_IO_매핑.md` | DI/DO |

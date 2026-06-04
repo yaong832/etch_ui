@@ -93,7 +93,8 @@ public sealed class DemoScenarioRunner
                 _host.Log("4/5 웹 모듈 상태·레시피 탭 / WPF AI 예상 알람 확인.");
                 break;
             case 4:
-                _host.Log("5/5 데모 시나리오 완료 — Stop·Reset은 수동으로 진행하세요.");
+                _host.Log("5/5 RUNNING 유지 — AI 학습용 JSONL은 1초마다 data/ai_training_snapshots.jsonl 에 저장됩니다.");
+                _host.Log("     5분+ 후: .\\tools\\ai\\train_from_sim.ps1 (docs/AI_학습_모델_경로.md)");
                 Stop();
                 break;
         }

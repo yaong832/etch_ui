@@ -1577,7 +1577,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         _lastAiScore = diag.AnomalyScore;
         _lastAiHint = diag.SuggestedAction ?? diag.Note ?? "—";
-        _vm.AiScoreText = $"이상 점수: {diag.AnomalyScore:F2}" + (diag.Stub ? " (규칙 스텁)" : "");
+        _vm.AiScoreText = $"이상 점수: {diag.AnomalyScore:F2}" + (diag.Stub ? " (규칙 스텁)" : " (ML)");
         _vm.AiHintText = _lastAiHint;
         string pred = diag.PredictedAlarm?.Trim().ToUpperInvariant() ?? "NONE";
         _vm.AiPredictedAlarmText = pred is "" or "NONE"
