@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Media;
+using etch_ui.Equipment.Models;
 using etch_ui.Equipment.ViewModels;
 using etch_ui.Security;
 
@@ -38,6 +39,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private string _interlockPlcText = "[✗] EtherCAT/시뮬 통신";
     private string _interlockPressureText = "[✗] 압력 정상";
+    private string _interlockPressureDetailText = "";
     private string _interlockVibText = "[✗] 진동 정상";
     private string _interlockAccessText = "[✗] 접근 안전";
     private string _interlockTempText = "[✗] 온도 정상";
@@ -72,9 +74,23 @@ public sealed class MainViewModel : ViewModelBase
     private int _processStepIndex;
     private bool _processStepWarning;
 
+    private string _aiScoreText = "—";
+    private string _aiHintText = "Flask 서버 연결 후 표시됩니다.";
+    private Brush _aiScoreBrush = Brushes.DimGray;
+
     public ObservableCollection<string> LogLines { get; } = new();
     public ObservableCollection<double> PressureSparkValues { get; } = new();
     public ObservableCollection<double> VibrationSparkValues { get; } = new();
+    public ObservableCollection<ModuleStateSnapshot> ModuleStates { get; } = new();
+
+    public void SetModuleSnapshots(IReadOnlyList<ModuleStateSnapshot> snapshots)
+    {
+        ModuleStates.Clear();
+        foreach (ModuleStateSnapshot s in snapshots)
+        {
+            ModuleStates.Add(s);
+        }
+    }
 
     public string CurrentUserText
     {
@@ -225,6 +241,20 @@ public sealed class MainViewModel : ViewModelBase
         get => _interlockPressureText;
         set => SetField(ref _interlockPressureText, value);
     }
+
+    /// <summary>압력 허용 범위·현재값 (인터락 패널).</summary>
+    public string InterlockPressureDetailText
+    {
+        get => _interlockPressureDetailText;
+        set => SetField(ref _interlockPressureDetailText, value);
+    }
+
+    /// <summary>appsettings.json Interlock 섹션 요약.</summary>
+    public string InterlockThresholdsText =>
+        $"압력 {AppSettings.PressureMtorrMin:F0}–{AppSettings.PressureMtorrMax:F0} mTorr  ·  " +
+        $"진동 ≤{AppSettings.VibrationGMax:F2} g  ·  " +
+        $"온도 {AppSettings.TempCMin:F0}–{AppSettings.TempCMax:F0} ℃  ·  " +
+        $"습도 {AppSettings.HumiMin:F0}–{AppSettings.HumiMax:F0} %";
 
     public string InterlockVibText
     {
@@ -418,6 +448,24 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => _processStepWarning;
         set => SetField(ref _processStepWarning, value);
+    }
+
+    public string AiScoreText
+    {
+        get => _aiScoreText;
+        set => SetField(ref _aiScoreText, value);
+    }
+
+    public string AiHintText
+    {
+        get => _aiHintText;
+        set => SetField(ref _aiHintText, value);
+    }
+
+    public Brush AiScoreBrush
+    {
+        get => _aiScoreBrush;
+        set => SetField(ref _aiScoreBrush, value);
     }
 
     public void PrependLog(string line)

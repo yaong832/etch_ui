@@ -1,25 +1,81 @@
 # etch_ui
 
-에칭 장비 HMI용 WPF(.NET 8) 클라이언트입니다. Flask 백엔드(`etchflask`)와 TwinCAT ADS PLC와 연동합니다.
+
+
+에칭 Load Lock HMI — WPF(.NET 8) 현장 클라이언트. Flask(`C:\etchflask`)·TwinCAT ADS·가상 TM 이송(`TmTransferSimulator`) 연동.
+
+
+
+## 3계층 (요약)
+
+
+
+| 계층 | 내용 |
+
+|------|------|
+
+| **실장비** | 센서, **Load Lock 접촉(DI5)**, **버튼 DI0~3**, **램프 DO0~3** |
+
+| **WPF** | 인터락·조작·가상 도식·(예정) AI 조언 **표시** |
+
+| **Flask** | 원격 조회·이력·**AI 추론** (`etch_ai.py`) |
+
+
+
+가상 이송 참고: `D:\semitest\SemiconductorUi` · 상세: [`PROJECT_계획.md`](PROJECT_계획.md)
+
+
 
 ## 요구 사항
 
-- .NET 8 SDK
-- Visual Studio 2022 (WPF)
-- (선택) Beckhoff TwinCAT / ADS
-- (선택) `etchflask` Flask 서버 — `appsettings.json`의 `FlaskBaseUrl` (기본 `http://127.0.0.1:5000`)
+
+
+- .NET 8 SDK, Visual Studio 2022 (WPF)
+
+- (선택) TwinCAT ADS
+
+- (선택) Flask — `appsettings.json` → `FlaskBaseUrl` (기본 `http://127.0.0.1:5000`)
+
+
 
 ## 실행
 
-1. `etch_ui.sln` 열기 → F5
-2. 또는 `dotnet build` 후 `bin\Debug\net8.0-windows\etch_ui.exe`
+
+
+1. `C:\etchflask\run_flask.bat`
+
+2. `etch_ui.sln` → F5 · 로그인 `admin` / `Admin1234`
+
+
 
 ## 문서
 
-- `PROTO_실행순서.md` — Flask / WPF 실행 순서
-- `PLC_IO_매핑.md` — PLC I/O 매핑
-- `WPF_장비UI_이식_계획.md` — UI 이식 계획
+
+
+| 문서 | 용도 |
+
+|------|------|
+
+| [**PROJECT_계획.md**](PROJECT_계획.md) | **전체 로드맵** (Phase 0~5, AI §10) |
+
+| [PROJECT_개요.md](PROJECT_개요.md) | 현황 스냅샷 |
+
+| [PROTO_실행순서.md](PROTO_실행순서.md) | 실행·데모·API |
+
+| [PLC_IO_매핑.md](PLC_IO_매핑.md) | DI/DO |
+
+| [WPF_장비UI_이식_계획.md](WPF_장비UI_이식_계획.md) | semitest ↔ 가상 이송 |
+
+| `C:\etchflask\ETCH_AI.md` | AI 모델·API |
+
+| [tools/ai/README.md](tools/ai/README.md) | 로컬 AI 학습 데이터 수집/변환/베이스라인 |
+
+
 
 ## 설정
 
-`appsettings.json`에서 Flask URL, ADS 포트, 시뮬레이션 여부 등을 수정합니다.
+
+
+`appsettings.json` — Flask URL, ADS 포트, `SimulationEnabled`, `Interlock`, `PressureScale`
+
+

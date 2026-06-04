@@ -7,8 +7,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <TextBlock x:Name="TitleBlock" Grid.Row="0" FontSize="11" Foreground="#6B7280" Margin="0,0,0,4"/>
-        <Border Grid.Row="1" Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="4" ClipToBounds="True">
+        <TextBlock x:Name="TitleBlock" Grid.Row="0" Style="{StaticResource HmiCaption}" Margin="0,0,0,6"/>
+        <Border Grid.Row="1" Style="{StaticResource HmiChartPanel}">
             <Canvas x:Name="PlotCanvas" SizeChanged="PlotCanvas_OnSizeChanged"/>
         </Border>
     </Grid>

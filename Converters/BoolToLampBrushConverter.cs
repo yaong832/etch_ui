@@ -12,16 +12,16 @@ public sealed class BoolToLampBrushConverter : IValueConverter
         bool on = value is true;
         if (!on)
         {
-            return new SolidColorBrush(Color.FromRgb(209, 213, 219));
+            return new SolidColorBrush(Color.FromRgb(51, 65, 85));
         }
 
         string p = parameter?.ToString() ?? "Blue";
         return p switch
         {
-            "Green" => Brushes.LimeGreen,
-            "Gold" => Brushes.Goldenrod,
-            "Red" => Brushes.OrangeRed,
-            _ => Brushes.DeepSkyBlue,
+            "Green" => new SolidColorBrush(Color.FromRgb(22, 163, 74)),
+            "Gold" => new SolidColorBrush(Color.FromRgb(217, 119, 6)),
+            "Red" => new SolidColorBrush(Color.FromRgb(220, 38, 38)),
+            _ => new SolidColorBrush(Color.FromRgb(37, 99, 235)),
         };
     }
 

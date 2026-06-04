@@ -20,9 +20,11 @@
 | 2 | Button 3 | Alarm Reset |
 | 3 | Button 4 | Maintenance |
 | 4 | 광학 센서 (Fiberoptic) | *(HMI 미사용)* |
-| **5** | **유도형 (Inductive_Sensor)** | **도어 닫힘 / 인터락 (A004)** |
+| **5** | **접촉 (Inductive_Sensor)** | **Load Lock 문 닫힘 / 인터락 (A004)** |
 
-### 도어·접근 센서 해석 (비트 5 — 유도형)
+> 비트5 = **실장비 접촉 1점**(Load Lock). Chamber A/B/C 도어는 `TmTransferSimulator` **가상 이송** 단계에서만 열림 표시.
+
+### Load Lock 접촉 센서 (비트 5)
 
 - PLC/실습 코드: `Inductive_Sensor = (Bits & (1<<5)) != 0`
 - HMI: **비트5 true → 닫힘 → 정상 가동 가능 (`AccessSafe=true`)**

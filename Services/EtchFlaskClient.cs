@@ -51,7 +51,43 @@ public sealed class EtchFlaskClient : IDisposable
         }
     }
 
+    public async Task<EtchAiDiagnosis?> TryGetAiLatestAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using HttpResponseMessage response = await _http
+                .GetAsync($"{BaseUrl.TrimEnd('/')}/api/etch/ai/latest", cancellationToken)
+                .ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<EtchAiDiagnosis>(json, JsonReadOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static readonly JsonSerializerOptions JsonReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public void Dispose() => _http.Dispose();
+}
+
+public sealed class EtchAiDiagnosis
+{
+    public bool Success { get; set; }
+    public double AnomalyScore { get; set; }
+    public string? SuggestedAction { get; set; }
+    public string? Note { get; set; }
+    public bool Stub { get; set; }
+    public string? UpdatedAt { get; set; }
 }
 
 public sealed class EtchTelemetryPayload
@@ -61,6 +97,10 @@ public sealed class EtchTelemetryPayload
     public bool Connected { get; set; }
     /// <summary>EtherCAT 실측 샘플이 있을 때만 true — Flask·웹에 센서 수치 노출.</summary>
     public bool SensorsLive { get; set; }
+    /// <summary>live | demo | offline — Flask에서 실가공 이력과 데모 이력 분리 저장.</summary>
+    public string DataSource { get; set; } = "offline";
+    /// <summary>시뮬 허용 + TwinCAT 미사용 데모 모드.</summary>
+    public bool BenchMode { get; set; }
     public string LastUpdate { get; set; } = string.Empty;
     public double Temperature { get; set; }
     public double Humidity { get; set; }
@@ -72,4 +112,16 @@ public sealed class EtchTelemetryPayload
     public string? AlarmCode { get; set; }
     public bool InterlockOk { get; set; }
     public string? Username { get; set; }
+    /// <summary>모듈별 상태 (LP · BM · TM · PM · EFEM).</summary>
+    public List<ModuleTelemetryModule>? Modules { get; set; }
+}
+
+/// <summary>Flask JSON용 모듈 상태 (camelCase).</summary>
+public sealed class ModuleTelemetryModule
+{
+    public string Id { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
+    public bool? DoorClosed { get; set; }
+    public bool? HasWafer { get; set; }
+    public string? Detail { get; set; }
 }

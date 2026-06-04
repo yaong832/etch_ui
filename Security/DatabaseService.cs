@@ -323,4 +323,43 @@ public sealed class DatabaseService
 
         return count;
     }
+
+    public List<EventLogRow> GetRecentEventLogs(int limit = 200)
+    {
+        int n = Math.Clamp(limit, 1, 2000);
+        List<EventLogRow> list = [];
+        using SqliteConnection connection = new(ConnectionString);
+        connection.Open();
+        using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, created_at, username, state, code, message
+            FROM event_logs
+            ORDER BY id DESC
+            LIMIT $limit
+            """;
+        command.Parameters.AddWithValue("$limit", n);
+
+        using SqliteDataReader reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            string createdRaw = reader.GetString(1);
+            string display = createdRaw;
+            if (DateTime.TryParse(createdRaw, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime utc))
+            {
+                display = utc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+            }
+
+            list.Add(new EventLogRow
+            {
+                Id = reader.GetInt64(0),
+                CreatedAtDisplay = display,
+                Username = reader.IsDBNull(2) ? null : reader.GetString(2),
+                State = reader.IsDBNull(3) ? null : reader.GetString(3),
+                Code = reader.IsDBNull(4) ? null : reader.GetString(4),
+                Message = reader.GetString(5),
+            });
+        }
+
+        return list;
+    }
 }

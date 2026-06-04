@@ -3,103 +3,384 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:etch_ui.Equipment.Converters"
              xmlns:layout="clr-namespace:etch_ui.Equipment.Layout"
-             MinHeight="300">
+             MinHeight="420">
     <UserControl.Resources>
         <conv:BoolToDoorBrushConverter x:Key="BoolToDoorBrush"/>
         <conv:BoolToDoorTextConverter x:Key="BoolToDoorText"/>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        <LinearGradientBrush x:Key="MachineBgBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#E6EDF5" Offset="0"/>
+            <GradientStop Color="#CFD8E3" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="PanelChromeBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#F8FAFC" Offset="0"/>
+            <GradientStop Color="#D9E2EC" Offset="0.55"/>
+            <GradientStop Color="#C3CFDC" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="DarkHeaderBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#334155" Offset="0"/>
+            <GradientStop Color="#1F2937" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="SteelPanelBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#F8FAFC" Offset="0"/>
+            <GradientStop Color="#E2E8F0" Offset="1"/>
+        </LinearGradientBrush>
+        <Style x:Key="MachineModuleBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelChromeBrush}"/>
+            <Setter Property="BorderBrush" Value="#64748B"/>
+            <Setter Property="BorderThickness" Value="2.2"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#64748B" ShadowDepth="2" BlurRadius="7" Opacity="0.28"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ModuleBadge" TargetType="Border">
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Margin" Value="0,4,4,0"/>
+        </Style>
     </UserControl.Resources>
-    <Border Background="#E8ECF1" CornerRadius="8" BorderBrush="#CBD5E1" BorderThickness="1" Padding="4">
+    <Border Background="#F1F5F9" CornerRadius="10" BorderBrush="{StaticResource HmiBorderBrush}" BorderThickness="1" Padding="6">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <DockPanel Grid.Row="0" Margin="4,2,4,6">
-                <TextBlock Text="장비 레이아웃 (실시간)" FontWeight="SemiBold" FontSize="12" Foreground="#1F2937"/>
-                <TextBlock DockPanel.Dock="Right" Text="{Binding ServoHint}" FontSize="11" Foreground="#6B7280"/>
+            <DockPanel Grid.Row="0" Margin="4,2,4,4">
+                <TextBlock Text="클러스터 툴 도식 (가상 TM)" Style="{StaticResource HmiCardTitle}"/>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding ServoHint}" Style="{StaticResource HmiCaption}"/>
             </DockPanel>
-            <Viewbox Grid.Row="1" Stretch="Uniform">
+            <Border Grid.Row="1" Margin="4,0,4,8" Padding="8,5"
+                    Background="#E2E8F0" BorderBrush="#94A3B8" BorderThickness="1" CornerRadius="6">
+                <TextBlock Text="{Binding WaferInventorySummary}" FontSize="10" FontWeight="SemiBold" Foreground="#1E293B"/>
+            </Border>
+            <Viewbox Grid.Row="2" Stretch="Uniform">
                 <Canvas x:Name="LayoutCanvas"
                         Width="{x:Static layout:EquipmentLayoutMetrics.DesignWidth}"
                         Height="{x:Static layout:EquipmentLayoutMetrics.DesignHeight}"
-                        Background="#F1F5F9">
-                    <Border x:Name="LoadLockBox" Width="88" Height="88" CornerRadius="6"
-                            Background="#FFFFFF" BorderBrush="#94A3B8" BorderThickness="2">
-                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <TextBlock Text="Load Lock" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                            <Ellipse Width="14" Height="14" Margin="0,6,0,0"
-                                     Fill="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorBrush}}"/>
-                            <TextBlock FontSize="9" HorizontalAlignment="Center" Margin="0,2,0,0"
-                                       Text="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorText}}"/>
-                        </StackPanel>
-                    </Border>
+                        Background="{StaticResource MachineBgBrush}">
 
-                    <Border x:Name="ChamberABox" Width="118" Height="88" CornerRadius="6"
-                            Background="#FFFFFF" BorderBrush="#64748B" BorderThickness="2">
+                    <Rectangle Width="980" Height="660" Fill="#E8EEF4" RadiusX="12" RadiusY="12"/>
+                    <Rectangle Width="980" Height="660" Stroke="#94A3B8" StrokeThickness="1.5" RadiusX="12" RadiusY="12"/>
+                    <Rectangle Canvas.Left="10" Canvas.Top="10" Width="960" Height="640" Stroke="#F8FAFC" StrokeThickness="1" Opacity="0.85" RadiusX="10" RadiusY="10"/>
+
+                    <Polyline x:Name="MainTrack" Stroke="#94A3B8" StrokeThickness="5" Opacity="0.5"/>
+                    <Polyline x:Name="MainTrackDash" Stroke="#2563EB" StrokeThickness="2" Opacity="0.45"
+                              StrokeDashArray="6,5"/>
+                    <Canvas x:Name="PmSpokesLayer"/>
+
+                    <!-- EFEM -->
+                    <Border x:Name="EfemBox" Style="{StaticResource MachineModuleBorder}" BorderBrush="{Binding EfemPanel.StatusBrush}">
                         <Grid>
-                            <Rectangle Height="8" VerticalAlignment="Top" Fill="{Binding ChamberALampBrush}"/>
-                            <StackPanel VerticalAlignment="Center" Margin="0,10,0,0">
-                                <TextBlock Text="Chamber A" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
-                                <Ellipse Width="22" Height="22" Margin="0,6,0,0"
-                                         Visibility="{Binding ChamberAHasWafer, Converter={StaticResource BoolVis}}"
-                                         Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.5"/>
-                            </StackPanel>
+                            <Border Background="{StaticResource DarkHeaderBrush}" CornerRadius="6,6,0,0" Padding="8,5" VerticalAlignment="Top">
+                                <TextBlock Text="EFEM · 대기압" Foreground="White" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            </Border>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding EfemPanel.StatusBrush}">
+                                <TextBlock Text="{Binding EfemPanel.Badge}" Foreground="White" FontSize="8" FontWeight="Bold"/>
+                            </Border>
                         </Grid>
                     </Border>
 
-                    <Border x:Name="ChamberBBox" Width="118" Height="88" CornerRadius="6"
-                            Background="#FFFFFF" BorderBrush="#64748B" BorderThickness="2">
+                    <!-- Aligner -->
+                    <Border x:Name="AlignerBox" Style="{StaticResource MachineModuleBorder}"
+                            BorderBrush="{Binding AlignerPanel.StatusBrush}">
                         <Grid>
-                            <Rectangle Height="8" VerticalAlignment="Top" Fill="{Binding ChamberBLampBrush}"/>
-                            <StackPanel VerticalAlignment="Center" Margin="0,10,0,0">
-                                <TextBlock Text="Chamber B" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
-                                <Ellipse Width="22" Height="22" Margin="0,6,0,0"
-                                         Visibility="{Binding ChamberBHasWafer, Converter={StaticResource BoolVis}}"
-                                         Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.5"/>
-                            </StackPanel>
+                            <Rectangle Margin="5" Stroke="#CBD5E1" StrokeThickness="1" RadiusX="5" RadiusY="5"/>
+                            <TextBlock Text="Aligner" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
+                                       HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,7,0,0"/>
+                            <TextBlock Text="{Binding AlignerInventoryText}" FontSize="8" FontWeight="Bold" Foreground="#0F766E"
+                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,5"/>
+                            <Ellipse Width="18" Height="18" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
+                                     HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
+                                     Visibility="{Binding AlignerHasWafer, Converter={StaticResource BoolVis}}"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding AlignerPanel.StatusBrush}">
+                                <TextBlock Text="{Binding AlignerPanel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
                         </Grid>
                     </Border>
 
-                    <Border x:Name="ChamberCBox" Width="118" Height="88" CornerRadius="6"
-                            Background="#FFFFFF" BorderBrush="#64748B" BorderThickness="2">
+                    <!-- Side storage -->
+                    <Border x:Name="SideStorageBox" Style="{StaticResource MachineModuleBorder}"
+                            BorderBrush="{Binding SideStoragePanel.StatusBrush}">
                         <Grid>
-                            <Rectangle Height="8" VerticalAlignment="Top" Fill="{Binding ChamberCLampBrush}"/>
-                            <StackPanel VerticalAlignment="Center" Margin="0,10,0,0">
-                                <TextBlock Text="Chamber C" FontWeight="SemiBold" FontSize="11" HorizontalAlignment="Center"/>
-                                <Ellipse Width="22" Height="22" Margin="0,6,0,0"
-                                         Visibility="{Binding ChamberCHasWafer, Converter={StaticResource BoolVis}}"
-                                         Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.5"/>
-                            </StackPanel>
+                            <TextBlock Text="Side Stg" FontSize="8" FontWeight="Bold" Foreground="#1E293B"
+                                       HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,7,0,0"/>
+                            <TextBlock Text="{Binding SideStorageInventoryText}" FontSize="7" FontWeight="Bold" Foreground="#0F766E"
+                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                            <Ellipse Width="16" Height="16" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
+                                     HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
+                                     Visibility="{Binding SideStorageHasWafer, Converter={StaticResource BoolVis}}"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding SideStoragePanel.StatusBrush}">
+                                <TextBlock Text="{Binding SideStoragePanel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
                         </Grid>
                     </Border>
 
-                    <Border x:Name="FoupABox" Width="100" Height="72" CornerRadius="6"
-                            Background="#E2E8F0" BorderBrush="#94A3B8" BorderThickness="1.5">
-                        <TextBlock Text="FOUP A" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <!-- Load ports -->
+                    <Border x:Name="LoadPort1Box" Style="{StaticResource MachineModuleBorder}" BorderBrush="{Binding LoadPort1Panel.StatusBrush}">
+                        <Grid>
+                            <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
+                            <TextBlock Text="LP1" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
+                                       HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Foup1InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
+                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                            <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                     Visibility="{Binding FoupAHasWafer, Converter={StaticResource BoolVis}}"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding LoadPort1Panel.StatusBrush}">
+                                <TextBlock Text="{Binding LoadPort1Panel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
                     </Border>
-                    <Border x:Name="FoupBBox" Width="100" Height="72" CornerRadius="6"
-                            Background="#E2E8F0" BorderBrush="#94A3B8" BorderThickness="1.5">
-                        <TextBlock Text="FOUP B" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border x:Name="LoadPort2Box" Style="{StaticResource MachineModuleBorder}" BorderBrush="{Binding LoadPort2Panel.StatusBrush}">
+                        <Grid>
+                            <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
+                            <TextBlock Text="LP2" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
+                                       HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Foup2InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
+                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                            <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                     Visibility="{Binding FoupBHasWafer, Converter={StaticResource BoolVis}}"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding LoadPort2Panel.StatusBrush}">
+                                <TextBlock Text="{Binding LoadPort2Panel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <Border x:Name="LoadPort3Box" Style="{StaticResource MachineModuleBorder}" BorderBrush="{Binding LoadPort3Panel.StatusBrush}">
+                        <Grid>
+                            <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
+                            <TextBlock Text="LP3" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
+                                       HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Foup3InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
+                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                            <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                     Visibility="{Binding FoupCHasWafer, Converter={StaticResource BoolVis}}"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding LoadPort3Panel.StatusBrush}">
+                                <TextBlock Text="{Binding LoadPort3Panel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
                     </Border>
 
-                    <Grid x:Name="TmHost" Width="84" Height="84">
+                    <!-- BM / Load lock -->
+                    <Border x:Name="LoadLockBox" Style="{StaticResource MachineModuleBorder}"
+                            BorderBrush="{Binding BufferPanel.StatusBrush}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border Background="{StaticResource DarkHeaderBrush}" CornerRadius="6,6,0,0" Padding="6,4">
+                                <TextBlock Text="BM · Load Lock" Foreground="White" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            </Border>
+                            <Border Grid.Row="1" Margin="12,10,12,8" Background="#CBD5E1" CornerRadius="5"
+                                    BorderBrush="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorBrush}}" BorderThickness="2"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
+                                <Ellipse Width="8" Height="8" Fill="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorBrush}}"/>
+                                <TextBlock Margin="5,0,0,0" FontSize="8" FontWeight="SemiBold" Foreground="#334155"
+                                           Text="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorText}}"/>
+                            </StackPanel>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding BufferPanel.StatusBrush}">
+                                <TextBlock Text="{Binding BufferPanel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- PM1 Strip -->
+                    <Border x:Name="ChamberABox" Style="{StaticResource MachineModuleBorder}"
+                            BorderBrush="{Binding Pm1Panel.StatusBrush}">
+                        <Grid>
+                            <Rectangle Height="8" VerticalAlignment="Top" Fill="{Binding ChamberALampBrush}" RadiusX="2" RadiusY="2"/>
+                            <Rectangle Height="16" VerticalAlignment="Top" Margin="10,12,10,0" RadiusX="3" RadiusY="3"
+                                       Fill="{Binding ChamberADoorClosed, Converter={StaticResource BoolToDoorBrush}}">
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="0"/></Setter.Value></Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ChamberADoorClosed}" Value="False">
+                                                <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="-12"/></Setter.Value></Setter>
+                                                <Setter Property="Opacity" Value="0.3"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                            <TextBlock Text="PM1 · Strip" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                                       HorizontalAlignment="Center" Foreground="#1E293B"/>
+                            <Ellipse Width="22" Height="22" Margin="0,52,0,0"
+                                     HorizontalAlignment="Center" VerticalAlignment="Top"
+                                     Visibility="{Binding ChamberAHasWafer, Converter={StaticResource BoolVis}}"
+                                     Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.4"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding Pm1Panel.StatusBrush}">
+                                <TextBlock Text="{Binding Pm1Panel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- PM2 Poly -->
+                    <Border x:Name="ChamberBBox" Style="{StaticResource MachineModuleBorder}"
+                            BorderBrush="{Binding Pm2Panel.StatusBrush}">
+                        <Grid>
+                            <Rectangle Height="8" VerticalAlignment="Top" Fill="{Binding ChamberBLampBrush}" RadiusX="2" RadiusY="2"/>
+                            <Rectangle Height="16" VerticalAlignment="Top" Margin="10,12,10,0" RadiusX="3" RadiusY="3"
+                                       Fill="{Binding ChamberBDoorClosed, Converter={StaticResource BoolToDoorBrush}}">
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="0"/></Setter.Value></Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ChamberBDoorClosed}" Value="False">
+                                                <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="-12"/></Setter.Value></Setter>
+                                                <Setter Property="Opacity" Value="0.3"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                            <TextBlock Text="PM2 · Etch" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                                       HorizontalAlignment="Center" Foreground="#1E293B"/>
+                            <Ellipse Width="22" Height="22" Margin="0,52,0,0"
+                                     HorizontalAlignment="Center" VerticalAlignment="Top"
+                                     Visibility="{Binding ChamberBHasWafer, Converter={StaticResource BoolVis}}"
+                                     Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.4"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding Pm2Panel.StatusBrush}">
+                                <TextBlock Text="{Binding Pm2Panel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- PM3 Poly -->
+                    <Border x:Name="ChamberCBox" Style="{StaticResource MachineModuleBorder}"
+                            BorderBrush="{Binding Pm3Panel.StatusBrush}">
+                        <Grid>
+                            <Rectangle Height="8" VerticalAlignment="Top" Fill="{Binding ChamberCLampBrush}" RadiusX="2" RadiusY="2"/>
+                            <Rectangle Height="16" VerticalAlignment="Top" Margin="10,12,10,0" RadiusX="3" RadiusY="3"
+                                       Fill="{Binding ChamberCDoorClosed, Converter={StaticResource BoolToDoorBrush}}">
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="0"/></Setter.Value></Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ChamberCDoorClosed}" Value="False">
+                                                <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="-12"/></Setter.Value></Setter>
+                                                <Setter Property="Opacity" Value="0.3"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                            <TextBlock Text="PM3 · Etch" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                                       HorizontalAlignment="Center" Foreground="#1E293B"/>
+                            <Ellipse Width="22" Height="22" Margin="0,52,0,0"
+                                     HorizontalAlignment="Center" VerticalAlignment="Top"
+                                     Visibility="{Binding ChamberCHasWafer, Converter={StaticResource BoolVis}}"
+                                     Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.4"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding Pm3Panel.StatusBrush}">
+                                <TextBlock Text="{Binding Pm3Panel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- PM4 Etch -->
+                    <Border x:Name="Pm4Box" Style="{StaticResource MachineModuleBorder}"
+                            BorderBrush="{Binding Pm4Panel.StatusBrush}">
+                        <Grid>
+                            <Rectangle Height="8" VerticalAlignment="Top" Fill="{Binding ChamberDLampBrush}" RadiusX="2" RadiusY="2"/>
+                            <Rectangle Height="16" VerticalAlignment="Top" Margin="10,12,10,0" RadiusX="3" RadiusY="3"
+                                       Fill="{Binding ChamberDDoorClosed, Converter={StaticResource BoolToDoorBrush}}">
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ChamberDDoorClosed}" Value="False">
+                                                <Setter Property="RenderTransform"><Setter.Value><TranslateTransform Y="-12"/></Setter.Value></Setter>
+                                                <Setter Property="Opacity" Value="0.3"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                            <TextBlock Text="PM4 · Etch" FontWeight="Bold" FontSize="9" Margin="0,34,0,0"
+                                       HorizontalAlignment="Center" Foreground="#1E293B"/>
+                            <Ellipse Width="22" Height="22" Margin="0,52,0,0"
+                                     HorizontalAlignment="Center" VerticalAlignment="Top"
+                                     Visibility="{Binding ChamberDHasWafer, Converter={StaticResource BoolVis}}"
+                                     Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.4"/>
+                            <Border Style="{StaticResource ModuleBadge}" Background="{Binding Pm4Panel.StatusBrush}">
+                                <TextBlock Text="{Binding Pm4Panel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- EFEM TM (대기압) -->
+                    <Grid x:Name="EfemRobotHost" Width="76" Height="76">
                         <Grid.RenderTransform>
-                            <RotateTransform x:Name="TmRotate" Angle="0" CenterX="42" CenterY="42"/>
+                            <RotateTransform x:Name="EfemRotate" Angle="0" CenterX="38" CenterY="38"/>
                         </Grid.RenderTransform>
-                        <Rectangle x:Name="BladeRect" Fill="#475569" RadiusX="3" RadiusY="3"
-                                     Height="16" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                     Margin="42,34,0,34"/>
-                        <Ellipse Width="84" Height="84" Fill="#3B82F6" Stroke="#1E40AF" StrokeThickness="2.5"/>
-                        <TextBlock Text="TM" Foreground="White" FontWeight="Bold" FontSize="13"
+                        <Ellipse Width="76" Height="76" Fill="#0D9488" Opacity="0.18" Stroke="#0F766E" StrokeThickness="2"/>
+                        <Ellipse Width="54" Height="54" Fill="#14B8A6" Stroke="#0F766E" StrokeThickness="1.8"/>
+                        <Canvas x:Name="EfemBladeCanvas" Width="140" Height="30" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="38,0,0,0">
+                            <Rectangle x:Name="EfemBladeRailTop" Canvas.Left="0" Canvas.Top="6" Width="36" Height="7" RadiusX="2" RadiusY="2" Fill="#4B5563"/>
+                            <Rectangle x:Name="EfemBladeRailBottom" Canvas.Left="0" Canvas.Top="17" Width="36" Height="7" RadiusX="2" RadiusY="2" Fill="#4B5563"/>
+                            <Rectangle x:Name="EfemBladeTipTop" Canvas.Left="34" Canvas.Top="5" Width="20" Height="9" RadiusX="3" RadiusY="3" Fill="#6B7280"/>
+                            <Rectangle x:Name="EfemBladeTipBottom" Canvas.Left="34" Canvas.Top="16" Width="20" Height="9" RadiusX="3" RadiusY="3" Fill="#6B7280"/>
+                            <Rectangle x:Name="EfemBladeCenterPad" Canvas.Left="28" Canvas.Top="11" Width="12" Height="8" RadiusX="2" RadiusY="2" Fill="#9CA3AF" Opacity="0.85"/>
+                            <Rectangle x:Name="WaferOnEfemBlade" Canvas.Top="12" Width="16" Height="4" RadiusX="2" RadiusY="2"
+                                       Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="0.8" Visibility="Collapsed"/>
+                            <Rectangle x:Name="WaferOnEfemBladeB" Canvas.Top="12" Width="16" Height="4" RadiusX="2" RadiusY="2"
+                                       Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="0.8" Visibility="Collapsed"/>
+                        </Canvas>
+                        <TextBlock Text="EFEM·TM" Foreground="White" FontWeight="Bold" FontSize="8"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse x:Name="WaferOnBlade" Width="18" Height="18" Fill="{Binding WaferBrush}"
-                                 Stroke="#B45309" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                 Margin="8,0,0,0" Visibility="Collapsed"/>
                     </Grid>
+
+                    <!-- TM (진공) -->
+                    <Grid x:Name="TmHost" Width="112" Height="112">
+                        <Grid.RenderTransform>
+                            <RotateTransform x:Name="TmRotate" Angle="0" CenterX="56" CenterY="56"/>
+                        </Grid.RenderTransform>
+                        <Ellipse Width="112" Height="112" Fill="#1E3A8A" Opacity="0.14" Stroke="#1E40AF" StrokeThickness="2.5"/>
+                        <Ellipse Width="82" Height="82" Fill="#1D4ED8" Stroke="#1E40AF" StrokeThickness="2"/>
+                        <Canvas x:Name="BladeCanvas" Width="230" Height="44" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="56,0,0,0">
+                            <Rectangle x:Name="BladeRailTop" Canvas.Left="0" Canvas.Top="8" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#475569"/>
+                            <Rectangle x:Name="BladeRailBottom" Canvas.Left="0" Canvas.Top="26" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#475569"/>
+                            <Rectangle x:Name="BladeTipTop" Canvas.Left="50" Canvas.Top="7" Width="28" Height="12" RadiusX="4" RadiusY="4" Fill="#64748B"/>
+                            <Rectangle x:Name="BladeTipBottom" Canvas.Left="50" Canvas.Top="25" Width="28" Height="12" RadiusX="4" RadiusY="4" Fill="#64748B"/>
+                            <Rectangle x:Name="BladeCenterPad" Canvas.Left="42" Canvas.Top="16" Width="16" Height="12" RadiusX="3" RadiusY="3" Fill="#94A3B8" Opacity="0.9"/>
+                            <Rectangle x:Name="BladeSlotA" Canvas.Left="62" Canvas.Top="8" Width="12" Height="10" RadiusX="2" RadiusY="2" Fill="#1E293B" Opacity="0.35"/>
+                            <Rectangle x:Name="BladeSlotB" Canvas.Left="62" Canvas.Top="26" Width="12" Height="10" RadiusX="2" RadiusY="2" Fill="#1E293B" Opacity="0.35" Visibility="Collapsed"/>
+                            <Rectangle x:Name="WaferOnBlade" Canvas.Top="19" Width="20" Height="5" RadiusX="2.5" RadiusY="2.5"
+                                       Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="0.9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="WaferOnBladeB" Canvas.Top="10" Width="20" Height="5" RadiusX="2.5" RadiusY="2.5"
+                                       Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="0.9" Visibility="Collapsed"/>
+                        </Canvas>
+                        <TextBlock Text="TM·진공" Foreground="White" FontWeight="Bold" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Border Style="{StaticResource ModuleBadge}" Background="{Binding TmPanel.StatusBrush}" Margin="0,6,6,0">
+                            <TextBlock Text="{Binding TmPanel.Badge}" Foreground="White" FontSize="7" FontWeight="Bold"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Decorative bolts -->
+                    <Ellipse Canvas.Left="14" Canvas.Top="14" Width="6" Height="6" Fill="#64748B"/>
+                    <Ellipse Canvas.Left="960" Canvas.Top="14" Width="6" Height="6" Fill="#64748B"/>
+                    <Ellipse Canvas.Left="14" Canvas.Top="644" Width="6" Height="6" Fill="#64748B"/>
+                    <Ellipse Canvas.Left="960" Canvas.Top="644" Width="6" Height="6" Fill="#64748B"/>
 
                     <TextBlock x:Name="TmLabel" Text="{Binding TmRegionLabel}"
                                FontSize="10" Foreground="#334155" FontWeight="SemiBold"/>
+
+                    <Border Canvas.Left="12" Canvas.Top="600" Width="420" Height="52"
+                            Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1.2" CornerRadius="8">
+                        <StackPanel Margin="10,6">
+                            <TextBlock Text="웨이퍼 잔량 (FOUP·Aligner·Side Stg)" FontSize="7" FontWeight="Bold" Foreground="#334155"/>
+                            <TextBlock Text="{Binding WaferInventorySummary}" FontSize="8" FontWeight="SemiBold" Foreground="#0F766E" Margin="0,3,0,0"/>
+                        </StackPanel>
+                    </Border>
                 </Canvas>
             </Viewbox>
         </Grid>

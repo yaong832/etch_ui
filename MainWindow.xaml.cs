@@ -1,10 +1,13 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
 using etch_ui.Plc;
 using etch_ui.Security;
 using etch_ui.Services;
+using etch_ui.Services.Simulation;
+using etch_ui.Services.Scheduling;
 using etch_ui.ViewModels;
 using System.Threading.Tasks;
 
@@ -15,9 +18,12 @@ public partial class MainWindow : Window
     private readonly MainViewModel _vm = new();
     private readonly EquipmentMotionBridge _motionBridge;
     private readonly EquipmentMotionAnimator _motionAnimator;
+    private readonly TmTransferSimulator _transferSim = new();
+    private bool _lotCompleteHandled;
     private readonly DatabaseService _db;
     private readonly PlcAdsService _plc = new();
     private readonly EtchFlaskClient _flask = new();
+    private readonly AiTrainingDataRecorder _aiDataRecorder;
 
     private readonly DispatcherTimer _uiTimer = new();
 
@@ -55,6 +61,12 @@ public partial class MainWindow : Window
     private bool HasLiveSensorData =>
         !_useSimulation && _plc.IsConnected && _lastProcessSampleUtc != DateTime.MinValue;
 
+    /// <summary>
+    /// 시뮬 허용 ON + TwinCAT 미사용(_useSimulation): 레시피·가상 TM·로직 확인용 데모.
+    /// 인터락·실접촉 없이 Start 가능(Flask에는 sensorsLive=false 유지).
+    /// </summary>
+    private bool IsBenchMode => _useSimulation && _simulationFallbackEnabled;
+
     /// <summary>appsettings 초깃값·메인 창 버튼으로 바꿀 수 있음. false면 EtherCAT 실패 시 시뮬 대체 안 함.</summary>
     private bool _simulationFallbackEnabled;
 
@@ -63,6 +75,12 @@ public partial class MainWindow : Window
 
     private bool _ethercatLinkLostLogged;
     private int _ethercatReconnectCooldown;
+    private bool _loadLockOpenWhileRunningLogged;
+    private int _aiPollCounter;
+    private double _lastAiScore = -1;
+    private string _lastAiHint = "Flask AI 대기 중";
+    private DateTime _nextAiHighScoreLogUtc = DateTime.MinValue;
+    private DateTime _nextAiSnapshotUtc = DateTime.MinValue;
 
     private enum EquipmentState
     {
@@ -79,6 +97,8 @@ public partial class MainWindow : Window
         _db = databaseService;
         _motionBridge = new EquipmentMotionBridge(_vm.Equipment);
         _motionAnimator = new EquipmentMotionAnimator(_vm.Equipment);
+        string aiDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "ai_training_snapshots.jsonl");
+        _aiDataRecorder = new AiTrainingDataRecorder(aiDataPath);
         InitializeComponent();
         DataContext = _vm;
         _simulationFallbackEnabled = AppSettings.SimulationEnabled;
@@ -185,6 +205,7 @@ public partial class MainWindow : Window
     private void InitializeRuntime()
     {
         AddLog("시스템 초기화 완료");
+        AddLog($"AI 학습 스냅샷 기록: {_aiDataRecorder.OutputPath}");
         ApplyRolePermissions();
 
         _uiTimer.Interval = TimeSpan.FromSeconds(1);
@@ -224,6 +245,21 @@ public partial class MainWindow : Window
         }
 
         AutoEvaluateState();
+        EnforceLoadLockContactDuringTransfer();
+
+        if (_state == EquipmentState.Running)
+        {
+            _transferSim.Tick();
+            if (_transferSim.LotCompleteAchieved)
+            {
+                HandleLotComplete();
+            }
+        }
+        else if (_transferSim.IsActive)
+        {
+            _transferSim.Stop();
+        }
+
         PushOutputsToPlc();
         PushSparkHistory();
         SyncViewModel();
@@ -235,7 +271,31 @@ public partial class MainWindow : Window
             _ = PublishFlaskAsync();
         }
 
+        _aiPollCounter++;
+        if (_aiPollCounter >= 3)
+        {
+            _aiPollCounter = 0;
+            _ = PollFlaskAiLatestAsync();
+        }
+
         LogStateTransitionIfNeeded();
+    }
+
+    private void HandleLotComplete()
+    {
+        if (_lotCompleteHandled)
+        {
+            return;
+        }
+
+        _lotCompleteHandled = true;
+        ThroughputKpiSnapshot kpi = _transferSim.KpiSnapshot;
+        _state = EquipmentState.Ready;
+        string detail =
+            $"LOT COMPLETE · {kpi.CompletedWafers}/{kpi.TargetWafers}매 · WPH~{kpi.EstimatedWph:F0} · {kpi.BottleneckHint}";
+        _db.AppendEventLog(CurrentUserName(), "READY", null, detail);
+        AddLog(detail);
+        SyncViewModel();
     }
 
     private void ClearSparklineHistory()
@@ -324,6 +384,15 @@ public partial class MainWindow : Window
         _vib = 0.10;
         _accessSafe = true;
         _accessInputValid = true;
+        _lastProcessSampleUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>시뮬 OFF·미연결 시 EtherCAT 라벨이 남지 않도록 실측 타임스탬프·유효 플래그 제거.</summary>
+    private void ClearOperationalSampleCache()
+    {
+        _lastProcessSampleUtc = DateTime.MinValue;
+        _accessInputValid = false;
+        _pressureSignalValid = false;
     }
 
     private void SimulateSensors()
@@ -357,23 +426,32 @@ public partial class MainWindow : Window
     private bool IsHumiNormal =>
         _humi >= AppSettings.HumiMin && _humi <= AppSettings.HumiMax;
 
-    private bool PlcLinkOk => _useSimulation || _plc.IsConnected;
+    /// <summary>
+    /// 인터락 판정용 "실데이터" 기준.
+    /// EtherCAT이 연결되지 않았거나(_useSimulation 상태 포함) 실제 샘플이 없으면 false.
+    /// </summary>
+    private bool PlcLinkOk => HasLiveSensorData;
 
     private bool AccessInterlockOk =>
-        _useSimulation || (_accessInputValid && _accessSafe);
+        HasLiveSensorData && _accessInputValid && _accessSafe;
 
-    private bool InterlockOk =>
+    private bool ProductionInterlockOk =>
         PlcLinkOk
-        && (_useSimulation || _pressureSignalValid)
+        && _pressureSignalValid
         && IsPressureNormal
         && IsVibrationNormal
         && AccessInterlockOk
         && IsTempNormal
         && IsHumiNormal;
 
+    private bool CanStartProcess() =>
+        SessionContext.HasRole(UserRole.Worker)
+        && !_maintenanceMode
+        && (IsBenchMode || ProductionInterlockOk);
+
     private string? ComputePrimaryAlarmCode()
     {
-        if (_maintenanceMode)
+        if (_maintenanceMode || IsBenchMode)
         {
             return null;
         }
@@ -411,11 +489,73 @@ public partial class MainWindow : Window
         return null;
     }
 
+    /// <summary>Load Lock 접촉 열림 시 RUNNING·가상 이송 즉시 중단 (Phase 1.2). 데모 모드는 실접촉 미사용.</summary>
+    private void EnforceLoadLockContactDuringTransfer()
+    {
+        if (IsBenchMode)
+        {
+            return;
+        }
+
+        if (!_accessInputValid || _accessSafe)
+        {
+            if (_accessSafe)
+            {
+                _loadLockOpenWhileRunningLogged = false;
+            }
+
+            return;
+        }
+
+        bool wasTransferring = _transferSim.IsActive || _state == EquipmentState.Running;
+        if (!wasTransferring)
+        {
+            return;
+        }
+
+        if (_transferSim.IsActive)
+        {
+            _transferSim.Stop();
+        }
+
+        if (_state == EquipmentState.Running)
+        {
+            _state = EquipmentState.Alarm;
+        }
+
+        if (!_loadLockOpenWhileRunningLogged)
+        {
+            _loadLockOpenWhileRunningLogged = true;
+            AddLog("Load Lock 접촉 열림 — 가상 이송 즉시 정지 (A004)");
+            _db.AppendEventLog(CurrentUserName(), "ALARM", "A004", "Load Lock 접촉 열림 — RUNNING 중 가상 이송 정지");
+        }
+    }
+
     private void AutoEvaluateState()
     {
         if (_maintenanceMode)
         {
             _state = EquipmentState.Maintenance;
+            return;
+        }
+
+        if (IsBenchMode)
+        {
+            if (_state == EquipmentState.Alarm)
+            {
+                return;
+            }
+
+            if (_state == EquipmentState.Running)
+            {
+                return;
+            }
+
+            if (_state is EquipmentState.Idle or EquipmentState.Warning)
+            {
+                _state = EquipmentState.Ready;
+            }
+
             return;
         }
 
@@ -524,12 +664,12 @@ public partial class MainWindow : Window
         _vm.ShowUserManage = SessionContext.HasRole(UserRole.Admin);
         _vm.SimAllowButtonText = _simulationFallbackEnabled ? "시뮬 허용: 켬" : "시뮬 허용: 끔";
 
-        if (_useSimulation)
+        if (IsBenchMode)
         {
-            _vm.PlcStatusText = "SIMULATION";
+            _vm.PlcStatusText = "DEMO (시뮬)";
             _vm.PlcStatusBrush = Brushes.Goldenrod;
         }
-        else if (_plc.IsConnected && _lastProcessSampleUtc != DateTime.MinValue)
+        else if (HasLiveSensorData)
         {
             _vm.PlcStatusText = "Connected";
             _vm.PlcStatusBrush = Brushes.LimeGreen;
@@ -558,20 +698,20 @@ public partial class MainWindow : Window
 
         _vm.LastUpdateText = DateTime.Now.ToString("HH:mm:ss");
 
-        if (_lastProcessSampleUtc == DateTime.MinValue)
+        if (HasLiveSensorData)
         {
-            _vm.DataQualityText = "유효 샘플 없음";
-            _vm.DataQualityBrush = Brushes.OrangeRed;
+            _vm.DataQualityText = "EtherCAT ADS · " + _lastProcessSampleUtc.ToLocalTime().ToString("HH:mm:ss");
+            _vm.DataQualityBrush = Brushes.DeepSkyBlue;
         }
-        else if (_useSimulation)
+        else if (IsBenchMode && _lastProcessSampleUtc != DateTime.MinValue)
         {
-            _vm.DataQualityText = "시뮬 · " + _lastProcessSampleUtc.ToLocalTime().ToString("HH:mm:ss");
+            _vm.DataQualityText = "데모 시뮬 · " + _lastProcessSampleUtc.ToLocalTime().ToString("HH:mm:ss");
             _vm.DataQualityBrush = Brushes.Goldenrod;
         }
         else
         {
-            _vm.DataQualityText = "EtherCAT ADS · " + _lastProcessSampleUtc.ToLocalTime().ToString("HH:mm:ss");
-            _vm.DataQualityBrush = Brushes.DeepSkyBlue;
+            _vm.DataQualityText = "유효 샘플 없음 (EtherCAT 미연결)";
+            _vm.DataQualityBrush = Brushes.OrangeRed;
         }
 
         _vm.StateText = _state.ToString().ToUpperInvariant();
@@ -609,13 +749,19 @@ public partial class MainWindow : Window
             _vm.AlarmDetailBrush = Brushes.DimGray;
         }
 
-        _vm.TemperatureText = HasLiveSensorData ? _temp.ToString("F2") : "—";
-        _vm.HumidityText = HasLiveSensorData ? _humi.ToString("F2") : "—";
-        _vm.VibrationText = HasLiveSensorData ? _vib.ToString("F2") : "—";
-        if (!HasLiveSensorData)
+        bool showSensors = HasLiveSensorData || IsBenchMode;
+        _vm.TemperatureText = showSensors ? _temp.ToString("F2") : "—";
+        _vm.HumidityText = showSensors ? _humi.ToString("F2") : "—";
+        _vm.VibrationText = showSensors ? _vib.ToString("F2") : "—";
+        if (!showSensors)
         {
             _vm.AccessText = "—";
             _vm.AccessBrush = Brushes.DimGray;
+        }
+        else if (IsBenchMode)
+        {
+            _vm.AccessText = _accessSafe ? "닫힘(데모)" : "열림(데모)";
+            _vm.AccessBrush = _accessSafe ? Brushes.Goldenrod : Brushes.OrangeRed;
         }
         else if (!_accessInputValid)
         {
@@ -628,7 +774,7 @@ public partial class MainWindow : Window
             _vm.AccessBrush = _accessSafe ? Brushes.ForestGreen : Brushes.OrangeRed;
         }
 
-        if (!HasLiveSensorData || (!_pressureSignalValid && !_useSimulation))
+        if (!showSensors || (!IsBenchMode && !_pressureSignalValid))
         {
             _vm.PressureText = "—";
         }
@@ -638,45 +784,118 @@ public partial class MainWindow : Window
             _vm.PressureText = _pressureMtorr.ToString(fmt);
         }
 
-        bool interlockPlcOk = PlcLinkOk;
-        bool interlockPressureOk = (_useSimulation || _pressureSignalValid) && IsPressureNormal;
-        bool interlockVibOk = IsVibrationNormal;
-        bool interlockAccessOk = HasLiveSensorData && _accessInputValid && _accessSafe;
-        bool interlockTempOk = IsTempNormal;
-        bool interlockHumiOk = IsHumiNormal;
+        bool hasLive = HasLiveSensorData;
+        if (IsBenchMode)
+        {
+            _vm.InterlockPlcText = "[데모] EtherCAT·인터락 미적용";
+            _vm.InterlockPlcBrush = Brushes.Goldenrod;
+            _vm.InterlockPressureText = "[데모] 압력(시뮬 표시)";
+            _vm.InterlockPressureBrush = Brushes.Goldenrod;
+            _vm.InterlockPressureDetailText =
+                $"허용 {AppSettings.PressureMtorrMin.ToString("F" + AppSettings.PressureDecimals)}–" +
+                $"{AppSettings.PressureMtorrMax.ToString("F" + AppSettings.PressureDecimals)} mTorr · 현재 {_pressureMtorr.ToString("F" + AppSettings.PressureDecimals)} (참고)";
+            _vm.InterlockVibText = "[데모] 진동(시뮬)";
+            _vm.InterlockVibBrush = Brushes.Goldenrod;
+            _vm.InterlockTempText = "[데모] 온도(시뮬)";
+            _vm.InterlockTempBrush = Brushes.Goldenrod;
+            _vm.InterlockHumiText = "[데모] 습도(시뮬)";
+            _vm.InterlockHumiBrush = Brushes.Goldenrod;
+            _vm.InterlockAccessText = "[데모] Load Lock(시뮬)";
+            _vm.InterlockAccessBrush = Brushes.Goldenrod;
+            _vm.InterlockResultText = "데모 모드 · 가상 이송·로직 확인용 Start 가능";
+            _vm.InterlockResultBrush = Brushes.DarkGoldenrod;
+            _vm.CanStart = CanStartProcess();
+            _vm.StartButtonToolTip = BuildStartButtonToolTip();
+            goto AfterInterlockRows;
+        }
 
-        _vm.InterlockPlcText = $"[{ToMark(interlockPlcOk)}] EtherCAT/시뮬 통신";
-        _vm.InterlockPressureText = _useSimulation || _pressureSignalValid
-            ? $"[{ToMark(interlockPressureOk)}] 압력 정상"
-            : "[✗] 압력 신호 없음";
-        _vm.InterlockPressureBrush = InterlockItemBrush(_useSimulation || interlockPressureOk);
-        _vm.InterlockVibText = $"[{ToMark(interlockVibOk)}] 진동 정상";
-        _vm.InterlockVibBrush = InterlockItemBrush(interlockVibOk);
+        bool interlockPlcOk = PlcLinkOk; // = HasLiveSensorData
+        bool interlockPressureOk = hasLive && _pressureSignalValid && IsPressureNormal;
+        bool interlockVibOk = hasLive && IsVibrationNormal;
+        bool interlockAccessOk = hasLive && _accessInputValid && _accessSafe;
+        bool interlockTempOk = hasLive && IsTempNormal;
+        bool interlockHumiOk = hasLive && IsHumiNormal;
+
+        string pressureFmt = "F" + AppSettings.PressureDecimals;
+        string pressureRange =
+            $"{AppSettings.PressureMtorrMin.ToString(pressureFmt)}–{AppSettings.PressureMtorrMax.ToString(pressureFmt)} mTorr";
+
+        if (!hasLive)
+        {
+            _vm.InterlockPlcText = "[－] EtherCAT 샘플 미측정";
+            _vm.InterlockPlcBrush = Brushes.DimGray;
+
+            _vm.InterlockPressureText = "[－] 압력 신호 미측정";
+            _vm.InterlockPressureBrush = Brushes.DimGray;
+            _vm.InterlockPressureDetailText = $"허용 {pressureRange} (EtherCAT 미연결/샘플 없음)";
+
+            _vm.InterlockVibText = "[－] 진동 신호 미측정";
+            _vm.InterlockVibBrush = Brushes.DimGray;
+
+            _vm.InterlockTempText = "[－] 온도 신호 미측정";
+            _vm.InterlockTempBrush = Brushes.DimGray;
+
+            _vm.InterlockHumiText = "[－] 습도 신호 미측정";
+            _vm.InterlockHumiBrush = Brushes.DimGray;
+        }
+        else
+        {
+            _vm.InterlockPlcText = $"[{ToMark(interlockPlcOk)}] EtherCAT/데이터 통신";
+            _vm.InterlockPlcBrush = InterlockItemBrush(interlockPlcOk);
+
+            _vm.InterlockPressureText =
+                _pressureSignalValid
+                    ? $"[{ToMark(interlockPressureOk)}] 압력 ({pressureRange})"
+                    : "[✗] 압력 신호 없음";
+            _vm.InterlockPressureBrush =
+                _pressureSignalValid ? InterlockItemBrush(interlockPressureOk) : Brushes.OrangeRed;
+
+            if (_pressureSignalValid)
+            {
+                string cur = _pressureMtorr.ToString(pressureFmt);
+                _vm.InterlockPressureDetailText =
+                    $"허용 {pressureRange}  ·  현재 {cur} mTorr" +
+                    (interlockPressureOk ? "" : "  ← 범위 이탈");
+            }
+            else
+            {
+                _vm.InterlockPressureDetailText = $"허용 {pressureRange} (압력 신호 없음)";
+            }
+
+            _vm.InterlockVibText = $"[{ToMark(interlockVibOk)}] 진동 정상";
+            _vm.InterlockVibBrush = InterlockItemBrush(interlockVibOk);
+
+            _vm.InterlockTempText = $"[{ToMark(interlockTempOk)}] 온도 정상";
+            _vm.InterlockTempBrush = InterlockItemBrush(interlockTempOk);
+
+            _vm.InterlockHumiText = $"[{ToMark(interlockHumiOk)}] 습도 정상";
+            _vm.InterlockHumiBrush = InterlockItemBrush(interlockHumiOk);
+        }
         if (!HasLiveSensorData || !_accessInputValid)
         {
-            _vm.InterlockAccessText = "[－] 도어(유도형) 미측정";
+            _vm.InterlockAccessText = "[－] Load Lock 접촉 미측정";
             _vm.InterlockAccessBrush = Brushes.DimGray;
         }
         else
         {
-            _vm.InterlockAccessText = $"[{ToMark(interlockAccessOk)}] 도어 닫힘";
+            _vm.InterlockAccessText = $"[{ToMark(interlockAccessOk)}] Load Lock 접촉(닫힘)";
             _vm.InterlockAccessBrush = InterlockItemBrush(interlockAccessOk);
         }
-        _vm.InterlockTempText = $"[{ToMark(interlockTempOk)}] 온도 정상";
-        _vm.InterlockTempBrush = InterlockItemBrush(interlockTempOk);
-        _vm.InterlockHumiText = $"[{ToMark(interlockHumiOk)}] 습도 정상";
-        _vm.InterlockHumiBrush = InterlockItemBrush(interlockHumiOk);
-        _vm.InterlockPlcBrush = InterlockItemBrush(interlockPlcOk);
-        _vm.InterlockResultText = InterlockOk ? "공정 시작 가능" : "공정 시작 불가";
-        _vm.InterlockResultBrush = InterlockOk ? Brushes.ForestGreen : Brushes.OrangeRed;
+        // InterlockTemp/InterlockHumi/InterlockPressure/InterlockPlc는 hasLive 분기에서 이미 세팅됨.
+        _vm.InterlockResultText = ProductionInterlockOk ? "공정 시작 가능" : "공정 시작 불가";
+        _vm.InterlockResultBrush = ProductionInterlockOk ? Brushes.ForestGreen : Brushes.OrangeRed;
 
+        AfterInterlockRows:
         _vm.LampReadyOn = _state == EquipmentState.Ready;
         _vm.LampRunOn = _state == EquipmentState.Running;
         _vm.LampWarnOn = _state == EquipmentState.Warning;
         _vm.LampAlarmOn = _state == EquipmentState.Alarm;
 
-        _vm.CanStart = SessionContext.HasRole(UserRole.Worker) && InterlockOk && !_maintenanceMode;
-        _vm.StartButtonToolTip = BuildStartButtonToolTip();
+        if (!IsBenchMode)
+        {
+            _vm.CanStart = CanStartProcess();
+            _vm.StartButtonToolTip = BuildStartButtonToolTip();
+        }
         _vm.CanStop = SessionContext.HasRole(UserRole.Worker);
         _vm.CanReset = SessionContext.HasRole(UserRole.Admin);
         _vm.CanMaint = SessionContext.HasRole(UserRole.Admin);
@@ -689,20 +908,63 @@ public partial class MainWindow : Window
         _vm.SensorTempValue = _temp;
         _vm.SensorHumiValue = _humi;
 
-        (_vm.ProcessStepIndex, _vm.ProcessStepWarning) = MapProcessStep(_state);
+        (_vm.ProcessStepIndex, _vm.ProcessStepWarning) = _transferSim.IsActive
+            ? MapProcessStepFromTransfer(_transferSim.Phase)
+            : MapProcessStep(_state);
 
+        IReadOnlyList<Equipment.Models.ModuleStateSnapshot> moduleSnapshots = BuildModuleSnapshots();
         _motionBridge.Sync(
-            HasLiveSensorData,
-            _useSimulation,
-            _plc.IsConnected,
             _accessSafe,
             _accessInputValid,
             _vm.StateText,
             _vm.LampReadyOn,
             _vm.LampRunOn,
             _vm.LampWarnOn,
-            _vm.LampAlarmOn);
+            _vm.LampAlarmOn,
+            _state == EquipmentState.Running ? _transferSim : null,
+            moduleSnapshots);
+
+        _vm.SetModuleSnapshots(moduleSnapshots);
+        MaybeRecordAiTrainingSnapshot(moduleSnapshots);
     }
+
+    private void MaybeRecordAiTrainingSnapshot(IReadOnlyList<Equipment.Models.ModuleStateSnapshot> moduleSnapshots)
+    {
+        DateTime nowUtc = DateTime.UtcNow;
+        if (nowUtc < _nextAiSnapshotUtc)
+        {
+            return;
+        }
+
+        _nextAiSnapshotUtc = nowUtc.AddSeconds(1);
+        _aiDataRecorder.Append(new AiTrainingDataRecorder.SnapshotInput
+        {
+            EquipmentState = _state.ToString().ToUpperInvariant(),
+            AlarmCode = _state == EquipmentState.Alarm ? ComputePrimaryAlarmCode() : null,
+            InterlockOk = ProductionInterlockOk,
+            BenchMode = IsBenchMode,
+            Temperature = _temp,
+            Humidity = _humi,
+            Pressure = _pressureMtorr,
+            Vibration = _vib,
+            AccessSafe = _accessSafe,
+            Modules = moduleSnapshots
+        });
+    }
+
+    private IReadOnlyList<Equipment.Models.ModuleStateSnapshot> BuildModuleSnapshots() =>
+        ModuleStateAggregator.Build(new ModuleStateAggregator.Context
+        {
+            EquipmentState = _state.ToString().ToUpperInvariant(),
+            MaintenanceMode = _maintenanceMode,
+            HasLiveSensorData = HasLiveSensorData,
+            InterlockOk = ProductionInterlockOk,
+            BenchMode = IsBenchMode,
+            AccessSafe = _accessSafe,
+            AccessInputValid = _accessInputValid,
+            AlarmCode = _state == EquipmentState.Alarm ? ComputePrimaryAlarmCode() : null,
+            Transfer = _state == EquipmentState.Running ? _transferSim : null
+        });
 
     private void PushSparkHistory()
     {
@@ -734,6 +996,18 @@ public partial class MainWindow : Window
             _ => (0, false),
         };
 
+    private static (int Index, bool Warning) MapProcessStepFromTransfer(TmTransferSimulator.SimPhase phase) =>
+        phase switch
+        {
+            TmTransferSimulator.SimPhase.MoveToPickup or TmTransferSimulator.SimPhase.MoveToDropoff => (1, false),
+            TmTransferSimulator.SimPhase.PickupExtend or TmTransferSimulator.SimPhase.DropoffExtend
+                or TmTransferSimulator.SimPhase.PickupGrip or TmTransferSimulator.SimPhase.DropoffRelease
+                or TmTransferSimulator.SimPhase.PickupRetract or TmTransferSimulator.SimPhase.DropoffRetract => (2, false),
+            TmTransferSimulator.SimPhase.WaitDoorPickupOpen or TmTransferSimulator.SimPhase.WaitDoorDropoffOpen
+                or TmTransferSimulator.SimPhase.WaitDoorPickupClose or TmTransferSimulator.SimPhase.WaitDoorDropoffClose => (0, false),
+            _ => (2, false),
+        };
+
     private static Brush InterlockItemBrush(bool ok) =>
         ok ? Brushes.ForestGreen : Brushes.OrangeRed;
 
@@ -749,7 +1023,12 @@ public partial class MainWindow : Window
             return "유지보수 모드에서는 시작할 수 없습니다.";
         }
 
-        if (!InterlockOk)
+        if (IsBenchMode)
+        {
+            return "데모 모드: TwinCAT·인터락 없이 가상 TM 이송을 시작합니다.";
+        }
+
+        if (!ProductionInterlockOk)
         {
             return "인터락 조건을 모두 만족해야 시작할 수 있습니다.";
         }
@@ -800,19 +1079,21 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!InterlockOk)
+        if (!CanStartProcess())
         {
             _state = EquipmentState.Alarm;
             string ac = ComputePrimaryAlarmCode() ?? "A004";
-            _db.AppendEventLog(CurrentUserName(), "ALARM", ac, $"{source}: 인터락 불만족 Start 차단");
-            AddLog($"{source}: {ac} 인터락 불만족 Start 차단");
+            _db.AppendEventLog(CurrentUserName(), "ALARM", ac, $"{source}: 시작 조건 불만족");
+            AddLog($"{source}: 시작 불가 (인터락 또는 권한)");
             SyncViewModel();
             return;
         }
 
         _state = EquipmentState.Running;
-        _db.AppendEventLog(CurrentUserName(), "RUNNING", null, $"{source}: 운전 시작");
-        AddLog($"{source}: RUNNING 진입");
+        _lotCompleteHandled = false;
+        _transferSim.StartDemoLoop();
+        _db.AppendEventLog(CurrentUserName(), "RUNNING", null, $"{source}: 운전 시작 (가상 이송 시작)");
+        AddLog($"{source}: RUNNING · EFEM+TM 이중 스케줄 (Aligner×5 · BM×2 · PM병렬)");
         SyncViewModel();
     }
 
@@ -824,9 +1105,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        _state = InterlockOk ? EquipmentState.Ready : EquipmentState.Idle;
+        _transferSim.Stop();
+        _state = CanStartProcess() ? EquipmentState.Ready : EquipmentState.Idle;
         _db.AppendEventLog(CurrentUserName(), _state.ToString().ToUpperInvariant(), null, $"{source}: 정지");
-        AddLog($"{source}: Stop");
+        AddLog($"{source}: Stop · 가상 이송 정지");
         SyncViewModel();
     }
 
@@ -838,7 +1120,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_state == EquipmentState.Alarm && InterlockOk)
+        if (_state == EquipmentState.Alarm && ProductionInterlockOk)
         {
             _state = EquipmentState.Ready;
             _db.AppendEventLog(CurrentUserName(), "READY", null, $"{source}: Alarm Reset 완료");
@@ -876,14 +1158,17 @@ public partial class MainWindow : Window
     {
         try
         {
-            bool live = !_useSimulation && _plc.IsConnected && _lastProcessSampleUtc != DateTime.MinValue;
-            // TwinCAT/장비 전원 OFF 시 읽기 실패 → IsConnected false, Flask에도 미연결로 표시
+            bool live = HasLiveSensorData;
+            string dataSource = live ? "live" : IsBenchMode ? "demo" : "offline";
+            IReadOnlyList<Equipment.Models.ModuleStateSnapshot> moduleSnapshots = BuildModuleSnapshots();
             var payload = new EtchTelemetryPayload
             {
                 EquipmentId = 1,
                 PowerOn = true,
                 Connected = live,
                 SensorsLive = live,
+                DataSource = dataSource,
+                BenchMode = IsBenchMode,
                 LastUpdate = DateTime.UtcNow.ToString("o"),
                 Temperature = _temp,
                 Humidity = _humi,
@@ -892,8 +1177,16 @@ public partial class MainWindow : Window
                 AccessSafe = _accessSafe,
                 EquipmentState = _state.ToString().ToUpperInvariant(),
                 AlarmCode = _state == EquipmentState.Alarm ? ComputePrimaryAlarmCode() : null,
-                InterlockOk = InterlockOk,
-                Username = CurrentUserName()
+                InterlockOk = ProductionInterlockOk,
+                Username = CurrentUserName(),
+                Modules = moduleSnapshots.Select(m => new ModuleTelemetryModule
+                {
+                    Id = m.Id,
+                    State = m.StateText,
+                    DoorClosed = m.DoorClosed,
+                    HasWafer = m.HasWafer,
+                    Detail = m.Detail
+                }).ToList()
             };
 
             bool ok = await _flask.TryPostEtchSensorDataAsync(payload).ConfigureAwait(false);
@@ -943,7 +1236,7 @@ public partial class MainWindow : Window
         _simulationFallbackEnabled = !_simulationFallbackEnabled;
         if (_simulationFallbackEnabled)
         {
-            AddLog("시뮬 허용 ON — EtherCAT 끊기면 데모 센서로 대체합니다.");
+            AddLog("시뮬 허용 ON — TwinCAT 없으면 데모(가상 센서·TM 이송), 연결되면 실데이터 우선.");
             if (_plc.TryReadSnapshot(out PlcProcessSnapshot snap))
             {
                 _useSimulation = false;
@@ -958,14 +1251,16 @@ public partial class MainWindow : Window
             {
                 _useSimulation = true;
                 SeedSimulationValues();
+                SimulateSensors();
                 ClearSparklineHistory();
-                AddLog("EtherCAT 미연결 — 시뮬 모드(화면 센서 미표시).");
+                AddLog("EtherCAT 미연결 — 데모 모드(인터락 생략, Start로 가상 이송 확인).");
             }
         }
         else
         {
             AddLog("시뮬 허용 OFF — EtherCAT 실데이터만 사용합니다.");
             _useSimulation = false;
+            ClearOperationalSampleCache();
             if (_plc.TryConnect(AppSettings.AdsPort) && _plc.TryReadSnapshot(out PlcProcessSnapshot snap))
             {
                 ApplyPlcSnapshot(snap);
@@ -973,13 +1268,19 @@ public partial class MainWindow : Window
             else
             {
                 _loggedPlcRequiredOffline = true;
-                AddLog("EtherCAT 데이터 없음.");
+                AddLog("EtherCAT 데이터 없음 — 센서·인터락 미측정 상태입니다.");
             }
         }
 
         AutoEvaluateState();
         PushOutputsToPlc();
         SyncViewModel();
+    }
+
+    private void BtnEventLog_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new EventLogWindow(_db) { Owner = this };
+        dialog.ShowDialog();
     }
 
     private void BtnUserManage_Click(object sender, RoutedEventArgs e)
@@ -994,6 +1295,52 @@ public partial class MainWindow : Window
             Owner = this
         };
         dialog.ShowDialog();
+    }
+
+    private async Task PollFlaskAiLatestAsync()
+    {
+        try
+        {
+            EtchAiDiagnosis? diag = await _flask.TryGetAiLatestAsync().ConfigureAwait(false);
+            await Dispatcher.BeginInvoke(() =>
+            {
+                ApplyAiDiagnosis(diag);
+            });
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private void ApplyAiDiagnosis(EtchAiDiagnosis? diag)
+    {
+        if (diag is null || !diag.Success)
+        {
+            _vm.AiScoreText = "—";
+            _vm.AiHintText = _flaskReachable
+                ? "AI 진단 대기 (sensor-data 수신 후 갱신)"
+                : "Flask 미연결 — AI 조언 없음";
+            _vm.AiScoreBrush = Brushes.DimGray;
+            return;
+        }
+
+        _lastAiScore = diag.AnomalyScore;
+        _lastAiHint = diag.SuggestedAction ?? diag.Note ?? "—";
+        _vm.AiScoreText = $"이상 점수: {diag.AnomalyScore:F2}" + (diag.Stub ? " (규칙 스텁)" : "");
+        _vm.AiHintText = _lastAiHint;
+        _vm.AiScoreBrush = diag.AnomalyScore switch
+        {
+            >= 0.75 => Brushes.OrangeRed,
+            >= 0.45 => Brushes.Goldenrod,
+            _ => Brushes.ForestGreen
+        };
+
+        if (diag.AnomalyScore >= 0.75 && DateTime.UtcNow >= _nextAiHighScoreLogUtc)
+        {
+            _nextAiHighScoreLogUtc = DateTime.UtcNow.AddSeconds(30);
+            AddLog($"[AI] 점수 {diag.AnomalyScore:F2} — {_lastAiHint}");
+        }
     }
 
     private void BtnLogout_Click(object sender, RoutedEventArgs e)

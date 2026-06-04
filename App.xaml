@@ -5,7 +5,12 @@
              xmlns:conv="clr-namespace:etch_ui.Converters"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
-        <conv:BoolToLampBrushConverter x:Key="LampBrush"/>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/HmiTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToLampBrushConverter x:Key="LampBrush"/>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
