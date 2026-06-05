@@ -118,7 +118,7 @@
 | ID | 작업 | 상태 |
 |----|------|:----:|
 | 1.1 | EtherCAT·시뮬 허용 정책·로그 통일 | 🔜 |
-| 1.2 | **접촉 열림** 시 RUNNING → ALARM + `TmTransferSimulator.Stop()` | ✅ |
+| 1.2 | **접촉 열림** 시 RUNNING → ALARM + `PauseTransfer()` (상태 유지) | ✅ |
 | 1.3 | 버튼·램프·UI HW 매트릭스 체크리스트 (`PROTO_실행순서.md`) | ✅ 문서 |
 | 1.4 | DO 램프 ↔ 화면 일치 현장 검증 | 🔜 현장 |
 

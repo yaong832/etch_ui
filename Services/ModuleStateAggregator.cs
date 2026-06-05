@@ -49,10 +49,34 @@ public static class ModuleStateAggregator
         list.Add(BuildAligner(ctx, globalMaint, transferActive));
         list.Add(BuildSideStorage(ctx, globalMaint, transferActive));
 
+        if (globalWarning)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                list[i] = ElevateForGlobalWarning(list[i]);
+            }
+        }
+
         return list;
     }
 
-    /// <summary>전역 ALARM이어도 해당 모듈만 ALM 뱃지 — 압력·진동 등은 헤더 알람만.</summary>
+    /// <summary>전역 WARNING 시 알람·가동 중이 아닌 모듈을 경고(황색)로 통일.</summary>
+    private static ModuleStateSnapshot ElevateForGlobalWarning(ModuleStateSnapshot snap) =>
+        snap.State is ModuleOperationalState.Alarm
+            or ModuleOperationalState.Maintenance
+            or ModuleOperationalState.Processing
+            or ModuleOperationalState.Running
+            ? snap
+            : new ModuleStateSnapshot
+            {
+                ModuleId = snap.ModuleId,
+                State = ModuleOperationalState.Warning,
+                DoorClosed = snap.DoorClosed,
+                HasWafer = snap.HasWafer,
+                Detail = snap.Detail ?? "환경·공정 경고"
+            };
+
+    /// <summary>전역 ALARM — 원인 모듈만 ALM 뱃지 (A002 BM·TM, A003 TM, A004 BM, A005/A006 EFEM 등).</summary>
     private static bool ModuleShowsAlarm(Context ctx, EquipmentModuleId moduleId)
     {
         if (!ctx.EquipmentState.Equals("ALARM", StringComparison.OrdinalIgnoreCase)
@@ -64,7 +88,10 @@ public static class ModuleStateAggregator
         return ctx.AlarmCode switch
         {
             "A001" => moduleId is EquipmentModuleId.BufferModule or EquipmentModuleId.Efem,
+            "A002" => moduleId is EquipmentModuleId.BufferModule or EquipmentModuleId.TransferModule,
+            "A003" => moduleId is EquipmentModuleId.TransferModule,
             "A004" => moduleId is EquipmentModuleId.BufferModule,
+            "A005" or "A006" => moduleId is EquipmentModuleId.Efem,
             _ => false
         };
     }
@@ -148,6 +175,14 @@ public static class ModuleStateAggregator
             bool demoDoorClosed = ctx.Transfer is null || ctx.Transfer.IsVirtualDoorClosed(EquipmentRegion.LoadLock);
             int demoBmCount = ctx.Transfer?.ClusterState.LoadLockBuffer.Count ?? 0;
             int demoBmCap = ctx.Transfer?.ClusterState.Capacity.LoadLockSlotCount ?? 2;
+            if (ModuleShowsAlarm(ctx, EquipmentModuleId.BufferModule))
+            {
+                return Snap(EquipmentModuleId.BufferModule, ModuleOperationalState.Alarm,
+                    doorClosed: demoDoorClosed,
+                    hasWafer: demoBmCount > 0,
+                    detail: ctx.AlarmCode);
+            }
+
             return Snap(EquipmentModuleId.BufferModule, ModuleOperationalState.Standby,
                 doorClosed: demoDoorClosed,
                 hasWafer: demoBmCount > 0,
@@ -199,16 +234,16 @@ public static class ModuleStateAggregator
             return Snap(EquipmentModuleId.EfemRobot, ModuleOperationalState.Maintenance, detail: "유지보수");
         }
 
+        if (ModuleShowsAlarm(ctx, EquipmentModuleId.EfemRobot))
+        {
+            return Snap(EquipmentModuleId.EfemRobot, ModuleOperationalState.Alarm, detail: ctx.AlarmCode);
+        }
+
         if (ctx.Transfer is { IsEfemBusy: true } transfer)
         {
             return Snap(EquipmentModuleId.EfemRobot, ModuleOperationalState.Running,
                 hasWafer: transfer.EfemCarryingWafer,
                 detail: $"대기압 TM · {transfer.EfemRegion}");
-        }
-
-        if (ModuleShowsAlarm(ctx, EquipmentModuleId.EfemRobot))
-        {
-            return Snap(EquipmentModuleId.EfemRobot, ModuleOperationalState.Alarm, detail: ctx.AlarmCode);
         }
 
         return Snap(EquipmentModuleId.EfemRobot, ModuleOperationalState.Standby, detail: "EFEM TM 대기");
@@ -225,16 +260,18 @@ public static class ModuleStateAggregator
             return Snap(EquipmentModuleId.TransferModule, ModuleOperationalState.Maintenance);
         }
 
+        if (ModuleShowsAlarm(ctx, EquipmentModuleId.TransferModule))
+        {
+            return Snap(EquipmentModuleId.TransferModule, ModuleOperationalState.Alarm,
+                hasWafer: ctx.Transfer?.CarryingWafer,
+                detail: ctx.AlarmCode);
+        }
+
         if (ctx.Transfer is { IsVacuumBusy: true } transfer)
         {
             return Snap(EquipmentModuleId.TransferModule, ModuleOperationalState.Running,
                 hasWafer: transfer.CarryingWafer,
                 detail: $"진공 TM · {transfer.TmRegion}");
-        }
-
-        if (ModuleShowsAlarm(ctx, EquipmentModuleId.TransferModule))
-        {
-            return Snap(EquipmentModuleId.TransferModule, ModuleOperationalState.Alarm, detail: ctx.AlarmCode);
         }
 
         if (globalRunning)
@@ -279,11 +316,6 @@ public static class ModuleStateAggregator
         {
             st = ModuleOperationalState.Alarm;
             detail = ctx.AlarmCode;
-        }
-        else if (globalWarning && region == EquipmentRegion.ChamberA)
-        {
-            st = ModuleOperationalState.Warning;
-            detail = null;
         }
         else if (doorPhase)
         {

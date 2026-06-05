@@ -103,6 +103,36 @@ namespace etch_ui
                 return;
             }
 
+            if (e.Args.Any(a => a.Equals("--sim-alarm", StringComparison.OrdinalIgnoreCase)))
+            {
+                int warmup = 500;
+                string? ticksArg = e.Args.FirstOrDefault(a => a.StartsWith("--ticks=", StringComparison.OrdinalIgnoreCase));
+                if (ticksArg is not null && int.TryParse(ticksArg.Split('=')[1], out int parsed) && parsed > 0)
+                {
+                    warmup = parsed;
+                }
+
+                SimulatorSmokeTester.Result result = SimulatorSmokeTester.RunAlarmAudit(warmup);
+                Console.WriteLine($"sim_alarm success={result.Success} {result.Message}");
+                Shutdown(result.Success ? 0 : 9);
+                return;
+            }
+
+            if (e.Args.Any(a => a.Equals("--sim-maintenance", StringComparison.OrdinalIgnoreCase)))
+            {
+                int warmup = 800;
+                string? ticksArg = e.Args.FirstOrDefault(a => a.StartsWith("--ticks=", StringComparison.OrdinalIgnoreCase));
+                if (ticksArg is not null && int.TryParse(ticksArg.Split('=')[1], out int parsed) && parsed > 0)
+                {
+                    warmup = parsed;
+                }
+
+                SimulatorSmokeTester.Result result = SimulatorSmokeTester.RunMaintenanceAudit(warmup);
+                Console.WriteLine($"sim_maintenance success={result.Success} {result.Message}");
+                Shutdown(result.Success ? 0 : 8);
+                return;
+            }
+
             if (e.Args.Any(a => a.Equals("--sim-policy-batch", StringComparison.OrdinalIgnoreCase)))
             {
                 int runs = 20;

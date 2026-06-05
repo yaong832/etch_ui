@@ -11,8 +11,10 @@ public sealed class EquipmentMotionAnimator : IDisposable
     /// <summary>좌·우 TM UI 보간 — 시뮬이 단계 내 각도·신장을 보간하므로 동일 계수 사용.</summary>
     private const double BladeAngleLerp = 0.18;
     private const double BladeExtendLerp = 0.18;
+    private const double VacuumRotateAngleLerp = 0.42;
 
     private readonly EquipmentMotionViewModel _motion;
+    private readonly Action? _onFrame;
     private readonly DispatcherTimer _timer;
     private double _vacuumCurrentAngle;
     private double _vacuumCurrentExtension;
@@ -21,9 +23,10 @@ public sealed class EquipmentMotionAnimator : IDisposable
     private int _blinkTick;
     private readonly int[] _chamberBlinkPhase = new int[3];
 
-    public EquipmentMotionAnimator(EquipmentMotionViewModel motion)
+    public EquipmentMotionAnimator(EquipmentMotionViewModel motion, Action? onFrame = null)
     {
         _motion = motion;
+        _onFrame = onFrame;
         _vacuumCurrentAngle = motion.VacuumBladeAngleDegrees;
         _vacuumCurrentExtension = motion.VacuumBladeExtension;
         _efemCurrentAngle = motion.EfemBladeAngleDegrees;
@@ -45,8 +48,10 @@ public sealed class EquipmentMotionAnimator : IDisposable
 
     private void OnTick(object? sender, EventArgs e)
     {
+        _onFrame?.Invoke();
         _blinkTick++;
-        _vacuumCurrentAngle = LerpAngle(_vacuumCurrentAngle, _motion.VacuumTargetAngleDegrees, BladeAngleLerp);
+        double vacAngleLerp = _motion.VacuumIsRotatingBlade ? VacuumRotateAngleLerp : BladeAngleLerp;
+        _vacuumCurrentAngle = LerpAngle(_vacuumCurrentAngle, _motion.VacuumTargetAngleDegrees, vacAngleLerp);
         _vacuumCurrentExtension = Lerp(_vacuumCurrentExtension, _motion.VacuumTargetExtension, BladeExtendLerp);
 
         _efemCurrentAngle = LerpAngle(_efemCurrentAngle, _motion.EfemTargetAngleDegrees, BladeAngleLerp);

@@ -36,18 +36,13 @@ public sealed class EquipmentMotionBridge
         {
             _motion.ApplyModuleSnapshots(moduleSnapshots);
         }
+
         _hwPollTick++;
 
         bool running = equipmentState.Equals("RUNNING", StringComparison.OrdinalIgnoreCase);
         bool warning = equipmentState.Equals("WARNING", StringComparison.OrdinalIgnoreCase);
         bool ready = equipmentState.Equals("READY", StringComparison.OrdinalIgnoreCase);
 
-        if (transfer is null)
-        {
-            UpdateChamberLamps(running, warning, ready, lampRun);
-        }
-
-        // Load Lock = 실제 접촉 센서 (미측정 시 닫힘 표시만 기본)
         if (!loadLockContactValid)
         {
             _motion.LoadLockDoorClosed = true;
@@ -59,68 +54,11 @@ public sealed class EquipmentMotionBridge
 
         if (transfer is not null)
         {
-            _motion.ApplyWaferInventory(transfer.ClusterState);
-            _motion.VacuumBladeCapacity = transfer.VacuumBladeCapacity;
-            _motion.EfemBladeCapacity = transfer.EfemBladeCapacity;
-            bool vacActive = transfer.IsVacuumBusy || transfer.CarryingWafer;
-            bool efemActive = transfer.IsEfemBusy || transfer.EfemCarryingWafer;
-            _motion.SetDualRobotTargets(
-                efemActive ? transfer.EfemRegion : null,
-                transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
-                transfer.EfemCarryingWafer,
-                vacActive ? transfer.TmRegion : null,
-                vacActive ? transfer.BladeExtension : 0.65,
-                transfer.CarryingWafer,
-                hardwareMode: false,
-                transfer.EfemActiveBladeSlot,
-                transfer.VacuumActiveBladeSlot);
-            if (efemActive)
-            {
-                _motion.ApplyEfemMotion(
-                    transfer.IsEfemBusy ? transfer.EfemRegion : EquipmentRegion.EfemRobot,
-                    transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
-                    transfer.EfemCarryingWafer,
-                    transfer.EfemFacingAngleDegrees,
-                    transfer.EfemActiveBladeSlot);
-            }
-
-            _motion.ApplyVacuumMotion(
-                vacActive ? transfer.TmRegion : EquipmentRegion.TM,
-                vacActive ? transfer.BladeExtension : 0.65,
-                transfer.CarryingWafer,
-                transfer.VacuumFacingAngleDegrees,
-                transfer.VacuumActiveBladeSlot,
-                transfer.VacuumIsRotatingBlade);
-            _motion.VacuumBladeSlotA = transfer.VacuumCarryingSlotA;
-            _motion.VacuumBladeSlotB = transfer.VacuumCarryingSlotB;
-            _motion.EfemBladeSlotA = transfer.EfemCarryingSlotA;
-            _motion.EfemBladeSlotB = transfer.EfemCarryingSlotB;
-            _motion.EfemActiveBladeSlot = transfer.EfemActiveBladeSlot;
-            _motion.IsEfemRobotActive = efemActive;
-            _motion.IsVacuumTmActive = vacActive;
-            _motion.TmRegionLabel = FormatDualRobotLabel(transfer);
-
-            _motion.FoupAHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupA);
-            _motion.FoupBHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupB);
-            _motion.FoupCHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupC);
-            _motion.AlignerHasWafer = transfer.HasWaferAt(EquipmentRegion.Aligner);
-            _motion.LoadLockHasWafer = transfer.HasWaferAt(EquipmentRegion.LoadLock);
-            _motion.SideStorageHasWafer = transfer.HasWaferAt(EquipmentRegion.SideStorage);
-            _motion.ExternalProcessHasWafer = transfer.HasWaferAt(EquipmentRegion.SideStorage);
-            _motion.ChamberADoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberA);
-            _motion.ChamberBDoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberB);
-            _motion.ChamberCDoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberC);
-            _motion.ChamberDDoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberD);
-
-            _motion.ChamberAHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberA);
-            _motion.ChamberBHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberB);
-            _motion.ChamberCHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberC);
-            _motion.ChamberDHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberD);
-            _motion.ServoHint = transfer.PhaseHint;
-            UpdateChamberLampsFromTransfer(transfer, running);
+            SyncTransferMotion(transfer, equipmentState);
             return;
         }
 
+        UpdateChamberLamps(running, warning, ready, lampRun);
         _motion.ResetWaferInventory();
 
         _motion.VacuumBladeCapacity = EquipmentCapacityConfig.Default.VacuumBladeSlotCount;
@@ -163,6 +101,77 @@ public sealed class EquipmentMotionBridge
         }
     }
 
+    /// <summary>가상 이송 도식·웨이퍼·TM 목표 (1Hz Sync + 16ms 모션 프레임 공용).</summary>
+    public void SyncTransferMotion(TmTransferSimulator transfer, string equipmentState)
+    {
+        bool running = equipmentState.Equals("RUNNING", StringComparison.OrdinalIgnoreCase);
+        bool warning = equipmentState.Equals("WARNING", StringComparison.OrdinalIgnoreCase);
+        bool operational = running || warning;
+
+        _motion.ApplyWaferInventory(transfer.ClusterState);
+        _motion.VacuumBladeCapacity = transfer.VacuumBladeCapacity;
+        _motion.EfemBladeCapacity = transfer.EfemBladeCapacity;
+        bool vacActive = transfer.IsVacuumBusy || transfer.CarryingWafer;
+        bool efemActive = transfer.IsEfemBusy || transfer.EfemCarryingWafer;
+        _motion.SetDualRobotTargets(
+            efemActive ? transfer.EfemRegion : null,
+            transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
+            transfer.EfemCarryingWafer,
+            vacActive ? transfer.TmRegion : null,
+            vacActive ? transfer.BladeExtension : 0.65,
+            transfer.CarryingWafer,
+            hardwareMode: false,
+            transfer.EfemActiveBladeSlot,
+            transfer.VacuumActiveBladeSlot);
+        if (efemActive)
+        {
+            _motion.ApplyEfemMotion(
+                transfer.IsEfemBusy ? transfer.EfemRegion : EquipmentRegion.EfemRobot,
+                transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
+                transfer.EfemCarryingWafer,
+                transfer.EfemFacingAngleDegrees,
+                transfer.EfemActiveBladeSlot);
+        }
+
+        _motion.ApplyVacuumMotion(
+            vacActive ? transfer.TmRegion : EquipmentRegion.TM,
+            vacActive ? transfer.BladeExtension : 0.65,
+            transfer.CarryingWafer,
+            transfer.VacuumFacingAngleDegrees,
+            transfer.VacuumActiveBladeSlot,
+            transfer.VacuumIsRotatingBlade);
+        _motion.VacuumBladeSlotA = transfer.VacuumCarryingSlotA;
+        _motion.VacuumBladeSlotB = transfer.VacuumCarryingSlotB;
+        _motion.EfemBladeSlotA = transfer.EfemCarryingSlotA;
+        _motion.EfemBladeSlotB = transfer.EfemCarryingSlotB;
+        _motion.EfemActiveBladeSlot = transfer.EfemActiveBladeSlot;
+        _motion.IsEfemRobotActive = efemActive;
+        _motion.IsVacuumTmActive = vacActive;
+        _motion.TmRegionLabel = FormatDualRobotLabel(transfer);
+
+        _motion.FoupAHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupA);
+        _motion.FoupBHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupB);
+        _motion.FoupCHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupC);
+        _motion.AlignerHasWafer = transfer.HasWaferAt(EquipmentRegion.Aligner);
+        _motion.LoadLockHasWafer = transfer.HasWaferAt(EquipmentRegion.LoadLock);
+        _motion.SideStorageHasWafer = transfer.HasWaferAt(EquipmentRegion.SideStorage);
+        _motion.ExternalProcessHasWafer = transfer.HasWaferAt(EquipmentRegion.SideStorage);
+        _motion.ChamberADoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberA);
+        _motion.ChamberBDoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberB);
+        _motion.ChamberCDoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberC);
+        _motion.ChamberDDoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberD);
+
+        _motion.ChamberAHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberA);
+        _motion.ChamberBHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberB);
+        _motion.ChamberCHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberC);
+        _motion.ChamberDHasWafer = transfer.HasWaferAt(EquipmentRegion.ChamberD);
+        bool alarm = equipmentState.Equals("ALARM", StringComparison.OrdinalIgnoreCase);
+        _motion.ServoHint = alarm
+            ? $"알람 · 이송 정지 · {transfer.PhaseHint}"
+            : transfer.PhaseHint;
+        UpdateChamberLampsFromTransfer(transfer, operational && !alarm);
+    }
+
     private void ParkVirtualTmHome(bool loadLockContactValid)
     {
         _motion.SetDualRobotTargets(null, 0.65, false, null, 0.65, false, hardwareMode: false);
@@ -187,9 +196,9 @@ public sealed class EquipmentMotionBridge
         {
             bool on = (_hwPollTick / 10) % 2 == 0;
             _motion.SetChamberLamp(0, on ? ChamberLampVisual.CompletedBlinkOn : ChamberLampVisual.CompletedBlinkOff);
-            _motion.SetChamberLamp(1, ChamberLampVisual.Processing);
-            _motion.SetChamberLamp(2, ChamberLampVisual.Off);
-            _motion.SetChamberLamp(3, ChamberLampVisual.Off);
+            _motion.SetChamberLamp(1, on ? ChamberLampVisual.CompletedBlinkOn : ChamberLampVisual.CompletedBlinkOff);
+            _motion.SetChamberLamp(2, on ? ChamberLampVisual.CompletedBlinkOn : ChamberLampVisual.CompletedBlinkOff);
+            _motion.SetChamberLamp(3, on ? ChamberLampVisual.CompletedBlinkOn : ChamberLampVisual.CompletedBlinkOff);
             return;
         }
 
@@ -208,15 +217,15 @@ public sealed class EquipmentMotionBridge
         _motion.SetChamberLamp(3, ChamberLampVisual.Off);
     }
 
-    private void UpdateChamberLampsFromTransfer(TmTransferSimulator transfer, bool globalRunning)
+    private void UpdateChamberLampsFromTransfer(TmTransferSimulator transfer, bool globalOperational)
     {
         ClusterEquipmentState state = transfer.ClusterState;
-        bool etchLineEngaged = EtchPmSelector.IsEtchLineEngaged(state, globalRunning);
+        bool etchLineEngaged = EtchPmSelector.IsEtchLineEngaged(state, globalOperational);
 
-        SetChamberLampFromState(0, EquipmentRegion.ChamberA, state, isEtchPm: false, etchLineEngaged, globalRunning);
-        SetChamberLampFromState(1, EquipmentRegion.ChamberB, state, isEtchPm: true, etchLineEngaged, globalRunning);
-        SetChamberLampFromState(2, EquipmentRegion.ChamberC, state, isEtchPm: true, etchLineEngaged, globalRunning);
-        SetChamberLampFromState(3, EquipmentRegion.ChamberD, state, isEtchPm: true, etchLineEngaged, globalRunning);
+        SetChamberLampFromState(0, EquipmentRegion.ChamberA, state, isEtchPm: false, etchLineEngaged, globalOperational);
+        SetChamberLampFromState(1, EquipmentRegion.ChamberB, state, isEtchPm: true, etchLineEngaged, globalOperational);
+        SetChamberLampFromState(2, EquipmentRegion.ChamberC, state, isEtchPm: true, etchLineEngaged, globalOperational);
+        SetChamberLampFromState(3, EquipmentRegion.ChamberD, state, isEtchPm: true, etchLineEngaged, globalOperational);
     }
 
     private void SetChamberLampFromState(
@@ -225,7 +234,7 @@ public sealed class EquipmentMotionBridge
         ClusterEquipmentState state,
         bool isEtchPm,
         bool etchLineEngaged,
-        bool globalRunning)
+        bool globalOperational)
     {
         PmChamberState? chamber = state.GetChamber(region);
         if (chamber?.CurrentWafer is not null && chamber.RemainingProcessTicks > 0)
@@ -240,13 +249,13 @@ public sealed class EquipmentMotionBridge
             return;
         }
 
-        if (isEtchPm && etchLineEngaged && EtchPmSelector.IsNextPipelineReadySlot(region, state, globalRunning))
+        if (isEtchPm && etchLineEngaged && EtchPmSelector.IsNextPipelineReadySlot(region, state, globalOperational))
         {
             _motion.SetChamberLamp(chamberIndex, ChamberLampVisual.Ready);
             return;
         }
 
-        if (!isEtchPm && globalRunning && chamber?.CurrentWafer is null)
+        if (!isEtchPm && globalOperational && chamber?.CurrentWafer is null)
         {
             _motion.SetChamberLamp(chamberIndex, ChamberLampVisual.Off);
             return;

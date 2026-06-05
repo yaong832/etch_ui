@@ -556,4 +556,189 @@ public static class SimulatorSmokeTester
             throw new InvalidOperationException("too many concurrent etch wafers");
         }
     }
+
+    /// <summary>Stop 일시정지·재개·정비 API 불변식 검증.</summary>
+    public static Result RunMaintenanceAudit(int warmupTicks = 800)
+    {
+        if (warmupTicks <= 0)
+        {
+            return new Result { Success = false, Message = "warmupTicks must be > 0" };
+        }
+
+        var sim = new TmTransferSimulator();
+        sim.StartDemoLoop();
+        int motion = EquipmentCapacityConfig.Default.VacuumMotionStepsPerUiTick;
+        for (int i = 0; i < warmupTicks; i++)
+        {
+            sim.Tick(motion);
+            ValidateState(sim.ClusterState);
+        }
+
+        string beforePause = sim.DescribeMaintenanceState();
+        int lotBefore = sim.LotCompletedCount;
+        sim.PauseTransfer();
+        if (sim.IsRunning)
+        {
+            return new Result { Success = false, Message = "pause: IsRunning should be false" };
+        }
+
+        if (!sim.CanResume)
+        {
+            return new Result { Success = false, Message = "pause: CanResume should be true mid-lot" };
+        }
+
+        if (sim.DescribeMaintenanceState() != beforePause)
+        {
+            return new Result { Success = false, Message = "pause: line state changed after PauseTransfer" };
+        }
+
+        sim.ResumeTransfer();
+        if (!sim.IsRunning)
+        {
+            return new Result { Success = false, Message = "resume: IsRunning should be true" };
+        }
+
+        for (int i = 0; i < 200; i++)
+        {
+            sim.Tick(motion);
+            ValidateState(sim.ClusterState);
+        }
+
+        sim.PauseTransfer();
+        sim.MaintenanceClearLoadLock();
+        sim.MaintenanceClearAligner();
+        sim.MaintenanceClearChambers();
+        sim.MaintenanceClearSideStorage();
+        sim.MaintenanceRemountAllFoups();
+        int shipped = sim.MaintenanceSideCassetteSwap();
+        sim.MaintenanceAdvanceOneTick(out string tickHint);
+        ValidateState(sim.ClusterState);
+
+        sim.MaintenanceResetVirtualLine();
+        ValidateState(sim.ClusterState);
+        if (sim.CanResume)
+        {
+            return new Result { Success = false, Message = "reset: CanResume should be false after MaintenanceResetVirtualLine" };
+        }
+
+        sim.StartDemoLoop();
+        for (int i = 0; i < 300; i++)
+        {
+            sim.Tick(motion);
+            ValidateState(sim.ClusterState);
+        }
+
+        return new Result
+        {
+            Success = true,
+            Ticks = warmupTicks,
+            Message =
+                $"ok pause/resume lot_before={lotBefore} side_swap={shipped} tick={tickHint}"
+        };
+    }
+
+    /// <summary>알람 일시정지 후 라인·모듈 ALM 배지·웨이퍼 표시 불변식.</summary>
+    public static Result RunAlarmAudit(int warmupTicks = 500)
+    {
+        if (warmupTicks <= 0)
+        {
+            return new Result { Success = false, Message = "warmupTicks must be > 0" };
+        }
+
+        var sim = new TmTransferSimulator();
+        sim.StartDemoLoop();
+        int motion = EquipmentCapacityConfig.Default.VacuumMotionStepsPerUiTick;
+        for (int i = 0; i < warmupTicks; i++)
+        {
+            sim.Tick(motion);
+            ValidateState(sim.ClusterState);
+        }
+
+        string beforePause = sim.DescribeMaintenanceState();
+        sim.PauseTransfer();
+        if (sim.IsRunning)
+        {
+            return new Result { Success = false, Message = "alarm: IsRunning should be false after pause" };
+        }
+
+        if (!sim.HasVisibleLineState())
+        {
+            return new Result { Success = false, Message = "alarm: HasVisibleLineState should be true after mid-lot pause" };
+        }
+
+        if (!sim.CanResume)
+        {
+            return new Result { Success = false, Message = "alarm: CanResume should be true after mid-lot pause" };
+        }
+
+        if (sim.DescribeMaintenanceState() != beforePause)
+        {
+            return new Result { Success = false, Message = "alarm: line state changed after PauseTransfer" };
+        }
+
+        if (!sim.HasWaferAt(EquipmentRegion.FoupA))
+        {
+            return new Result { Success = false, Message = "alarm: FOUP A should still show wafer inventory" };
+        }
+
+        var baseCtx = new ModuleStateAggregator.Context
+        {
+            EquipmentState = "ALARM",
+            HasLiveSensorData = true,
+            InterlockOk = false,
+            BenchMode = true,
+            AccessSafe = true,
+            AccessInputValid = true,
+            Transfer = sim
+        };
+
+        foreach ((string code, EquipmentModuleId alarmModule, EquipmentModuleId quietModule) in new[]
+                 {
+                     ("A002", EquipmentModuleId.BufferModule, EquipmentModuleId.Pm2),
+                     ("A003", EquipmentModuleId.TransferModule, EquipmentModuleId.Pm1),
+                     ("A004", EquipmentModuleId.BufferModule, EquipmentModuleId.Pm3),
+                     ("A005", EquipmentModuleId.Efem, EquipmentModuleId.Pm4),
+                 })
+        {
+            IReadOnlyList<ModuleStateSnapshot> snaps = ModuleStateAggregator.Build(
+                new ModuleStateAggregator.Context
+                {
+                    EquipmentState = baseCtx.EquipmentState,
+                    HasLiveSensorData = baseCtx.HasLiveSensorData,
+                    InterlockOk = baseCtx.InterlockOk,
+                    BenchMode = baseCtx.BenchMode,
+                    AccessSafe = baseCtx.AccessSafe,
+                    AccessInputValid = baseCtx.AccessInputValid,
+                    Transfer = baseCtx.Transfer,
+                    AlarmCode = code
+                });
+
+            ModuleStateSnapshot alarmSnap = snaps.First(s => s.ModuleId == alarmModule);
+            ModuleStateSnapshot quietSnap = snaps.First(s => s.ModuleId == quietModule);
+            if (alarmSnap.State != ModuleOperationalState.Alarm)
+            {
+                return new Result
+                {
+                    Success = false,
+                    Message = $"alarm: {code} expected {alarmModule}=ALM got {alarmSnap.State}"
+                };
+            }
+
+            if (quietSnap.State == ModuleOperationalState.Alarm)
+            {
+                return new Result
+                {
+                    Success = false,
+                    Message = $"alarm: {code} expected {quietModule} without ALM got Alarm"
+                };
+            }
+        }
+
+        return new Result
+        {
+            Success = true,
+            Ticks = warmupTicks,
+            Message = "ok alarm pause line+module badges"
+        };
+    }
 }

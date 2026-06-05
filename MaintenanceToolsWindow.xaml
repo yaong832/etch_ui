@@ -2,35 +2,86 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="유지보수 · 정비 도구"
-        Height="420"
-        Width="440"
+        Height="560"
+        Width="500"
+        MinHeight="480"
         WindowStartupLocation="CenterOwner"
         FontFamily="{StaticResource HmiFont}"
         Background="{StaticResource HmiCanvasBrush}">
-    <Grid Margin="20">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
             <TextBlock Text="정비 도구 (관리자)" FontSize="18" FontWeight="Bold"/>
-            <TextBlock Text="공정 Start는 차단됩니다. 가상 장비·Load Lock 표시만 조정합니다."
-                       Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <TextBlock Text="공정 Start는 차단됩니다. 가상 장비 상태만 조정합니다 (실센서·램프는 유지)."
+                       Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap" Margin="0,6,0,0"/>
         </StackPanel>
-        <Border Grid.Row="1" Style="{StaticResource HmiCard}" Padding="14">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <TextBlock Text="Load Lock (도식)" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                <CheckBox x:Name="ChkVirtualLoadLockClosed" Content="가상 Load Lock 닫힘 표시"
-                          Margin="0,0,0,14" Checked="ChkVirtualLoadLockClosed_Changed"
-                          Unchecked="ChkVirtualLoadLockClosed_Changed"/>
-                <TextBlock Text="가상 이송 (데모·시뮬 허용 시)" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                <Button Content="이송 1틱 진행" Style="{StaticResource HmiPrimaryButton}"
-                        Click="BtnSimTick_Click" Margin="0,0,0,8"/>
-                <TextBlock x:Name="TxtSimHint" Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap"/>
+                <Border Style="{StaticResource HmiCard}" Padding="12" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="현재 가상 라인" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <TextBlock x:Name="TxtLineSummary" TextWrapping="Wrap" FontSize="11" LineHeight="16"
+                                   Foreground="#334155"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource HmiCard}" Padding="12" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Load Lock (도식)" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="ChkVirtualLoadLockClosed" Content="가상 Load Lock 닫힘 표시"
+                                  Checked="ChkVirtualLoadLockClosed_Changed"
+                                  Unchecked="ChkVirtualLoadLockClosed_Changed"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource HmiCard}" Padding="12" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="슬롯 비우기" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,4">
+                            <Button Content="BM 비우기" Style="{StaticResource HmiSecondaryButton}" Margin="3"
+                                    Click="BtnClearBm_Click" ToolTip="Load Lock 버퍼 웨이퍼 제거"/>
+                            <Button Content="Aligner 비우기" Style="{StaticResource HmiSecondaryButton}" Margin="3"
+                                    Click="BtnClearAligner_Click"/>
+                            <Button Content="PM 웨이퍼 제거" Style="{StaticResource HmiSecondaryButton}" Margin="3"
+                                    Click="BtnClearPm_Click" ToolTip="PM1~4 챔버 웨이퍼·예약 해제"/>
+                            <Button Content="Side Stg 비우기" Style="{StaticResource HmiSecondaryButton}" Margin="3"
+                                    Click="BtnClearSide_Click"/>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource HmiCard}" Padding="12" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="FOUP · Side Stg" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Button Content="FOUP 3개 재장착 (25매 충전)" Style="{StaticResource HmiSecondaryButton}"
+                                HorizontalAlignment="Stretch" Margin="0,0,0,6"
+                                Click="BtnRemountFoup_Click"
+                                ToolTip="잔량·InFlight 초기화 후 새 FOUP 장착"/>
+                        <Button Content="Side 카세트 교체 (만석 출하)" Style="{StaticResource HmiSecondaryButton}"
+                                HorizontalAlignment="Stretch" Margin="0,0,0,6"
+                                Click="BtnSideSwap_Click"
+                                ToolTip="Side 25매 만석일 때만 LOT 출하 처리"/>
+                        <Button Content="가상 라인 전체 초기화" Style="{StaticResource HmiPrimaryButton}"
+                                HorizontalAlignment="Stretch"
+                                Click="BtnResetLine_Click"
+                                ToolTip="FOUP·슬롯·PM·LOT — Stop과 동일한 데모 초기 상태"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource HmiCard}" Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="가상 이송 (시뮬 허용 시)" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Button Content="이송 1틱 진행" Style="{StaticResource HmiSecondaryButton}"
+                                HorizontalAlignment="Left" Click="BtnSimTick_Click" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="TxtSimHint" Style="{StaticResource HmiCardSubtitle}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
-        </Border>
+        </ScrollViewer>
+        <TextBlock x:Name="TxtStatus" Grid.Row="2" Margin="0,10,0,8" FontSize="11" Foreground="#64748B"
+                   TextWrapping="Wrap"/>
         <Button Grid.Row="2" Content="닫기" Style="{StaticResource HmiSecondaryButton}"
-                HorizontalAlignment="Right" IsCancel="True" Click="BtnClose_Click"/>
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" IsCancel="True"
+                Click="BtnClose_Click" Margin="0,28,0,0"/>
     </Grid>
 </Window>

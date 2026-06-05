@@ -173,7 +173,8 @@
 - [ ] Flask `run_flask.bat` · WPF 로그인 · **시뮬 허용** ON  
 - [ ] **데모 진행** 또는 **Start** → 가상 TM·FOUP·모듈 표시  
 - [ ] Flask 웹: 실시간 · 모듈 · 레시피 · **AI 진단**  
-- [ ] **Stop** — AI는 조언만 (인터락·Start 자동 변경 없음)  
+- [ ] **Stop** — 가상 이송 **일시정지** (FOUP·슬롯 유지) · **Start** 재개 / LOT 완료 후 Start는 새 LOT  
+- [ ] (관리자) **Maint** → **정비 도구** — 가상 슬롯·FOUP·1틱 이송 (`MaintenanceToolsWindow`)  
 - [ ] (선택) `dotnet run -- --sim-smoke --ticks=5000`  
 
 ### 현장 PC (실장비 · `PROJECT_계획.md` §6)
@@ -216,8 +217,17 @@ WPF UI 없이 스케줄·상태만 검증:
 cd D:\WPFProject\etch_ui
 dotnet run -- --sim-smoke --ticks=5000
 dotnet run -- --sim-policy-batch --runs=10 --ticks=5000
+dotnet run -- --sim-maintenance --ticks=800
+dotnet run -- --sim-dual-blade --ticks=12000
 dotnet run -- --sim-report --ticks=250000
 ```
+
+| Stop / Start | 동작 |
+|--------------|------|
+| **Stop** | `PauseTransfer()` — 로봇 큐·FOUP·BM 상태 **유지** |
+| **Start** (일시정지 직후) | `ResumeTransfer()` — 이어서 운전 |
+| **Start** (LOT 완료·초기) | `StartDemoLoop()` — 데모 초기화 후 **새 LOT** |
+| 정비 **전체 초기화** | `MaintenanceResetVirtualLine()` / `ResetDemoLine()` |
 
 
 

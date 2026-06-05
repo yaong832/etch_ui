@@ -105,7 +105,7 @@ public partial class MainWindow : Window, DemoScenarioHost
     {
         _db = databaseService;
         _motionBridge = new EquipmentMotionBridge(_vm.Equipment);
-        _motionAnimator = new EquipmentMotionAnimator(_vm.Equipment);
+        _motionAnimator = new EquipmentMotionAnimator(_vm.Equipment, SyncTransferMotionFrame);
         string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
         _telemetryStore = new HmiTelemetryStore(Path.Combine(dataDir, "etch_hmi.db"));
         _aiDataRecorder = new AiTrainingDataRecorder(Path.Combine(dataDir, "ai_training_snapshots.jsonl"));
@@ -277,7 +277,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         AutoEvaluateState();
         EnforceLoadLockContactDuringTransfer();
 
-        if (_state == EquipmentState.Running)
+        if (_state is EquipmentState.Running or EquipmentState.Warning)
         {
             _transferSim.Tick(etch_ui.Services.Scheduling.EquipmentCapacityConfig.Default.VacuumMotionStepsPerUiTick);
             if (_transferSim.LotCompleteAchieved)
@@ -285,30 +285,56 @@ public partial class MainWindow : Window, DemoScenarioHost
                 HandleLotComplete();
             }
         }
-        else if (_transferSim.IsActive)
+        else if (_transferSim.IsRunning)
         {
-            _transferSim.Stop();
+            _transferSim.PauseTransfer();
         }
 
         PushOutputsToPlc();
         PushSparkHistory();
         SyncViewModel();
 
+        int flaskEvery = _uiTimer.Interval.TotalMilliseconds <= 250 ? 10 : 2;
+        int aiEvery = _uiTimer.Interval.TotalMilliseconds <= 250 ? 15 : 3;
+
         _flaskCounter++;
-        if (_flaskCounter >= 2)
+        if (_flaskCounter >= flaskEvery)
         {
             _flaskCounter = 0;
             _ = PublishFlaskAsync();
         }
 
         _aiPollCounter++;
-        if (_aiPollCounter >= 3)
+        if (_aiPollCounter >= aiEvery)
         {
             _aiPollCounter = 0;
             _ = PollFlaskAiLatestAsync();
         }
 
+        UpdateUiTimerInterval();
         LogStateTransitionIfNeeded();
+    }
+
+    private void UpdateUiTimerInterval()
+    {
+        bool fastTransfer = !_maintenanceMode
+                            && _state is EquipmentState.Running or EquipmentState.Warning
+                            && _transferSim.IsRunning;
+        TimeSpan want = fastTransfer ? TimeSpan.FromMilliseconds(200) : TimeSpan.FromSeconds(1);
+        if (_uiTimer.Interval != want)
+        {
+            _uiTimer.Interval = want;
+        }
+    }
+
+    private void SyncTransferMotionFrame()
+    {
+        if (!ShouldShowVirtualTransfer || !_transferSim.IsRunning)
+        {
+            return;
+        }
+
+        _motionBridge.SyncTransferMotion(_transferSim, _vm.StateText);
     }
 
     private void HandleLotComplete()
@@ -559,18 +585,20 @@ public partial class MainWindow : Window, DemoScenarioHost
             return;
         }
 
-        bool wasTransferring = _transferSim.IsActive || _state == EquipmentState.Running;
+        bool wasTransferring = _transferSim.IsRunning
+                               || _transferSim.IsActive
+                               || _state is EquipmentState.Running or EquipmentState.Warning;
         if (!wasTransferring)
         {
             return;
         }
 
-        if (_transferSim.IsActive)
+        if (_transferSim.IsRunning)
         {
-            _transferSim.Stop();
+            _transferSim.PauseTransfer();
         }
 
-        if (_state == EquipmentState.Running)
+        if (_state is EquipmentState.Running or EquipmentState.Warning)
         {
             _state = EquipmentState.Alarm;
         }
@@ -600,7 +628,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
             if (_state is EquipmentState.Running or EquipmentState.Warning)
             {
-                if (_demoWarningTicksLeft > 0 && _transferSim.IsActive)
+                if (_demoWarningTicksLeft > 0)
                 {
                     _state = EquipmentState.Warning;
                 }
@@ -656,6 +684,14 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private bool TransferMotionActive =>
         _state is EquipmentState.Running or EquipmentState.Warning;
+
+    /// <summary>일시정지·알람·LOT 진행 중에도 도식·웨이퍼 잔량 유지.</summary>
+    private bool ShouldShowVirtualTransfer =>
+        !_maintenanceMode
+        && (TransferMotionActive
+            || _transferSim.CanResume
+            || _transferSim.LotCompletedCount > 0
+            || (_state == EquipmentState.Alarm && _transferSim.HasVisibleLineState()));
 
     private void PushOutputsToPlc()
     {
@@ -1025,7 +1061,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             _vm.LampRunOn,
             _vm.LampWarnOn,
             _vm.LampAlarmOn,
-            TransferMotionActive ? _transferSim : null,
+            ShouldShowVirtualTransfer ? _transferSim : null,
             moduleSnapshots);
 
         _vm.SetModuleSnapshots(moduleSnapshots);
@@ -1067,7 +1103,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             AccessSafe = EffectiveAccessSafe,
             AccessInputValid = _accessInputValid,
             AlarmCode = _state == EquipmentState.Alarm ? ComputePrimaryAlarmCode() : null,
-            Transfer = TransferMotionActive ? _transferSim : null
+            Transfer = ShouldShowVirtualTransfer ? _transferSim : null
         });
 
     private void PushSparkHistory()
@@ -1217,7 +1253,9 @@ public partial class MainWindow : Window, DemoScenarioHost
             {
                 _maintVirtualLoadLockClosed = closed;
                 SyncViewModel();
-            })
+            },
+            onLog: AddLog,
+            onStateChanged: SyncViewModel)
         {
             Owner = this
         };
@@ -1256,15 +1294,25 @@ public partial class MainWindow : Window, DemoScenarioHost
             return;
         }
 
+        ProcessRecipeRuntime.ReloadFromAppSettings();
+        ProcessRecipeDefinition recipe = ProcessRecipeRuntime.Active;
         _state = EquipmentState.Running;
         _lotCompleteHandled = false;
-        ProcessRecipeRuntime.ReloadFromAppSettings();
-        EquipmentCapacityConfig capacity = AppSettings.CreateCapacityConfig();
-        _transferSim.StartDemoLoop(capacity);
-        ProcessRecipeDefinition recipe = ProcessRecipeRuntime.Active;
-        AppendEvent( "RUNNING", null,
-            $"{source}: 운전 시작 · {recipe.SummaryText}");
-        AddLog($"{source}: RUNNING · {recipe.Name} · {recipe.SummaryText}");
+
+        if (_transferSim.CanResume)
+        {
+            _transferSim.ResumeTransfer();
+            AppendEvent( "RUNNING", null, $"{source}: 운전 재개 · {recipe.SummaryText}");
+            AddLog($"{source}: RUNNING · 재개 · {recipe.Name}");
+        }
+        else
+        {
+            EquipmentCapacityConfig capacity = AppSettings.CreateCapacityConfig();
+            _transferSim.StartDemoLoop(capacity);
+            AppendEvent( "RUNNING", null, $"{source}: 운전 시작 · {recipe.SummaryText}");
+            AddLog($"{source}: RUNNING · 새 LOT · {recipe.Name} · {recipe.SummaryText}");
+        }
+
         SyncViewModel();
     }
 
@@ -1276,11 +1324,11 @@ public partial class MainWindow : Window, DemoScenarioHost
             return;
         }
 
-        _transferSim.Stop();
+        _transferSim.PauseTransfer();
         _demoWarningTicksLeft = 0;
         _state = CanStartProcess() ? EquipmentState.Ready : EquipmentState.Idle;
-        AppendEvent( _state.ToString().ToUpperInvariant(), null, $"{source}: 정지");
-        AddLog($"{source}: Stop · 가상 이송 정지");
+        AppendEvent( _state.ToString().ToUpperInvariant(), null, $"{source}: 일시정지");
+        AddLog($"{source}: Stop · 가상 이송 일시정지 (상태 유지 · Start로 재개)");
         SyncViewModel();
     }
 
@@ -1338,11 +1386,11 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private void EnterMaintenanceMode(string source)
     {
-        bool stoppedTransfer = _transferSim.IsActive || _state == EquipmentState.Running;
+        bool stoppedTransfer = _transferSim.IsRunning || _transferSim.IsActive || _state == EquipmentState.Running;
         if (stoppedTransfer)
         {
-            _transferSim.Stop();
-            AddLog($"{source}: 가상 이송 정지");
+            _transferSim.PauseTransfer();
+            AddLog($"{source}: 가상 이송 일시정지");
         }
 
         _maintenanceMode = true;

@@ -8,7 +8,7 @@ namespace etch_ui.Services.Simulation;
 /// 이중 TM 시뮬 — EFEM(좌) / 진공 TM(우) 스케줄러 분리, Load Lock(2) 경계.
 /// 진공 TM 듀얼 블레이드(2슬롯): Etch 연속 픽업 후 PM1 Strip 순차 드롭.
 /// </summary>
-public sealed class TmTransferSimulator
+public sealed partial class TmTransferSimulator
 {
     public enum SimPhase
     {
@@ -70,6 +70,7 @@ public sealed class TmTransferSimulator
     private readonly int _efemBladeCapacity;
     private readonly DualBladePipelineMetrics _dualBladeMetrics = new();
     private bool _running;
+    private bool _pausedWithState;
 
     public TmTransferSimulator(EquipmentCapacityConfig? capacity = null, int? vacuumBladeCapacity = null, int efemBladeCapacity = 1)
     {
@@ -81,6 +82,46 @@ public sealed class TmTransferSimulator
         _vacuum = new RobotRun(TransferRobotKind.VacuumTm, _vacuumBladeCapacity);
     }
 
+    public bool IsRunning => _running;
+    public bool CanResume => _pausedWithState && !LotCompleteAchieved && !_state.Lot.IsTargetMet;
+
+    /// <summary>알람·일시정지 후에도 도식에 웨이퍼·잔량을 유지할지 판단.</summary>
+    public bool HasVisibleLineState()
+    {
+        if (_running || _pausedWithState || LotCompleteAchieved)
+        {
+            return true;
+        }
+
+        ClusterEquipmentState s = _state;
+        if (s.Lot.CompletedCount > 0)
+        {
+            return true;
+        }
+
+        if (s.FoupPorts.Sum(p => p.InFlightCount) > 0)
+        {
+            return true;
+        }
+
+        if (s.LoadLockBuffer.Count > 0 || s.AlignerBuffer.Count > 0 || s.SideStorage.Count > 0)
+        {
+            return true;
+        }
+
+        int foupCap = s.Capacity.FoupSlotCount;
+        if (s.FoupPorts.Any(p => p.RemainingInFoup < foupCap))
+        {
+            return true;
+        }
+
+        if (s.Chambers.Values.Any(ch => ch.CurrentWafer is not null))
+        {
+            return true;
+        }
+
+        return _efem.Carrying || _vacuum.Carrying;
+    }
     public bool IsActive => _running && (_efem.IsBusy || _vacuum.IsBusy || _efem.Carrying || _vacuum.Carrying);
     public SimPhase Phase => _vacuum.Phase;
     public EquipmentRegion TmRegion => _vacuum.Region;
@@ -129,22 +170,59 @@ public sealed class TmTransferSimulator
 
     public void StartDemoLoop(EquipmentCapacityConfig? capacity = null)
     {
-        Stop();
+        _running = false;
+        _pausedWithState = false;
         if (capacity is not null)
         {
             ApplyCapacity(capacity);
         }
 
         LotCompleteAchieved = false;
-        _running = true;
         _kpi.Reset();
         _dualBladeMetrics.Reset();
         MaxEfemBladesOccupied = 0;
         _vacuum.FacingAngleDegrees = -125;
         _vacuum.ActiveBladeSlot = VacuumDualBladePlanner.FrontBladeSlot;
+        ResetRobot(_efem);
+        ResetRobot(_vacuum);
         _state.ResetForDemo();
+        _running = true;
+        PhaseHint = "가상 이송 · 새 LOT";
         TrySchedule(_efem, _efemScheduler);
         TrySchedule(_vacuum, _vacuumScheduler);
+    }
+
+    /// <summary>UI Stop — 가상 라인 상태·로봇 큐 유지 일시정지.</summary>
+    public void PauseTransfer()
+    {
+        _running = false;
+        _pausedWithState = true;
+        PhaseHint = "가상 이송 · 일시정지";
+    }
+
+    public void ResumeTransfer()
+    {
+        if (!CanResume)
+        {
+            return;
+        }
+
+        _running = true;
+        TrySchedule(_efem, _efemScheduler);
+        TrySchedule(_vacuum, _vacuumScheduler);
+        PhaseHint = "가상 이송 · 재개";
+    }
+
+    /// <summary>FOUP·슬롯·LOT·로봇 큐를 데모 초기 상태로 되돌림 (정비·새 LOT용).</summary>
+    public void ResetDemoLine()
+    {
+        _running = false;
+        _pausedWithState = false;
+        LotCompleteAchieved = false;
+        ResetRobot(_efem);
+        ResetRobot(_vacuum);
+        _state.ResetForDemo();
+        PhaseHint = "가상 이송 · 초기화";
     }
 
     /// <summary>듀얼 블레이드 헤드리스 검증 — PM2·PM3 Etch 완료 2매를 즉시 배치 가능 상태로 둠.</summary>
@@ -170,15 +248,8 @@ public sealed class TmTransferSimulator
         chamber.PickupScheduled = false;
     }
 
-    public void Stop()
-    {
-        _running = false;
-        LotCompleteAchieved = false;
-        ResetRobot(_efem);
-        ResetRobot(_vacuum);
-        PhaseHint = "가상 이송 · 정지";
-        _state.ResetForDemo();
-    }
+    /// <summary><see cref="PauseTransfer"/> 별칭 — 상태 초기화 없음.</summary>
+    public void Stop() => PauseTransfer();
 
     public void Tick(int vacuumMotionSteps = 1)
     {
@@ -240,6 +311,7 @@ public sealed class TmTransferSimulator
             LotCompleteAchieved = true;
             PhaseHint = $"LOT COMPLETE · {_state.Lot.CompletedCount}/{_state.Lot.TargetCount} · {_kpi.Snapshot(_state.Lot)}";
             _running = false;
+            _pausedWithState = false;
             return;
         }
 
@@ -736,11 +808,8 @@ public sealed class TmTransferSimulator
 
         double progress = 1.0 - (double)run.TicksLeft / run.PhaseEnterTicks;
 
-        if (run.Robot == TransferRobotKind.VacuumTm)
-        {
-            run.Extension = run.PhaseStartExtension
-                + (run.PhaseTargetExtension - run.PhaseStartExtension) * progress;
-        }
+        run.Extension = run.PhaseStartExtension
+            + (run.PhaseTargetExtension - run.PhaseStartExtension) * progress;
 
         if (run.Phase == SimPhase.RotateBlade && run.Robot == TransferRobotKind.VacuumTm)
         {
