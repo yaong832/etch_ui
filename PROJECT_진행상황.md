@@ -1,7 +1,8 @@
 # etch_ui / etchflask — 진행 상황 정리
 
 > **갱신:** 2026-06-04  
-> **저장소:** WPF [`yaong832/etch_ui`](https://github.com/yaong832/etch_ui) · Flask [`yaong832/farmui`](https://github.com/yaong832/farmui) (`C:\etchflask`)
+> **저장소:** WPF [`yaong832/etch_ui`](https://github.com/yaong832/etch_ui) · Flask **etchflask** [`yaong832/farmui`](https://github.com/yaong832/farmui) → rename 권장 (`C:\etchflask`)  
+> **FarmUI(스마트팜)** 는 별도 — `C:\farmui\farmui` · [etchflask `FARMUI_분리안내.md`](C:/etchflask/FARMUI_분리안내.md)
 
 ---
 
@@ -82,7 +83,7 @@ cd d:\WPFProject\etch_ui
 | `def0ed5` | 레시피 XML·PM 순서·Flask recipe |
 | `2602091` | PROTO modules/recipe API |
 
-### etchflask (farmui)
+### etchflask (GitHub 이름 `farmui` — Etch 전용, FarmUI 코드 제거됨)
 
 | 커밋 | 요약 |
 |------|------|

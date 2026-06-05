@@ -8,10 +8,9 @@ namespace etch_ui.Services;
 /// <summary>TM 블레이드 각도·신장 보간 (WinForms TmVisualizationControl 16ms와 동일).</summary>
 public sealed class EquipmentMotionAnimator : IDisposable
 {
-    /// <summary>좌·우 TM UI 보간 — 이전 EFEM(느림)·진공(빠름)의 중간 속도.</summary>
-    private const double BladeAngleLerp = 0.12;
-    private const double BladeExtendLerp = 0.12;
-    private const double BladeRotateAngleLerp = 0.20;
+    /// <summary>좌·우 TM UI 보간 — 시뮬이 단계 내 각도·신장을 보간하므로 동일 계수 사용.</summary>
+    private const double BladeAngleLerp = 0.18;
+    private const double BladeExtendLerp = 0.18;
 
     private readonly EquipmentMotionViewModel _motion;
     private readonly DispatcherTimer _timer;
@@ -47,8 +46,7 @@ public sealed class EquipmentMotionAnimator : IDisposable
     private void OnTick(object? sender, EventArgs e)
     {
         _blinkTick++;
-        double vacAngleRatio = _motion.VacuumIsRotatingBlade ? BladeRotateAngleLerp : BladeAngleLerp;
-        _vacuumCurrentAngle = LerpAngle(_vacuumCurrentAngle, _motion.VacuumTargetAngleDegrees, vacAngleRatio);
+        _vacuumCurrentAngle = LerpAngle(_vacuumCurrentAngle, _motion.VacuumTargetAngleDegrees, BladeAngleLerp);
         _vacuumCurrentExtension = Lerp(_vacuumCurrentExtension, _motion.VacuumTargetExtension, BladeExtendLerp);
 
         _efemCurrentAngle = LerpAngle(_efemCurrentAngle, _motion.EfemTargetAngleDegrees, BladeAngleLerp);

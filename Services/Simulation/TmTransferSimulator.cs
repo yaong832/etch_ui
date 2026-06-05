@@ -41,6 +41,10 @@ public sealed class TmTransferSimulator
         public double Extension = 0.65;
         public double FacingAngleDegrees;
         public double TargetFacingAngleDegrees;
+        public double RotateStartAngleDegrees;
+        public int PhaseEnterTicks;
+        public double PhaseStartExtension;
+        public double PhaseTargetExtension;
         public int ActiveBladeSlot = VacuumDualBladePlanner.FrontBladeSlot;
         public bool LegIsPickup = true;
 
@@ -451,10 +455,14 @@ public sealed class TmTransferSimulator
             return false;
         }
 
+        run.RotateStartAngleDegrees = run.FacingAngleDegrees;
         run.TargetFacingAngleDegrees = targetAngle;
         run.Phase = SimPhase.RotateBlade;
         run.TicksLeft = _capacity.VacuumRotateTicks;
+        run.PhaseEnterTicks = run.TicksLeft;
         run.Region = face;
+        run.PhaseStartExtension = run.Extension;
+        run.PhaseTargetExtension = 0.65;
         run.Extension = 0.65;
         _dualBladeMetrics.RotateBladeCount++;
         return true;
@@ -486,12 +494,7 @@ public sealed class TmTransferSimulator
 
         if (run.TicksLeft > 0)
         {
-            if (run.Phase == SimPhase.RotateBlade && run.Robot == TransferRobotKind.VacuumTm)
-            {
-                run.FacingAngleDegrees += NormalizeAngleDiff(run.TargetFacingAngleDegrees - run.FacingAngleDegrees)
-                    * _capacity.VacuumRotateStepRatio;
-            }
-
+            ApplyInPhaseMotion(run);
             run.TicksLeft--;
             if (run.TicksLeft > 0)
             {
@@ -724,18 +727,50 @@ public sealed class TmTransferSimulator
         _ => 0
     };
 
+    private void ApplyInPhaseMotion(RobotRun run)
+    {
+        if (run.PhaseEnterTicks <= 0)
+        {
+            return;
+        }
+
+        double progress = 1.0 - (double)run.TicksLeft / run.PhaseEnterTicks;
+
+        if (run.Robot == TransferRobotKind.VacuumTm)
+        {
+            run.Extension = run.PhaseStartExtension
+                + (run.PhaseTargetExtension - run.PhaseStartExtension) * progress;
+        }
+
+        if (run.Phase == SimPhase.RotateBlade && run.Robot == TransferRobotKind.VacuumTm)
+        {
+            double diff = NormalizeAngleDiff(run.TargetFacingAngleDegrees - run.RotateStartAngleDegrees);
+            run.FacingAngleDegrees = run.RotateStartAngleDegrees + diff * progress;
+        }
+    }
+
     private void Enter(RobotRun run, SimPhase phase, int ticks, EquipmentRegion region, double ext, bool carrying, string hint)
     {
         run.Phase = phase;
         run.TicksLeft = MotionTicksFor(run, phase, ticks);
+        run.PhaseEnterTicks = run.TicksLeft;
         run.Region = region;
+        run.PhaseStartExtension = run.Extension;
+        run.PhaseTargetExtension = ext;
         run.Extension = ext;
         if (run.Active is TransferJob job)
         {
             int storageSlot = ResolveStorageSlot(run, job.BladeSlotIndex);
             int angleSlot = ResolveAngleSlot(run, job.BladeSlotIndex);
             run.ActiveBladeSlot = storageSlot;
-            run.FacingAngleDegrees = VacuumDualBladePlanner.AngleForBlade(region, run.Robot, angleSlot);
+            if (run.Phase != SimPhase.RotateBlade)
+            {
+                double targetAngle = VacuumDualBladePlanner.AngleForBlade(region, run.Robot, angleSlot);
+                if (Math.Abs(NormalizeAngleDiff(targetAngle - run.FacingAngleDegrees)) > 0.5)
+                {
+                    run.FacingAngleDegrees = targetAngle;
+                }
+            }
         }
 
         _ = carrying;

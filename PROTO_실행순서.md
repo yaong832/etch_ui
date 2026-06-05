@@ -23,6 +23,7 @@
 | **원격 모니터링** | `C:\etchflask\REMOTE_MONITORING.md` |
 
 | **Flask README** | `C:\etchflask\README.md` |
+| **발표·데모 (PLC 없음)** | [`발표용_데모_체크리스트.md`](발표용_데모_체크리스트.md) |
 
 
 
@@ -161,18 +162,26 @@
 
 
 
-## 데모 체크리스트 (3분 · `PROJECT_계획.md` §6)
+## 데모 체크리스트
 
 
+
+### 발표 PC (PLC·TwinCAT 없음) — **권장**
+
+전체 순서·3분 스크립트·자동 검증 명령: **[`발표용_데모_체크리스트.md`](발표용_데모_체크리스트.md)**
+
+- [ ] Flask `run_flask.bat` · WPF 로그인 · **시뮬 허용** ON  
+- [ ] **데모 진행** 또는 **Start** → 가상 TM·FOUP·모듈 표시  
+- [ ] Flask 웹: 실시간 · 모듈 · 레시피 · **AI 진단**  
+- [ ] **Stop** — AI는 조언만 (인터락·Start 자동 변경 없음)  
+- [ ] (선택) `dotnet run -- --sim-smoke --ticks=5000`  
+
+### 현장 PC (실장비 · `PROJECT_계획.md` §6)
 
 - [ ] Flask OK, WPF EtherCAT Connected, 실측 센서  
-
 - [ ] 접촉 닫힘 → 인터락 OK → Start → 가상 TM 이동  
-
 - [ ] (Phase 1.2) 접촉 열림 → ALARM, 이송 정지  
-
 - [ ] 모니터링 PC Flask 실시간 + AI 탭  
-
 - [ ] Stop / Reset — AI는 조언만  
 
 

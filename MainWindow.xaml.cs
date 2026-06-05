@@ -130,25 +130,32 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private void BackgroundPlcConnect()
     {
-        bool connected = _plc.TryConnect(AppSettings.AdsPort);
-        Dispatcher.BeginInvoke(() =>
+        try
         {
-            if (connected)
+            bool connected = _plc.TryConnect(AppSettings.AdsPort);
+            Dispatcher.BeginInvoke(() =>
             {
-                _useSimulation = false;
-                _loggedPlcRequiredOffline = false;
-                _ethercatLinkLostLogged = false;
-                _ethercatReconnectCooldown = 0;
-                AppendEvent( null, null, "EtherCAT ADS 연결 성공");
-                AddLog($"EtherCAT 연결 성공 (ADS 포트 {AppSettings.AdsPort})");
-            }
-            else
-            {
-                OnPlcConnectFailed(_plc.LastError ?? "알 수 없음");
-            }
+                if (connected)
+                {
+                    _useSimulation = false;
+                    _loggedPlcRequiredOffline = false;
+                    _ethercatLinkLostLogged = false;
+                    _ethercatReconnectCooldown = 0;
+                    AppendEvent(null, null, "EtherCAT ADS 연결 성공");
+                    AddLog($"EtherCAT 연결 성공 (ADS 포트 {AppSettings.AdsPort})");
+                }
+                else
+                {
+                    OnPlcConnectFailed(_plc.LastError ?? "알 수 없음");
+                }
 
-            SyncViewModel();
-        });
+                SyncViewModel();
+            });
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.BeginInvoke(() => OnPlcConnectFailed(ex.Message));
+        }
     }
 
     private void OnPlcConnectFailed(string err)
@@ -222,6 +229,18 @@ public partial class MainWindow : Window, DemoScenarioHost
     }
 
     private void UiTimerOnTick()
+    {
+        try
+        {
+            UiTimerOnTickCore();
+        }
+        catch (Exception ex)
+        {
+            AddLog($"[오류] UI 갱신: {ex.Message}");
+        }
+    }
+
+    private void UiTimerOnTickCore()
     {
         if (!_useSimulation)
         {

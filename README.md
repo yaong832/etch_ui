@@ -34,7 +34,8 @@
 
 - (선택) TwinCAT ADS
 
-- (선택) Flask — `appsettings.json` → `FlaskBaseUrl` (기본 `http://127.0.0.1:5000`)
+- (선택) **Etch Flask** — `C:\etchflask\run_flask.bat` · `appsettings.json` → `FlaskBaseUrl` (기본 `http://127.0.0.1:5000`)  
+  FarmUI(스마트팜)와 별도: [`docs/FLASK_FARMUI_분리.md`](docs/FLASK_FARMUI_분리.md)
 
 
 
@@ -45,6 +46,8 @@
 1. (선택) `C:\etchflask\run_flask.bat` — 미실행 시 HMI만 동작, Flask 상태 **OFF**
 
 2. `etch_ui.sln` → F5 · 로그인 `admin` / `Admin1234`
+
+**발표·PLC 없는 데모**: [`발표용_데모_체크리스트.md`](발표용_데모_체크리스트.md) (3분 스크립트 + 자동 검증 명령)
 
 ### TwinCAT 없이 (시뮬만)
 

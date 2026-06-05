@@ -62,8 +62,15 @@ public sealed class AiTrainingDataRecorder
             }).ToArray()
         };
 
-        string json = JsonSerializer.Serialize(row, JsonOptions);
-        File.AppendAllText(_outputPath, json + Environment.NewLine);
+        try
+        {
+            string json = JsonSerializer.Serialize(row, JsonOptions);
+            File.AppendAllText(_outputPath, json + Environment.NewLine);
+        }
+        catch
+        {
+            // 디스크·권한 문제 시 HMI 동작은 계속
+        }
     }
 
     public sealed class SnapshotInput

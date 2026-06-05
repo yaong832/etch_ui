@@ -104,6 +104,7 @@ public sealed class EquipmentMotionBridge
             _motion.FoupBHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupB);
             _motion.FoupCHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupC);
             _motion.AlignerHasWafer = transfer.HasWaferAt(EquipmentRegion.Aligner);
+            _motion.LoadLockHasWafer = transfer.HasWaferAt(EquipmentRegion.LoadLock);
             _motion.SideStorageHasWafer = transfer.HasWaferAt(EquipmentRegion.SideStorage);
             _motion.ExternalProcessHasWafer = transfer.HasWaferAt(EquipmentRegion.SideStorage);
             _motion.ChamberADoorClosed = transfer.IsVirtualDoorClosed(EquipmentRegion.ChamberA);
@@ -138,6 +139,7 @@ public sealed class EquipmentMotionBridge
         _motion.FoupBHasWafer = false;
         _motion.FoupCHasWafer = false;
         _motion.AlignerHasWafer = false;
+        _motion.LoadLockHasWafer = false;
         _motion.SideStorageHasWafer = false;
         _motion.ExternalProcessHasWafer = false;
         _motion.ChamberAHasWafer = false;

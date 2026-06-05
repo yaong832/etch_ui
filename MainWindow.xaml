@@ -294,9 +294,12 @@
                                 <DataTemplate>
                                     <StackPanel Margin="0,2">
                                         <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#1E293B">
-                                            <Run Text="{Binding Id, Mode=OneWay}"/>
-                                            <Run Text=" · "/>
-                                            <Run Text="{Binding StateText, Mode=OneWay}"/>
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} · {1}">
+                                                    <Binding Path="Id"/>
+                                                    <Binding Path="StateText"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
                                         </TextBlock>
                                         <TextBlock Text="{Binding Detail, Mode=OneWay}" FontSize="10"
                                                    Foreground="#64748B" TextWrapping="Wrap"/>

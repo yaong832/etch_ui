@@ -68,7 +68,7 @@ public static class SimulatorSmokeTester
             };
         }
 
-        string reportText = report ? BuildReport(sim, ticks, maxSideStorage) : null;
+        string? reportText = report ? BuildReport(sim, ticks, maxSideStorage) : null;
         if (report
             && ticks >= 120_000
             && sim.LotCompletedCount == 0

@@ -25,7 +25,6 @@ public static class ModuleStateAggregator
     public static IReadOnlyList<ModuleStateSnapshot> Build(Context ctx)
     {
         bool globalMaint = ctx.MaintenanceMode;
-        bool globalAlarm = ctx.EquipmentState.Equals("ALARM", StringComparison.OrdinalIgnoreCase);
         bool globalWarning = ctx.EquipmentState.Equals("WARNING", StringComparison.OrdinalIgnoreCase);
         bool globalRunning = ctx.EquipmentState.Equals("RUNNING", StringComparison.OrdinalIgnoreCase);
         bool globalReady = ctx.EquipmentState.Equals("READY", StringComparison.OrdinalIgnoreCase);
@@ -34,23 +33,40 @@ public static class ModuleStateAggregator
         var list = new List<ModuleStateSnapshot>(13);
 
         // Load ports: FOUP A → LP1, LP2 spare, FOUP B → LP3
-        list.Add(BuildLoadPort(EquipmentModuleId.LoadPort1, EquipmentRegion.FoupA, ctx, globalMaint, globalAlarm, transferActive));
-        list.Add(BuildLoadPort(EquipmentModuleId.LoadPort2, EquipmentRegion.FoupB, ctx, globalMaint, globalAlarm, transferActive));
-        list.Add(BuildLoadPort(EquipmentModuleId.LoadPort3, EquipmentRegion.FoupC, ctx, globalMaint, globalAlarm, transferActive));
+        list.Add(BuildLoadPort(EquipmentModuleId.LoadPort1, EquipmentRegion.FoupA, ctx, globalMaint, transferActive));
+        list.Add(BuildLoadPort(EquipmentModuleId.LoadPort2, EquipmentRegion.FoupB, ctx, globalMaint, transferActive));
+        list.Add(BuildLoadPort(EquipmentModuleId.LoadPort3, EquipmentRegion.FoupC, ctx, globalMaint, transferActive));
 
-        list.Add(BuildBufferModule(ctx, globalMaint, globalAlarm, globalRunning, transferActive));
-        list.Add(BuildEfemRobot(ctx, globalMaint, globalAlarm, transferActive));
-        list.Add(BuildTransferModule(ctx, globalMaint, globalAlarm, globalRunning, transferActive));
-        list.Add(BuildPm(EquipmentModuleId.Pm1, EquipmentRegion.ChamberA, ctx, globalMaint, globalAlarm, globalWarning, globalRunning, transferActive));
-        list.Add(BuildPm(EquipmentModuleId.Pm2, EquipmentRegion.ChamberB, ctx, globalMaint, globalAlarm, globalWarning, globalRunning, transferActive));
-        list.Add(BuildPm(EquipmentModuleId.Pm3, EquipmentRegion.ChamberC, ctx, globalMaint, globalAlarm, globalWarning, globalRunning, transferActive));
-        list.Add(BuildPm(EquipmentModuleId.Pm4, EquipmentRegion.ChamberD, ctx, globalMaint, globalAlarm, globalWarning, globalRunning, transferActive));
+        list.Add(BuildBufferModule(ctx, globalMaint, globalRunning, transferActive));
+        list.Add(BuildEfemRobot(ctx, globalMaint, transferActive));
+        list.Add(BuildTransferModule(ctx, globalMaint, globalRunning, transferActive));
+        list.Add(BuildPm(EquipmentModuleId.Pm1, EquipmentRegion.ChamberA, ctx, globalMaint, globalWarning, globalRunning, transferActive));
+        list.Add(BuildPm(EquipmentModuleId.Pm2, EquipmentRegion.ChamberB, ctx, globalMaint, globalWarning, globalRunning, transferActive));
+        list.Add(BuildPm(EquipmentModuleId.Pm3, EquipmentRegion.ChamberC, ctx, globalMaint, globalWarning, globalRunning, transferActive));
+        list.Add(BuildPm(EquipmentModuleId.Pm4, EquipmentRegion.ChamberD, ctx, globalMaint, globalWarning, globalRunning, transferActive));
 
-        list.Add(BuildEfem(ctx, globalMaint, globalAlarm, globalRunning, transferActive));
-        list.Add(BuildAligner(ctx, globalMaint, globalAlarm, transferActive));
-        list.Add(BuildSideStorage(ctx, globalMaint, globalAlarm, transferActive));
+        list.Add(BuildEfem(ctx, globalMaint, globalRunning, transferActive));
+        list.Add(BuildAligner(ctx, globalMaint, transferActive));
+        list.Add(BuildSideStorage(ctx, globalMaint, transferActive));
 
         return list;
+    }
+
+    /// <summary>전역 ALARM이어도 해당 모듈만 ALM 뱃지 — 압력·진동 등은 헤더 알람만.</summary>
+    private static bool ModuleShowsAlarm(Context ctx, EquipmentModuleId moduleId)
+    {
+        if (!ctx.EquipmentState.Equals("ALARM", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(ctx.AlarmCode))
+        {
+            return false;
+        }
+
+        return ctx.AlarmCode switch
+        {
+            "A001" => moduleId is EquipmentModuleId.BufferModule or EquipmentModuleId.Efem,
+            "A004" => moduleId is EquipmentModuleId.BufferModule,
+            _ => false
+        };
     }
 
     private static ModuleStateSnapshot BuildLoadPort(
@@ -58,7 +74,6 @@ public static class ModuleStateAggregator
         EquipmentRegion region,
         Context ctx,
         bool globalMaint,
-        bool globalAlarm,
         bool transferActive,
         bool forceEmpty = false)
     {
@@ -77,13 +92,14 @@ public static class ModuleStateAggregator
                           && !ctx.Transfer.IsVirtualDoorClosed(region)
                           && ctx.Transfer.IsActive;
 
-        ModuleOperationalState st = globalAlarm ? ModuleOperationalState.Alarm
+        ModuleOperationalState st = ModuleShowsAlarm(ctx, id) ? ModuleOperationalState.Alarm
             : pickupOpen ? ModuleOperationalState.Running
             : hasWafer ? ModuleOperationalState.Standby
             : ModuleOperationalState.Idle;
 
         string? foupDetail = BuildFoupDetail(ctx, region, pickupOpen);
-        return Snap(id, st, hasWafer: hasWafer, detail: foupDetail);
+        string? alarmDetail = st == ModuleOperationalState.Alarm ? ctx.AlarmCode : null;
+        return Snap(id, st, hasWafer: hasWafer, detail: alarmDetail ?? foupDetail);
     }
 
     private static string? BuildFoupDetail(Context ctx, EquipmentRegion region, bool pickupOpen)
@@ -119,7 +135,6 @@ public static class ModuleStateAggregator
     private static ModuleStateSnapshot BuildBufferModule(
         Context ctx,
         bool globalMaint,
-        bool globalAlarm,
         bool globalRunning,
         bool transferActive)
     {
@@ -151,8 +166,9 @@ public static class ModuleStateAggregator
         int bmCap = ctx.Transfer?.ClusterState.Capacity.LoadLockSlotCount ?? 2;
         bool hasWafer = bmCount > 0;
 
-        ModuleOperationalState st = globalAlarm ? ModuleOperationalState.Alarm
-            : !ctx.AccessSafe ? ModuleOperationalState.Alarm
+        bool accessFault = ctx.HasLiveSensorData && ctx.AccessInputValid && !ctx.AccessSafe;
+        ModuleOperationalState st = ModuleShowsAlarm(ctx, EquipmentModuleId.BufferModule) || accessFault
+            ? ModuleOperationalState.Alarm
             : globalRunning || transferActive ? ModuleOperationalState.Running
             : ModuleOperationalState.Standby;
 
@@ -176,7 +192,6 @@ public static class ModuleStateAggregator
     private static ModuleStateSnapshot BuildEfemRobot(
         Context ctx,
         bool globalMaint,
-        bool globalAlarm,
         bool transferActive)
     {
         if (globalMaint)
@@ -191,7 +206,7 @@ public static class ModuleStateAggregator
                 detail: $"대기압 TM · {transfer.EfemRegion}");
         }
 
-        if (globalAlarm)
+        if (ModuleShowsAlarm(ctx, EquipmentModuleId.EfemRobot))
         {
             return Snap(EquipmentModuleId.EfemRobot, ModuleOperationalState.Alarm, detail: ctx.AlarmCode);
         }
@@ -202,7 +217,6 @@ public static class ModuleStateAggregator
     private static ModuleStateSnapshot BuildTransferModule(
         Context ctx,
         bool globalMaint,
-        bool globalAlarm,
         bool globalRunning,
         bool transferActive)
     {
@@ -218,7 +232,7 @@ public static class ModuleStateAggregator
                 detail: $"진공 TM · {transfer.TmRegion}");
         }
 
-        if (globalAlarm)
+        if (ModuleShowsAlarm(ctx, EquipmentModuleId.TransferModule))
         {
             return Snap(EquipmentModuleId.TransferModule, ModuleOperationalState.Alarm, detail: ctx.AlarmCode);
         }
@@ -236,7 +250,6 @@ public static class ModuleStateAggregator
         EquipmentRegion region,
         Context ctx,
         bool globalMaint,
-        bool globalAlarm,
         bool globalWarning,
         bool globalRunning,
         bool transferActive,
@@ -262,10 +275,10 @@ public static class ModuleStateAggregator
 
         ModuleOperationalState st;
         string? detail;
-        if (globalAlarm)
+        if (ModuleShowsAlarm(ctx, pmId))
         {
             st = ModuleOperationalState.Alarm;
-            detail = null;
+            detail = ctx.AlarmCode;
         }
         else if (globalWarning && region == EquipmentRegion.ChamberA)
         {
@@ -326,7 +339,6 @@ public static class ModuleStateAggregator
     private static ModuleStateSnapshot BuildEfem(
         Context ctx,
         bool globalMaint,
-        bool globalAlarm,
         bool globalRunning,
         bool transferActive)
     {
@@ -335,14 +347,16 @@ public static class ModuleStateAggregator
             return Snap(EquipmentModuleId.Efem, ModuleOperationalState.Maintenance);
         }
 
-        ModuleOperationalState st = globalAlarm ? ModuleOperationalState.Alarm
+        ModuleOperationalState st = ModuleShowsAlarm(ctx, EquipmentModuleId.Efem)
+            ? ModuleOperationalState.Alarm
             : transferActive || globalRunning ? ModuleOperationalState.Standby
             : ModuleOperationalState.Idle;
 
-        return Snap(EquipmentModuleId.Efem, st, detail: "EFEM (대기압 구역)");
+        string? detail = st == ModuleOperationalState.Alarm ? ctx.AlarmCode : "EFEM (대기압 구역)";
+        return Snap(EquipmentModuleId.Efem, st, detail: detail);
     }
 
-    private static ModuleStateSnapshot BuildAligner(Context ctx, bool globalMaint, bool globalAlarm, bool transferActive)
+    private static ModuleStateSnapshot BuildAligner(Context ctx, bool globalMaint, bool transferActive)
     {
         if (globalMaint)
         {
@@ -355,12 +369,13 @@ public static class ModuleStateAggregator
         int alignCount = ctx.Transfer?.ClusterState.AlignerBuffer.Count ?? 0;
         int alignCap = ctx.Transfer?.ClusterState.Capacity.AlignerSlotCount ?? EquipmentCapacityConfig.DefaultAlignerSlotCount;
 
-        ModuleOperationalState st = globalAlarm ? ModuleOperationalState.Alarm
+        ModuleOperationalState st = ModuleShowsAlarm(ctx, EquipmentModuleId.Aligner)
+            ? ModuleOperationalState.Alarm
             : alignPhase ? ModuleOperationalState.Running
             : atAligner ? ModuleOperationalState.Standby
             : ModuleOperationalState.Idle;
 
-        string detail = alignPhase
+        string? detail = alignPhase
             ? "정렬(가상)"
             : alignCount > 0
                 ? $"슬롯 {alignCount}/{alignCap}"
@@ -369,7 +384,7 @@ public static class ModuleStateAggregator
         return Snap(EquipmentModuleId.Aligner, st, hasWafer: atAligner, detail: detail);
     }
 
-    private static ModuleStateSnapshot BuildSideStorage(Context ctx, bool globalMaint, bool globalAlarm, bool transferActive)
+    private static ModuleStateSnapshot BuildSideStorage(Context ctx, bool globalMaint, bool transferActive)
     {
         if (globalMaint)
         {
@@ -382,7 +397,8 @@ public static class ModuleStateAggregator
         int sideCount = ctx.Transfer?.ClusterState.SideStorage.Count ?? 0;
         int sideCap = ctx.Transfer?.ClusterState.Capacity.SideStorageSlotCount ?? 25;
 
-        ModuleOperationalState st = globalAlarm ? ModuleOperationalState.Alarm
+        ModuleOperationalState st = ModuleShowsAlarm(ctx, EquipmentModuleId.SideStorage)
+            ? ModuleOperationalState.Alarm
             : fumePhase ? ModuleOperationalState.Running
             : atSide ? ModuleOperationalState.Standby
             : ModuleOperationalState.Idle;

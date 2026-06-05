@@ -29,6 +29,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private bool _isVacuumTmActive;
 
     private bool _loadLockDoorClosed = true;
+    private bool _loadLockHasWafer;
+    private string _loadLockInventoryText = "—";
     private bool _chamberADoorClosed = true;
     private bool _chamberBDoorClosed = true;
     private bool _chamberCDoorClosed = true;
@@ -176,6 +178,18 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         set => SetField(ref _loadLockDoorClosed, value);
     }
 
+    public bool LoadLockHasWafer
+    {
+        get => _loadLockHasWafer;
+        set => SetField(ref _loadLockHasWafer, value);
+    }
+
+    public string LoadLockInventoryText
+    {
+        get => _loadLockInventoryText;
+        set => SetField(ref _loadLockInventoryText, value);
+    }
+
     public bool ChamberADoorClosed { get => _chamberADoorClosed; set => SetField(ref _chamberADoorClosed, value); }
     public bool ChamberBDoorClosed { get => _chamberBDoorClosed; set => SetField(ref _chamberBDoorClosed, value); }
     public bool ChamberCDoorClosed { get => _chamberCDoorClosed; set => SetField(ref _chamberCDoorClosed, value); }
@@ -249,6 +263,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         Foup3InventoryText = FormatSlot(Foup3Remaining, foupMax);
         AlignerInventoryText = FormatAlignerPresence(state.AlignerBuffer.Count);
         SideStorageInventoryText = FormatSlot(state.SideStorage.Count, sideMax);
+        LoadLockHasWafer = state.LoadLockBuffer.HasWafer;
+        LoadLockInventoryText = FormatSlot(state.LoadLockBuffer.Count, state.Capacity.LoadLockSlotCount);
 
         WaferInventorySummary =
             $"LP1 {Foup1InventoryText} · LP2 {Foup2InventoryText} · LP3 {Foup3InventoryText}  |  "
@@ -266,6 +282,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         FoupSlotCapacity = 25;
         AlignerInventoryText = "—";
         SideStorageInventoryText = "—";
+        LoadLockHasWafer = false;
+        LoadLockInventoryText = "—";
         WaferInventorySummary = "웨이퍼 잔량 · RUNNING 후 표시";
     }
 

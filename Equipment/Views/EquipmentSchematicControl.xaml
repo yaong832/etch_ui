@@ -5,6 +5,10 @@
              xmlns:layout="clr-namespace:etch_ui.Equipment.Layout"
              MinHeight="420">
     <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/etch_ui;component/Resources/HmiTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
         <conv:BoolToDoorBrushConverter x:Key="BoolToDoorBrush"/>
         <conv:BoolToDoorTextConverter x:Key="BoolToDoorText"/>
         <BooleanToVisibilityConverter x:Key="BoolVis"/>
@@ -43,6 +47,7 @@
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="Margin" Value="0,4,4,0"/>
         </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
     <Border Background="#F1F5F9" CornerRadius="10" BorderBrush="{StaticResource HmiBorderBrush}" BorderThickness="1" Padding="6">
         <Grid>
@@ -128,8 +133,10 @@
                             <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
                             <TextBlock Text="LP1 · FOUP" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
                                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                            <ProgressBar Minimum="0" Maximum="{Binding FoupSlotCapacity}" Value="{Binding Foup1Remaining}"
-                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom"/>
+                            <ProgressBar Minimum="0"
+                                         Maximum="{Binding FoupSlotCapacity, Mode=OneWay}"
+                                         Value="{Binding Foup1Remaining, Mode=OneWay}"
+                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom" IsHitTestVisible="False"/>
                             <TextBlock Text="{Binding Foup1InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                             <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
@@ -145,8 +152,10 @@
                             <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
                             <TextBlock Text="LP2 · FOUP" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
                                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                            <ProgressBar Minimum="0" Maximum="{Binding FoupSlotCapacity}" Value="{Binding Foup2Remaining}"
-                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom"/>
+                            <ProgressBar Minimum="0"
+                                         Maximum="{Binding FoupSlotCapacity, Mode=OneWay}"
+                                         Value="{Binding Foup2Remaining, Mode=OneWay}"
+                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom" IsHitTestVisible="False"/>
                             <TextBlock Text="{Binding Foup2InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                             <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
@@ -162,8 +171,10 @@
                             <Rectangle Margin="6" Stroke="#94A3B8" StrokeThickness="1" RadiusX="4" RadiusY="4"/>
                             <TextBlock Text="LP3 · FOUP" FontSize="9" FontWeight="Bold" Foreground="#1E293B"
                                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
-                            <ProgressBar Minimum="0" Maximum="{Binding FoupSlotCapacity}" Value="{Binding Foup3Remaining}"
-                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom"/>
+                            <ProgressBar Minimum="0"
+                                         Maximum="{Binding FoupSlotCapacity, Mode=OneWay}"
+                                         Value="{Binding Foup3Remaining, Mode=OneWay}"
+                                         Height="5" Margin="8,0,8,18" VerticalAlignment="Bottom" IsHitTestVisible="False"/>
                             <TextBlock Text="{Binding Foup3InventoryText}" FontSize="8" FontWeight="Bold" Foreground="#1D4ED8"
                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                             <Ellipse Width="20" Height="20" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
@@ -188,7 +199,14 @@
                                 <TextBlock Text="BM · Load Lock (실접촉)" Foreground="White" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
                             </Border>
                             <Border Grid.Row="1" Margin="12,10,12,8" Background="#CBD5E1" CornerRadius="5"
-                                    BorderBrush="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorBrush}}" BorderThickness="2"/>
+                                    BorderBrush="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorBrush}}" BorderThickness="2">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Ellipse Width="18" Height="18" Fill="{Binding WaferBrush}" Stroke="#B45309" StrokeThickness="1.2"
+                                             Visibility="{Binding LoadLockHasWafer, Converter={StaticResource BoolVis}}"/>
+                                    <TextBlock Text="{Binding LoadLockInventoryText}" FontSize="8" FontWeight="Bold" Foreground="#0F766E"
+                                               HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
                             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
                                 <Ellipse Width="8" Height="8" Fill="{Binding LoadLockDoorClosed, Converter={StaticResource BoolToDoorBrush}}"/>
                                 <TextBlock Margin="5,0,0,0" FontSize="8" FontWeight="SemiBold" Foreground="#334155"

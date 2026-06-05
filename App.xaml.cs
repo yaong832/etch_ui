@@ -13,6 +13,7 @@ namespace etch_ui
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            RegisterGlobalExceptionHandlers();
 
             if (e.Args.Any(a => a.Equals("--sim-report", StringComparison.OrdinalIgnoreCase)))
             {
@@ -144,6 +145,51 @@ namespace etch_ui
             // 로그인 창만 닫힌 순간 열린 창이 없으므로, 기본 OnLastWindowClose면 여기서 앱이 종료됨
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
+        }
+
+        private static void RegisterGlobalExceptionHandlers()
+        {
+            Current.DispatcherUnhandledException += (_, args) =>
+            {
+                LogCrash("UI", args.Exception);
+                MessageBox.Show(
+                    $"처리되지 않은 오류:\n{args.Exception.Message}\n\n자세한 내용: data/crash.log",
+                    "Etch HMI",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                args.Handled = true;
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception ex)
+                {
+                    LogCrash("AppDomain", ex);
+                }
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                LogCrash("Task", args.Exception);
+                args.SetObserved();
+            };
+        }
+
+        private static void LogCrash(string source, Exception ex)
+        {
+            try
+            {
+                string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                Directory.CreateDirectory(dir);
+                string path = Path.Combine(dir, "crash.log");
+                string text =
+                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {source}\n{ex}\n\n";
+                File.AppendAllText(path, text);
+            }
+            catch
+            {
+                // ignore
+            }
         }
     }
 
