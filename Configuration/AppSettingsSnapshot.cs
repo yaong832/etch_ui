@@ -26,13 +26,23 @@ public sealed class AppSettingsSnapshot
 
 public sealed class InterlockThresholds
 {
-    public double PressureMtorrMin { get; set; } = 50;
-    public double PressureMtorrMax { get; set; } = 150;
-    public double VibrationGMax { get; set; } = 0.8;
-    public double TempCMin { get; set; } = 20;
-    public double TempCMax { get; set; } = 30;
-    public double HumiMin { get; set; } = 30;
-    public double HumiMax { get; set; } = 55;
+    /// <summary>정상(Start OK) — 이 범위 밖이면 경고 또는 알람.</summary>
+    public double PressureMtorrMin { get; set; } = 40;
+    public double PressureMtorrMax { get; set; } = 180;
+    public double VibrationGMax { get; set; } = 1.0;
+    public double TempCMin { get; set; } = 18;
+    public double TempCMax { get; set; } = 32;
+    public double HumiMin { get; set; } = 25;
+    public double HumiMax { get; set; } = 60;
+
+    /// <summary>알람 — 이 범위 밖이면 즉시 ALARM (정상·경고 밴드보다 넓음).</summary>
+    public double PressureMtorrAlarmMin { get; set; } = 25;
+    public double PressureMtorrAlarmMax { get; set; } = 220;
+    public double VibrationGAlarmMax { get; set; } = 1.5;
+    public double TempCAlarmMin { get; set; } = 15;
+    public double TempCAlarmMax { get; set; } = 35;
+    public double HumiAlarmMin { get; set; } = 20;
+    public double HumiAlarmMax { get; set; } = 65;
 
     public static InterlockThresholds FromCurrent() => new()
     {
@@ -42,7 +52,14 @@ public sealed class InterlockThresholds
         TempCMin = AppSettings.TempCMin,
         TempCMax = AppSettings.TempCMax,
         HumiMin = AppSettings.HumiMin,
-        HumiMax = AppSettings.HumiMax
+        HumiMax = AppSettings.HumiMax,
+        PressureMtorrAlarmMin = AppSettings.PressureMtorrAlarmMin,
+        PressureMtorrAlarmMax = AppSettings.PressureMtorrAlarmMax,
+        VibrationGAlarmMax = AppSettings.VibrationGAlarmMax,
+        TempCAlarmMin = AppSettings.TempCAlarmMin,
+        TempCAlarmMax = AppSettings.TempCAlarmMax,
+        HumiAlarmMin = AppSettings.HumiAlarmMin,
+        HumiAlarmMax = AppSettings.HumiAlarmMax
     };
 }
 

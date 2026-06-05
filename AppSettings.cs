@@ -11,13 +11,21 @@ public static class AppSettings
     public static int AdsPort { get; private set; } = PlcAdsService.DefaultPort;
     public static bool SimulationEnabled { get; private set; }
 
-    public static double PressureMtorrMin { get; private set; } = 50.0;
-    public static double PressureMtorrMax { get; private set; } = 150.0;
-    public static double VibrationGMax { get; private set; } = 0.80;
-    public static double TempCMin { get; private set; } = 20.0;
-    public static double TempCMax { get; private set; } = 30.0;
-    public static double HumiMin { get; private set; } = 30.0;
-    public static double HumiMax { get; private set; } = 55.0;
+    public static double PressureMtorrMin { get; private set; } = 40.0;
+    public static double PressureMtorrMax { get; private set; } = 180.0;
+    public static double VibrationGMax { get; private set; } = 1.0;
+    public static double TempCMin { get; private set; } = 18.0;
+    public static double TempCMax { get; private set; } = 32.0;
+    public static double HumiMin { get; private set; } = 25.0;
+    public static double HumiMax { get; private set; } = 60.0;
+
+    public static double PressureMtorrAlarmMin { get; private set; } = 25.0;
+    public static double PressureMtorrAlarmMax { get; private set; } = 220.0;
+    public static double VibrationGAlarmMax { get; private set; } = 1.5;
+    public static double TempCAlarmMin { get; private set; } = 15.0;
+    public static double TempCAlarmMax { get; private set; } = 35.0;
+    public static double HumiAlarmMin { get; private set; } = 20.0;
+    public static double HumiAlarmMax { get; private set; } = 65.0;
 
     public static int PressureRawMin { get; private set; } = 5;
     public static int PressureRawMax { get; private set; } = 3575;
@@ -63,6 +71,13 @@ public static class AppSettings
         TempCMax = il.TempCMax;
         HumiMin = il.HumiMin;
         HumiMax = il.HumiMax;
+        PressureMtorrAlarmMin = il.PressureMtorrAlarmMin;
+        PressureMtorrAlarmMax = il.PressureMtorrAlarmMax;
+        VibrationGAlarmMax = il.VibrationGAlarmMax;
+        TempCAlarmMin = il.TempCAlarmMin;
+        TempCAlarmMax = il.TempCAlarmMax;
+        HumiAlarmMin = il.HumiAlarmMin;
+        HumiAlarmMax = il.HumiAlarmMax;
 
         PressureScaleSettings ps = snapshot.PressureScale;
         PressureRawMin = ps.RawMin;

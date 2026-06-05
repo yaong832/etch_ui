@@ -259,10 +259,14 @@ public sealed class MainViewModel : ViewModelBase
 
     /// <summary>appsettings.json Interlock 섹션 요약.</summary>
     public string InterlockThresholdsText =>
-        $"압력 {AppSettings.PressureMtorrMin:F0}–{AppSettings.PressureMtorrMax:F0} mTorr  ·  " +
+        $"정상: 압력 {AppSettings.PressureMtorrMin:F0}–{AppSettings.PressureMtorrMax:F0} mTorr  ·  " +
         $"진동 ≤{AppSettings.VibrationGMax:F2} g  ·  " +
         $"온도 {AppSettings.TempCMin:F0}–{AppSettings.TempCMax:F0} ℃  ·  " +
-        $"습도 {AppSettings.HumiMin:F0}–{AppSettings.HumiMax:F0} %";
+        $"습도 {AppSettings.HumiMin:F0}–{AppSettings.HumiMax:F0} %  |  " +
+        $"알람: 압력 {AppSettings.PressureMtorrAlarmMin:F0}–{AppSettings.PressureMtorrAlarmMax:F0}  ·  " +
+        $"진동 >{AppSettings.VibrationGAlarmMax:F2} g  ·  " +
+        $"온도 {AppSettings.TempCAlarmMin:F0}–{AppSettings.TempCAlarmMax:F0} ℃  ·  " +
+        $"습도 {AppSettings.HumiAlarmMin:F0}–{AppSettings.HumiAlarmMax:F0} %";
 
     public string InterlockVibText
     {

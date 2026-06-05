@@ -32,6 +32,9 @@ public partial class MainWindow : Window, DemoScenarioHost
     private readonly DispatcherTimer _uiTimer = new();
 
     private readonly Random _rand = new();
+    private const double DemoWarningChancePerTick = 0.02;
+    private const int DemoWarningDurationTicks = 8;
+    private int _demoWarningTicksLeft;
     private bool _useSimulation;
     private bool _maintenanceMode;
 
@@ -424,14 +427,34 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private void SimulateSensors()
     {
-        _temp = Math.Round(_temp + (_rand.NextDouble() - 0.5) * 0.35, 2);
-        _humi = Math.Round(_humi + (_rand.NextDouble() - 0.5) * 0.7, 2);
-        _pressureMtorr = Math.Round(
-            _pressureMtorr + (_rand.NextDouble() - 0.5) * 2.0,
-            AppSettings.PressureDecimals);
-        _vib = Math.Round(Math.Max(0, _vib + (_rand.NextDouble() - 0.5) * 0.06), 2);
+        if (IsBenchMode && _demoWarningTicksLeft > 0)
+        {
+            _demoWarningTicksLeft--;
+            _temp = Math.Round(AppSettings.TempCMax + 1.5, 2);
+            _humi = Math.Round(AppSettings.HumiMax + 3.0, 2);
+        }
+        else
+        {
+            _temp = Math.Round(_temp + (_rand.NextDouble() - 0.5) * 0.35, 2);
+            _humi = Math.Round(_humi + (_rand.NextDouble() - 0.5) * 0.7, 2);
+            _pressureMtorr = Math.Round(
+                _pressureMtorr + (_rand.NextDouble() - 0.5) * 2.0,
+                AppSettings.PressureDecimals);
+            _vib = Math.Round(Math.Max(0, _vib + (_rand.NextDouble() - 0.5) * 0.06), 2);
 
-        if (_rand.NextDouble() < 0.02)
+            if (IsBenchMode
+                && (_state == EquipmentState.Running || _state == EquipmentState.Warning)
+                && _transferSim.IsActive
+                && _rand.NextDouble() < DemoWarningChancePerTick)
+            {
+                _demoWarningTicksLeft = DemoWarningDurationTicks;
+                _temp = Math.Round(AppSettings.TempCMax + 1.5, 2);
+                _humi = Math.Round(AppSettings.HumiMax + 3.0, 2);
+                AddLog("[데모] 환경 편향 시뮬 — WARNING (약 8초)");
+            }
+        }
+
+        if (_rand.NextDouble() < 0.02 && !IsBenchMode)
         {
             _accessSafe = !_accessSafe;
             AddLog(_accessSafe ? "유도형 센서: 닫힘" : "유도형 센서: 열림");
@@ -440,18 +463,20 @@ public partial class MainWindow : Window, DemoScenarioHost
         _lastProcessSampleUtc = DateTime.UtcNow;
     }
 
-    private bool IsPressureNormal =>
-        _pressureSignalValid
-        && _pressureMtorr >= AppSettings.PressureMtorrMin
-        && _pressureMtorr <= AppSettings.PressureMtorrMax;
+    private InterlockSeverity PressureSeverity =>
+        InterlockSeverityEvaluator.Pressure(_pressureMtorr, _pressureSignalValid);
 
-    private bool IsVibrationNormal => _vib <= AppSettings.VibrationGMax;
+    private InterlockSeverity VibrationSeverity => InterlockSeverityEvaluator.Vibration(_vib);
 
-    private bool IsTempNormal =>
-        _temp >= AppSettings.TempCMin && _temp <= AppSettings.TempCMax;
+    private InterlockSeverity TempSeverity => InterlockSeverityEvaluator.Temperature(_temp);
 
-    private bool IsHumiNormal =>
-        _humi >= AppSettings.HumiMin && _humi <= AppSettings.HumiMax;
+    private InterlockSeverity HumiSeverity => InterlockSeverityEvaluator.Humidity(_humi);
+
+    private bool HasSensorAlarm =>
+        InterlockSeverityEvaluator.AnyAlarm(PressureSeverity, VibrationSeverity, TempSeverity, HumiSeverity);
+
+    private bool HasSensorWarning =>
+        InterlockSeverityEvaluator.AnyWarning(PressureSeverity, VibrationSeverity, TempSeverity, HumiSeverity);
 
     /// <summary>
     /// 인터락 판정용 "실데이터" 기준.
@@ -467,12 +492,8 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private bool ProductionInterlockOk =>
         PlcLinkOk
-        && _pressureSignalValid
-        && IsPressureNormal
-        && IsVibrationNormal
         && AccessInterlockOk
-        && IsTempNormal
-        && IsHumiNormal;
+        && InterlockSeverityEvaluator.AllOk(PressureSeverity, VibrationSeverity, TempSeverity, HumiSeverity);
 
     private bool CanStartProcess() =>
         SessionContext.HasRole(UserRole.Worker)
@@ -497,22 +518,22 @@ public partial class MainWindow : Window, DemoScenarioHost
             return "A004";
         }
 
-        if (!IsPressureNormal)
+        if (PressureSeverity == InterlockSeverity.Alarm)
         {
             return "A002";
         }
 
-        if (!IsVibrationNormal)
+        if (VibrationSeverity == InterlockSeverity.Alarm)
         {
             return "A003";
         }
 
-        if (!IsTempNormal)
+        if (TempSeverity == InterlockSeverity.Alarm)
         {
             return "A005";
         }
 
-        if (!IsHumiNormal)
+        if (HumiSeverity == InterlockSeverity.Alarm)
         {
             return "A006";
         }
@@ -577,8 +598,17 @@ public partial class MainWindow : Window, DemoScenarioHost
                 return;
             }
 
-            if (_state == EquipmentState.Running)
+            if (_state is EquipmentState.Running or EquipmentState.Warning)
             {
+                if (_demoWarningTicksLeft > 0 && _transferSim.IsActive)
+                {
+                    _state = EquipmentState.Warning;
+                }
+                else if (_state == EquipmentState.Warning)
+                {
+                    _state = EquipmentState.Running;
+                }
+
                 return;
             }
 
@@ -592,8 +622,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         bool severe = !PlcLinkOk
             || (_accessInputValid && !EffectiveAccessSafe)
-            || !IsPressureNormal
-            || !IsVibrationNormal;
+            || HasSensorAlarm;
         if (severe)
         {
             _state = EquipmentState.Alarm;
@@ -605,7 +634,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             return;
         }
 
-        if (!IsTempNormal || !IsHumiNormal)
+        if (HasSensorWarning)
         {
             if (_state == EquipmentState.Running)
             {
@@ -624,6 +653,9 @@ public partial class MainWindow : Window, DemoScenarioHost
             _state = EquipmentState.Ready;
         }
     }
+
+    private bool TransferMotionActive =>
+        _state is EquipmentState.Running or EquipmentState.Warning;
 
     private void PushOutputsToPlc()
     {
@@ -878,11 +910,11 @@ public partial class MainWindow : Window, DemoScenarioHost
         }
 
         bool interlockPlcOk = PlcLinkOk; // = HasLiveSensorData
-        bool interlockPressureOk = hasLive && _pressureSignalValid && IsPressureNormal;
-        bool interlockVibOk = hasLive && IsVibrationNormal;
+        InterlockSeverity pressureSev = hasLive ? PressureSeverity : InterlockSeverity.Alarm;
+        InterlockSeverity vibSev = hasLive ? VibrationSeverity : InterlockSeverity.Alarm;
+        InterlockSeverity tempSev = hasLive ? TempSeverity : InterlockSeverity.Alarm;
+        InterlockSeverity humiSev = hasLive ? HumiSeverity : InterlockSeverity.Alarm;
         bool interlockAccessOk = hasLive && _accessInputValid && EffectiveAccessSafe;
-        bool interlockTempOk = hasLive && IsTempNormal;
-        bool interlockHumiOk = hasLive && IsHumiNormal;
 
         string pressureFmt = "F" + AppSettings.PressureDecimals;
         string pressureRange =
@@ -913,31 +945,33 @@ public partial class MainWindow : Window, DemoScenarioHost
 
             _vm.InterlockPressureText =
                 _pressureSignalValid
-                    ? $"[{ToMark(interlockPressureOk)}] 압력 ({pressureRange})"
+                    ? $"[{ToMark(pressureSev)}] 압력 ({pressureRange})"
                     : "[✗] 압력 신호 없음";
             _vm.InterlockPressureBrush =
-                _pressureSignalValid ? InterlockItemBrush(interlockPressureOk) : Brushes.OrangeRed;
+                _pressureSignalValid ? InterlockItemBrush(pressureSev) : Brushes.OrangeRed;
 
             if (_pressureSignalValid)
             {
                 string cur = _pressureMtorr.ToString(pressureFmt);
+                string alarmRange =
+                    $"{AppSettings.PressureMtorrAlarmMin.ToString(pressureFmt)}–{AppSettings.PressureMtorrAlarmMax.ToString(pressureFmt)} mTorr";
                 _vm.InterlockPressureDetailText =
-                    $"허용 {pressureRange}  ·  현재 {cur} mTorr" +
-                    (interlockPressureOk ? "" : "  ← 범위 이탈");
+                    $"정상 {pressureRange}  ·  알람 {alarmRange}  ·  현재 {cur} mTorr" +
+                    (pressureSev == InterlockSeverity.Ok ? "" : pressureSev == InterlockSeverity.Warning ? "  ← 경고" : "  ← 알람");
             }
             else
             {
                 _vm.InterlockPressureDetailText = $"허용 {pressureRange} (압력 신호 없음)";
             }
 
-            _vm.InterlockVibText = $"[{ToMark(interlockVibOk)}] 진동 정상";
-            _vm.InterlockVibBrush = InterlockItemBrush(interlockVibOk);
+            _vm.InterlockVibText = $"[{ToMark(vibSev)}] 진동 (정상 ≤{AppSettings.VibrationGMax:F2} g)";
+            _vm.InterlockVibBrush = InterlockItemBrush(vibSev);
 
-            _vm.InterlockTempText = $"[{ToMark(interlockTempOk)}] 온도 정상";
-            _vm.InterlockTempBrush = InterlockItemBrush(interlockTempOk);
+            _vm.InterlockTempText = $"[{ToMark(tempSev)}] 온도 (정상 {AppSettings.TempCMin:F0}–{AppSettings.TempCMax:F0} ℃)";
+            _vm.InterlockTempBrush = InterlockItemBrush(tempSev);
 
-            _vm.InterlockHumiText = $"[{ToMark(interlockHumiOk)}] 습도 정상";
-            _vm.InterlockHumiBrush = InterlockItemBrush(interlockHumiOk);
+            _vm.InterlockHumiText = $"[{ToMark(humiSev)}] 습도 (정상 {AppSettings.HumiMin:F0}–{AppSettings.HumiMax:F0} %)";
+            _vm.InterlockHumiBrush = InterlockItemBrush(humiSev);
         }
         if (!HasLiveSensorData || !_accessInputValid)
         {
@@ -991,7 +1025,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             _vm.LampRunOn,
             _vm.LampWarnOn,
             _vm.LampAlarmOn,
-            _state == EquipmentState.Running ? _transferSim : null,
+            TransferMotionActive ? _transferSim : null,
             moduleSnapshots);
 
         _vm.SetModuleSnapshots(moduleSnapshots);
@@ -1033,7 +1067,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             AccessSafe = EffectiveAccessSafe,
             AccessInputValid = _accessInputValid,
             AlarmCode = _state == EquipmentState.Alarm ? ComputePrimaryAlarmCode() : null,
-            Transfer = _state == EquipmentState.Running ? _transferSim : null
+            Transfer = TransferMotionActive ? _transferSim : null
         });
 
     private void PushSparkHistory()
@@ -1069,6 +1103,22 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private static Brush InterlockItemBrush(bool ok) =>
         ok ? Brushes.ForestGreen : Brushes.OrangeRed;
+
+    private static Brush InterlockItemBrush(InterlockSeverity severity) =>
+        severity switch
+        {
+            InterlockSeverity.Ok => Brushes.ForestGreen,
+            InterlockSeverity.Warning => Brushes.Goldenrod,
+            _ => Brushes.OrangeRed
+        };
+
+    private static string ToMark(InterlockSeverity severity) =>
+        severity switch
+        {
+            InterlockSeverity.Ok => "✓",
+            InterlockSeverity.Warning => "△",
+            _ => "✗"
+        };
 
     private string BuildStartButtonToolTip()
     {
@@ -1227,6 +1277,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         }
 
         _transferSim.Stop();
+        _demoWarningTicksLeft = 0;
         _state = CanStartProcess() ? EquipmentState.Ready : EquipmentState.Idle;
         AppendEvent( _state.ToString().ToUpperInvariant(), null, $"{source}: 정지");
         AddLog($"{source}: Stop · 가상 이송 정지");
