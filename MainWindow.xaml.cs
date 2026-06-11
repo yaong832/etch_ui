@@ -8,6 +8,7 @@ using etch_ui.Configuration;
 using etch_ui.Plc;
 using etch_ui.Security;
 using etch_ui.Services;
+using etch_ui.Services.Hmi;
 using etch_ui.Services.Simulation;
 using etch_ui.Services.Scheduling;
 using etch_ui.Controls;
@@ -27,6 +28,8 @@ public partial class MainWindow : Window, DemoScenarioHost
     private readonly DatabaseService _db;
     private readonly PlcAdsService _plc = new();
     private readonly EtchFlaskClient _flask = new();
+    private readonly HmiFlaskGateway _flaskGateway;
+    private readonly HmiTelemetryPublisher _telemetryPublisher;
     private readonly HmiTelemetryStore _telemetryStore;
     private readonly AiTrainingDataRecorder _aiDataRecorder;
     private bool _maintVirtualLoadLockClosed = true;
@@ -116,6 +119,8 @@ public partial class MainWindow : Window, DemoScenarioHost
         _motionAnimator = new EquipmentMotionAnimator(_vm.Equipment, SyncTransferMotionFrame);
         string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
         _telemetryStore = new HmiTelemetryStore(Path.Combine(dataDir, "etch_hmi.db"));
+        _flaskGateway = new HmiFlaskGateway(_flask);
+        _telemetryPublisher = new HmiTelemetryPublisher(_flask, _telemetryStore);
         _aiDataRecorder = new AiTrainingDataRecorder(Path.Combine(dataDir, "ai_training_snapshots.jsonl"));
         InitializeComponent();
         DataContext = _vm;
@@ -135,7 +140,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private void OnWindowLoaded()
     {
-        _flask.BaseUrl = AppSettings.FlaskBaseUrl;
+        _flaskGateway.BaseUrl = AppSettings.FlaskBaseUrl;
         _ = Task.Run(BackgroundPlcConnect);
         _ = ProbeFlaskOnceAsync();
     }
@@ -197,7 +202,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         bool ok;
         try
         {
-            ok = await _flask.TryHealthCheckAsync().ConfigureAwait(false);
+            ok = await _flaskGateway.ProbeHealthAsync().ConfigureAwait(false);
         }
         catch
         {
@@ -210,11 +215,11 @@ public partial class MainWindow : Window, DemoScenarioHost
             _flaskProbeDone = true;
             if (ok)
             {
-                AddLog($"Flask 응답 OK ({_flask.BaseUrl})");
+                AddLog($"Flask 응답 OK ({_flaskGateway.BaseUrl})");
             }
             else
             {
-                AddLog($"Flask 미응답 — C:\\etchflask\\run_flask.bat 확인 ({_flask.BaseUrl})");
+                AddLog($"Flask 미응답 — C:\\etchflask\\run_flask.bat 확인 ({_flaskGateway.BaseUrl})");
             }
 
             SyncViewModel();
@@ -787,11 +792,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         {
             _vm.SafetyBannerVisible = true;
             string? codeEarly = ComputePrimaryAlarmCode();
-            var alarmInfoEarly = AlarmCatalog.TryGet(codeEarly);
-            string displayCode = codeEarly ?? "—";
-            _vm.SafetyBannerText = alarmInfoEarly.HasValue
-                ? $"⛔ ALARM {displayCode} — 이송 정지 · {alarmInfoEarly.Value.Detail}"
-                : $"⛔ ALARM — 이송 정지 ({displayCode})";
+            _vm.SafetyBannerText = AlarmCatalog.FormatBanner(codeEarly);
             _vm.SafetyBannerBrush = Brushes.OrangeRed;
             _vm.InterlockPanelCritical = true;
         }
@@ -809,26 +810,13 @@ public partial class MainWindow : Window, DemoScenarioHost
             _vm.InterlockPanelCritical = false;
         }
 
-        if (IsBenchMode)
-        {
-            _vm.PlcStatusText = "DEMO (시뮬)";
-            _vm.PlcStatusBrush = Brushes.Goldenrod;
-        }
-        else if (HasLiveSensorData)
-        {
-            _vm.PlcStatusText = "Connected";
-            _vm.PlcStatusBrush = Brushes.LimeGreen;
-        }
-        else if (_plc.IsConnected)
-        {
-            _vm.PlcStatusText = "연결 대기";
-            _vm.PlcStatusBrush = Brushes.Goldenrod;
-        }
-        else
-        {
-            _vm.PlcStatusText = _simulationFallbackEnabled ? "Disconnected" : "Disconnected (EtherCAT 필수)";
-            _vm.PlcStatusBrush = Brushes.OrangeRed;
-        }
+        HmiConnectionPresenter.StatusPresentation plc = HmiConnectionPresenter.DescribePlc(
+            IsBenchMode,
+            HasLiveSensorData,
+            _plc.IsConnected,
+            _simulationFallbackEnabled);
+        _vm.PlcStatusText = plc.Text;
+        _vm.PlcStatusBrush = plc.Brush;
 
         if (!_flaskProbeDone)
         {
@@ -843,21 +831,12 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         _vm.LastUpdateText = DateTime.Now.ToString("HH:mm:ss");
 
-        if (HasLiveSensorData)
-        {
-            _vm.DataQualityText = "EtherCAT ADS · " + _lastProcessSampleUtc.ToLocalTime().ToString("HH:mm:ss");
-            _vm.DataQualityBrush = Brushes.DeepSkyBlue;
-        }
-        else if (IsBenchMode && _lastProcessSampleUtc != DateTime.MinValue)
-        {
-            _vm.DataQualityText = "데모 시뮬 · " + _lastProcessSampleUtc.ToLocalTime().ToString("HH:mm:ss");
-            _vm.DataQualityBrush = Brushes.Goldenrod;
-        }
-        else
-        {
-            _vm.DataQualityText = "유효 샘플 없음 (EtherCAT 미연결)";
-            _vm.DataQualityBrush = Brushes.OrangeRed;
-        }
+        HmiConnectionPresenter.StatusPresentation data = HmiConnectionPresenter.DescribeDataQuality(
+            HasLiveSensorData,
+            IsBenchMode,
+            _lastProcessSampleUtc);
+        _vm.DataQualityText = data.Text;
+        _vm.DataQualityBrush = data.Brush;
 
         _vm.StateText = _state.ToString().ToUpperInvariant();
         _vm.StateBrush = _state switch
@@ -873,11 +852,9 @@ public partial class MainWindow : Window, DemoScenarioHost
         _vm.AlarmCodeText = code ?? "-";
         _vm.AlarmCodeBrush = code is null ? Brushes.DimGray : Brushes.OrangeRed;
 
-        var alarmInfo = AlarmCatalog.TryGet(code);
-        if (alarmInfo.HasValue)
+        if (AlarmCatalog.TryGet(code).HasValue)
         {
-            AlarmCatalog.AlarmInfo ai = alarmInfo.Value;
-            _vm.AlarmDetailText = $"{ai.Detail}\n▶ 조치: {ai.Action}";
+            _vm.AlarmDetailText = AlarmCatalog.FormatDetailWithAction(code);
             _vm.AlarmDetailBrush = Brushes.DarkRed;
         }
         else if (_state == EquipmentState.Warning)
@@ -1419,7 +1396,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private async Task ForwardFlaskEventAsync(FlaskEventItem item, string dataSource)
     {
-        bool ok = await _flask.TryPostEtchEventsAsync([item], dataSource).ConfigureAwait(false);
+        bool ok = await _flaskGateway.PublishEventAsync([item], dataSource).ConfigureAwait(false);
         if (!ok && DateTime.UtcNow >= _nextFlaskEventFailLogUtc)
         {
             _nextFlaskEventFailLogUtc = DateTime.UtcNow.AddSeconds(30);
@@ -1654,29 +1631,14 @@ public partial class MainWindow : Window, DemoScenarioHost
                 Recipe = BuildRecipeTelemetry()
             };
 
-            if (dataSource != "offline")
-            {
-                _telemetryStore.InsertSample(
-                    dataSource,
-                    payload.EquipmentState,
-                    payload.AlarmCode,
-                    _temp,
-                    _humi,
-                    _pressureMtorr,
-                    _vib,
-                    payload.InterlockOk,
-                    _maintenanceMode,
-                    payload.Username);
-            }
-
-            bool ok = await _flask.TryPostEtchSensorDataAsync(payload).ConfigureAwait(false);
+            bool ok = await _telemetryPublisher.PublishAsync(payload).ConfigureAwait(false);
             _ = Dispatcher.BeginInvoke(() =>
             {
                 _flaskReachable = ok;
                 if (!ok && DateTime.UtcNow >= _nextFlaskFailLogUtc)
                 {
                     _nextFlaskFailLogUtc = DateTime.UtcNow.AddSeconds(25);
-                    AddLog($"Flask 전송 실패 — {_flask.BaseUrl} 서버·방화벽 확인 (로컬 telemetry_samples 저장 중)");
+                    AddLog($"Flask 전송 실패 — {_flaskGateway.BaseUrl} 서버·방화벽 확인 (로컬 telemetry_samples 저장 중)");
                 }
 
                 SyncViewModel();
@@ -1789,7 +1751,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             else
             {
                 _loggedPlcRequiredOffline = true;
-                AddLog("EtherCAT 데이터 없음 — 센서·인터락 미측정 상태입니다.");
+                AddLog(HmiConnectionPresenter.BenchModeHint(_simulationFallbackEnabled));
             }
         }
 
@@ -1814,7 +1776,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         var dialog = new InterlockSettingsWindow(_db, _flask, ResolveFlaskDataSource) { Owner = this };
         if (dialog.ShowDialog() == true)
         {
-            _flask.BaseUrl = AppSettings.FlaskBaseUrl;
+            _flaskGateway.BaseUrl = AppSettings.FlaskBaseUrl;
             _simulationFallbackEnabled = AppSettings.SimulationEnabled;
             SyncViewModel();
             _vm.NotifyAppSettingsBindings();
@@ -1858,7 +1820,7 @@ public partial class MainWindow : Window, DemoScenarioHost
     {
         try
         {
-            EtchAiDiagnosis? diag = await _flask.TryGetAiLatestAsync().ConfigureAwait(false);
+            EtchAiDiagnosis? diag = await _flaskGateway.PollAiLatestAsync().ConfigureAwait(false);
             await Dispatcher.BeginInvoke(() =>
             {
                 ApplyAiDiagnosis(diag);
@@ -1939,7 +1901,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         Activate();
         ApplyRolePermissions();
         AddLog($"재로그인: {SessionContext.CurrentUser.Username} ({SessionContext.CurrentUser.Role.ToDisplayKorean()})");
-        _flask.BaseUrl = AppSettings.FlaskBaseUrl;
+        _flaskGateway.BaseUrl = AppSettings.FlaskBaseUrl;
         _ = Task.Run(BackgroundPlcConnect);
         _ = ProbeFlaskOnceAsync();
         _uiTimer.Start();

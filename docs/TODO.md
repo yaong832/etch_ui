@@ -9,7 +9,7 @@
 
 ### 1. 빌드·코드 품질
 
-- [ ] `MainWindow.xaml.cs` 빌드 경고 수정 (CS4014 async, CS8600 nullable)
+- [x] `MainWindow.xaml.cs` 빌드 경고 수정 (CS4014 async, CS8600 nullable)
 - [ ] `.editorconfig` / nullable 정리
 - [ ] TwinCAT 없을 때 **시뮬만으로 실행**하는 방법을 `README.md`에 명시
 
@@ -24,14 +24,14 @@
 - [ ] `MainWindow.xaml` 레이아웃·폰트·색·테마 정리
 - [ ] 센서 카드, 인터락 패널, 로그 영역 가독성 개선
 - [ ] `LoginWindow` / `UserManagementWindow` 문구·검증 메시지
-- [ ] 고해상도·창 크기별 `EquipmentSchematicControl` 스케일 점검
+- [x] 고해상도·창 크기별 `EquipmentSchematicControl` 스케일 점검 (Viewbox DownOnly·layout rounding)
 
 ### 4. 장비 도식 (1단계 확장, `Equipment/`)
 
 - [ ] 도어/램프/웨이퍼 표시 다듬기
 - [ ] 시뮬 TM 경로·속도·단계 설명 UI
 - [ ] `WPF_장비UI_이식_계획.md` 중 WPF만 가능한 항목 (예: Storyboard 도어)
-- [ ] FOUP 슬롯 표시 (DataTemplate) — PLC/Flask 무관
+- [x] FOUP 슬롯 표시 — LP1~3 ProgressBar·잔량·장내 매수 (`FormatFoupInventory`)
 
 ### 5. 보안·계정 (`Security/`)
 
@@ -45,7 +45,7 @@
 
 - [x] `appsettings.json` 인터락·압력 스케일 — 관리자 **설정** 창 (`InterlockSettingsWindow`)
 - [x] 가상 시뮬 **레시피** — XML (`Recipes/default.process.xml`) · PM 순서 · tick · Flask `recipe` POST
-- [ ] `AlarmCatalog` A001~A006 문구·조치 가이드 보강
+- [x] `AlarmCatalog` A001~A006 문구·조치 가이드 보강
 - [x] `ProcessStepLadderControl` ↔ `SimPhase`·PhaseHint 동기화
 - [x] FOUP LP1~3 잔량 ProgressBar · PM (가상) / Load Lock (실접촉) 라벨
 - [x] 유지보수 모드 — 진입 시 이송 정지·인터락 완화 표시·Flask `MaintenanceMode`
@@ -54,7 +54,7 @@
 
 - [x] 「시뮬 허용」 + **데모 가이드** 창 (3분 시나리오)
 - [x] 「데모 진행」 자동 시나리오 (시뮬 허용·Start·안내 로그)
-- [ ] EtherCAT 미연결 시 화면 메시지·가이드 통일
+- [x] EtherCAT 미연결 시 화면 메시지·가이드 통일 (`HmiConnectionPresenter`)
 
 ### 8. 아키텍처 리팩터링
 
@@ -62,7 +62,7 @@
   - [ ] `PlcPollingService`
   - [ ] `InterlockEvaluator`
   - [ ] `EquipmentStateMachine`
-  - [ ] `HmiTelemetryPublisher` (Flask POST 호출만 모음)
+  - [x] `HmiTelemetryPublisher` · `HmiFlaskGateway` · `HmiConnectionPresenter`
 - [ ] ViewModel `ICommand` 이동, 코드비하인드 축소
 
 ### 9. PLC / TwinCAT (`Plc/`) — 장비·TwinCAT 있을 때

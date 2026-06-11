@@ -1,4 +1,5 @@
 using etch_ui.Equipment.Models;
+using etch_ui.Services.Hmi;
 using etch_ui.Services.Scheduling;
 
 namespace etch_ui.Services.Simulation;
@@ -45,6 +46,16 @@ public static class SimulatorSmokeTester
         if (!ValidateEfemBladeBufferPolicy(out string efemBufferError))
         {
             return new Result { Success = false, Ticks = ticks, Message = efemBufferError };
+        }
+
+        if (!ValidateAlarmCatalog(out string alarmCatalogError))
+        {
+            return new Result { Success = false, Ticks = ticks, Message = alarmCatalogError };
+        }
+
+        if (!ValidateConnectionPresenter(out string connectionError))
+        {
+            return new Result { Success = false, Ticks = ticks, Message = connectionError };
         }
 
         var sim = new TmTransferSimulator(capacity);
@@ -556,6 +567,66 @@ public static class SimulatorSmokeTester
         if (opposite == nearest || opposite < 0)
         {
             error = "efem-aligner-pick: occupied blade should force opposite slot";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static bool ValidateAlarmCatalog(out string error)
+    {
+        foreach (string code in new[] { "A001", "A002", "A003", "A004", "A005", "A006" })
+        {
+            if (!AlarmCatalog.TryGet(code).HasValue)
+            {
+                error = $"alarm-catalog: missing {code}";
+                return false;
+            }
+
+            if (!AlarmCatalog.FormatBanner(code).Contains(code, StringComparison.Ordinal))
+            {
+                error = $"alarm-catalog: banner missing {code}";
+                return false;
+            }
+
+            if (!AlarmCatalog.FormatDetailWithAction(code).Contains("조치:", StringComparison.Ordinal))
+            {
+                error = $"alarm-catalog: action missing for {code}";
+                return false;
+            }
+        }
+
+        if (!AlarmCatalog.IsEnvironmentWarningCode("A005") || AlarmCatalog.IsEnvironmentWarningCode("A002"))
+        {
+            error = "alarm-catalog: environment warning codes";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static bool ValidateConnectionPresenter(out string error)
+    {
+        var bench = HmiConnectionPresenter.DescribePlc(true, false, false, true);
+        if (!bench.Text.Contains("벤치", StringComparison.Ordinal))
+        {
+            error = "connection: bench label";
+            return false;
+        }
+
+        var live = HmiConnectionPresenter.DescribePlc(false, true, true, false);
+        if (!live.Text.Contains("실측", StringComparison.Ordinal))
+        {
+            error = "connection: live label";
+            return false;
+        }
+
+        var offline = HmiConnectionPresenter.DescribeDataQuality(false, false, DateTime.MinValue);
+        if (!offline.Text.Contains("시뮬 허용", StringComparison.Ordinal))
+        {
+            error = "connection: offline hint";
             return false;
         }
 

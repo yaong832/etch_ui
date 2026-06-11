@@ -29,6 +29,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private Brush _loadLockWaferBrush = Brushes.Transparent;
     private Brush _sideStorageWaferBrush = Brushes.Transparent;
     private Brush _foupWaferBrush = Brushes.Transparent;
+    private Brush _foupBWaferBrush = Brushes.Transparent;
+    private Brush _foupCWaferBrush = Brushes.Transparent;
     private Brush _chamberAWaferBrush = Brushes.Transparent;
     private Brush _chamberBWaferBrush = Brushes.Transparent;
     private Brush _chamberCWaferBrush = Brushes.Transparent;
@@ -182,6 +184,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     public Brush LoadLockWaferBrush { get => _loadLockWaferBrush; set => SetField(ref _loadLockWaferBrush, value); }
     public Brush SideStorageWaferBrush { get => _sideStorageWaferBrush; set => SetField(ref _sideStorageWaferBrush, value); }
     public Brush FoupWaferBrush { get => _foupWaferBrush; set => SetField(ref _foupWaferBrush, value); }
+    public Brush FoupBWaferBrush { get => _foupBWaferBrush; set => SetField(ref _foupBWaferBrush, value); }
+    public Brush FoupCWaferBrush { get => _foupCWaferBrush; set => SetField(ref _foupCWaferBrush, value); }
     public Brush ChamberAWaferBrush { get => _chamberAWaferBrush; set => SetField(ref _chamberAWaferBrush, value); }
     public Brush ChamberBWaferBrush { get => _chamberBWaferBrush; set => SetField(ref _chamberBWaferBrush, value); }
     public Brush ChamberCWaferBrush { get => _chamberCWaferBrush; set => SetField(ref _chamberCWaferBrush, value); }
@@ -366,9 +370,9 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         Foup1Remaining = state.FoupPorts[0].RemainingInFoup;
         Foup2Remaining = state.FoupPorts[1].RemainingInFoup;
         Foup3Remaining = state.FoupPorts[2].RemainingInFoup;
-        Foup1InventoryText = FormatSlot(Foup1Remaining, foupMax);
-        Foup2InventoryText = FormatSlot(Foup2Remaining, foupMax);
-        Foup3InventoryText = FormatSlot(Foup3Remaining, foupMax);
+        Foup1InventoryText = FormatFoupInventory(state.FoupPorts[0], foupMax);
+        Foup2InventoryText = FormatFoupInventory(state.FoupPorts[1], foupMax);
+        Foup3InventoryText = FormatFoupInventory(state.FoupPorts[2], foupMax);
         int alignCap = state.Capacity.AlignerSlotCount;
         AlignerInventoryText = FormatSlot(state.AlignerBuffer.Count, alignCap);
         SideStorageInventoryText = FormatSlot(state.SideStorage.Count, sideMax);
@@ -422,6 +426,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         LoadLockWaferBrush = Brushes.Transparent;
         SideStorageWaferBrush = Brushes.Transparent;
         FoupWaferBrush = Brushes.Transparent;
+        FoupBWaferBrush = Brushes.Transparent;
+        FoupCWaferBrush = Brushes.Transparent;
         ChamberAWaferBrush = Brushes.Transparent;
         ChamberBWaferBrush = Brushes.Transparent;
         ChamberCWaferBrush = Brushes.Transparent;
@@ -445,6 +451,17 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     }
 
     private static string FormatSlot(int count, int capacity) => $"{count}/{capacity}";
+
+    private static string FormatFoupInventory(FoupPortState port, int capacity)
+    {
+        if (!port.IsMounted)
+        {
+            return "미장착";
+        }
+
+        string text = $"{port.RemainingInFoup}/{capacity}";
+        return port.InFlightCount > 0 ? $"{text} · 장내 {port.InFlightCount}" : text;
+    }
 
     private static string FormatAlignerPresence(int count) =>
         count switch

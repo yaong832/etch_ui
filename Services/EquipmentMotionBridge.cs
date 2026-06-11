@@ -336,8 +336,12 @@ public sealed class EquipmentMotionBridge
         _motion.ChamberCWaferBrush = At(transfer, EquipmentRegion.ChamberC);
         _motion.ChamberDWaferBrush = At(transfer, EquipmentRegion.ChamberD);
         _motion.FoupWaferBrush = transfer.HasWaferAt(EquipmentRegion.FoupA)
-                                 || transfer.HasWaferAt(EquipmentRegion.FoupB)
-                                 || transfer.HasWaferAt(EquipmentRegion.FoupC)
+            ? WaferVisualBrushes.ForFoupInventory()
+            : Brushes.Transparent;
+        _motion.FoupBWaferBrush = transfer.HasWaferAt(EquipmentRegion.FoupB)
+            ? WaferVisualBrushes.ForFoupInventory()
+            : Brushes.Transparent;
+        _motion.FoupCWaferBrush = transfer.HasWaferAt(EquipmentRegion.FoupC)
             ? WaferVisualBrushes.ForFoupInventory()
             : Brushes.Transparent;
         _motion.EfemPaddleBrush0 = WaferVisualBrushes.ForWafer(transfer.GetEfemBladeWafer(0));
