@@ -1,6 +1,9 @@
+using System.IO;
+using System.Text.Json;
 using etch_ui.Equipment.Models;
 using etch_ui.Services.Hmi;
 using etch_ui.Services.Scheduling;
+using etch_ui.ViewModels;
 
 namespace etch_ui.Services.Simulation;
 
@@ -1055,6 +1058,155 @@ public static class SimulatorSmokeTester
             Ticks = warmupTicks,
             Message = "ok alarm pause line+module badges"
         };
+    }
+
+    /// <summary>AI 학습 JSONL — 시뮬 틱마다 스냅샷 기록·행 스키마 검증.</summary>
+    public static Result RunAiJsonlAudit(int ticks = 120)
+    {
+        if (ticks <= 0)
+        {
+            return new Result { Success = false, Message = "ticks must be > 0" };
+        }
+
+        string path = Path.Combine(Path.GetTempPath(), $"etch_ai_jsonl_{Guid.NewGuid():N}.jsonl");
+        var recorder = new AiTrainingDataRecorder(path);
+        var sim = new TmTransferSimulator();
+        sim.StartDemoLoop();
+        int motion = EquipmentCapacityConfig.Default.VacuumMotionStepsPerUiTick;
+
+        for (int i = 0; i < ticks; i++)
+        {
+            sim.Tick(motion);
+            ValidateState(sim.ClusterState);
+
+            var ctx = new ModuleStateAggregator.Context
+            {
+                EquipmentState = "RUNNING",
+                MaintenanceMode = false,
+                HasLiveSensorData = false,
+                InterlockOk = true,
+                BenchMode = true,
+                AccessSafe = true,
+                AccessInputValid = true,
+                Transfer = sim
+            };
+
+            recorder.Append(new AiTrainingDataRecorder.SnapshotInput
+            {
+                EquipmentState = "RUNNING",
+                AlarmCode = null,
+                InterlockOk = true,
+                BenchMode = true,
+                Temperature = 25,
+                Humidity = 40,
+                Pressure = 5,
+                Vibration = 0.1,
+                AccessSafe = true,
+                Modules = ModuleStateAggregator.Build(ctx)
+            });
+        }
+
+        if (!File.Exists(path))
+        {
+            return new Result { Success = false, Ticks = ticks, Message = "ai-jsonl: output file missing" };
+        }
+
+        string[] lines = File.ReadAllLines(path);
+        if (lines.Length < ticks)
+        {
+            return new Result
+            {
+                Success = false,
+                Ticks = ticks,
+                Message = $"ai-jsonl: expected {ticks} lines, got {lines.Length}"
+            };
+        }
+
+        foreach (string line in lines)
+        {
+            if (!ValidateAiJsonlLine(line, out string lineError))
+            {
+                return new Result { Success = false, Ticks = ticks, Message = lineError };
+            }
+        }
+
+        var diag = new EtchAiDiagnosis
+        {
+            Success = true,
+            AnomalyScore = 0.62,
+            PredictedAlarm = "A002",
+            PredictionConfidence = 0.81,
+            SuggestedAction = "압력 트렌드 모니터",
+            Stub = true
+        };
+        IReadOnlyList<AiInsightRow> rows = AiInsightComposer.Compose(
+            diag, true, false, 5, 0.1, 25, 40, true, true, sim);
+        AiInsightRow? predRow = rows.FirstOrDefault(r => r.Category == "예측");
+        if (predRow is null || !predRow.Detail.Contains("조치:", StringComparison.Ordinal))
+        {
+            return new Result { Success = false, Ticks = ticks, Message = "ai-jsonl: AlarmCatalog link in AiInsightComposer" };
+        }
+
+        try
+        {
+            File.Delete(path);
+        }
+        catch
+        {
+            // ignore temp cleanup
+        }
+
+        return new Result
+        {
+            Success = true,
+            Ticks = ticks,
+            Message = $"ok ai-jsonl {lines.Length} lines + catalog insight"
+        };
+    }
+
+    private static bool ValidateAiJsonlLine(string line, out string error)
+    {
+        error = string.Empty;
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            error = "ai-jsonl: empty line";
+            return false;
+        }
+
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(line);
+            JsonElement root = doc.RootElement;
+            string[] required =
+            [
+                "timestampUtc", "equipmentState", "interlockOk", "benchMode",
+                "temperature", "humidity", "pressure", "vibration", "accessSafe",
+                "moduleRunningCount", "modules"
+            ];
+
+            foreach (string key in required)
+            {
+                if (!root.TryGetProperty(key, out _))
+                {
+                    error = $"ai-jsonl: missing field {key}";
+                    return false;
+                }
+            }
+
+            if (root.GetProperty("modules").ValueKind != JsonValueKind.Array
+                || root.GetProperty("modules").GetArrayLength() < 1)
+            {
+                error = "ai-jsonl: modules array empty";
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"ai-jsonl: parse {ex.Message}";
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>UI hint API — 파이프라인·듀얼 블레이드·웨이퍼 타임라인 불변식.</summary>

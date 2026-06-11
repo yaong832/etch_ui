@@ -16,7 +16,7 @@
 
 | **실장비** | 센서, **Load Lock 접촉(DI5)**, **버튼 DI0~3**, **램프 DO0~3** |
 
-| **WPF** | 인터락·조작·가상 도식·(예정) AI 조언 **표시** |
+| **WPF** | 인터락·조작·가상 도식·AI 조언 **표시** (`GET ai/latest`) |
 
 | **Flask** | 원격 조회·이력·**AI 추론** (`etch_ai.py`) |
 
@@ -56,9 +56,12 @@
 2. **Start**로 가상 이송 확인 · 헤드리스 검증:
 
 ```bash
-dotnet run --project etch_ui.csproj -- --sim-smoke --ticks=2500
-dotnet run --project etch_ui.csproj -- --sim-report --ticks=40000
+dotnet run -c Release -- --sim-smoke --ticks=4000
+dotnet run -c Release -- --sim-ai-jsonl --ticks=120
+dotnet run -c Release -- --sim-report --ticks=40000
 ```
+
+`Services/Hmi/` — Flask 연결·텔레메트리 payload·계약 검증 (`HmiFlaskGateway`, `EtchTelemetryContractValidator` 등).
 
 
 
@@ -67,6 +70,8 @@ dotnet run --project etch_ui.csproj -- --sim-report --ticks=40000
 | 문서 | 용도 |
 |------|------|
 | [**PROJECT_계획.md**](PROJECT_계획.md) | **전체 로드맵** (Phase 0~5, AI §10) |
+| [PROJECT_진행상황.md](PROJECT_진행상황.md) | 진행도·최근 커밋 |
+| [docs/구현상태.md](docs/구현상태.md) | Phase·Hmi·CLI 요약 |
 | [PROJECT_개요.md](PROJECT_개요.md) | 현황 스냅샷 |
 | [`docs/TODO.md`](docs/TODO.md) | Flask 제외, 지금 할 수 있는 작업 목록 |
 | [PROTO_실행순서.md](PROTO_실행순서.md) | 실행·데모·API |

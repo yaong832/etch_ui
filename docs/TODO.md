@@ -11,13 +11,13 @@
 
 - [x] `MainWindow.xaml.cs` 빌드 경고 수정 (CS4014 async, CS8600 nullable)
 - [ ] `.editorconfig` / nullable 정리
-- [ ] TwinCAT 없을 때 **시뮬만으로 실행**하는 방법을 `README.md`에 명시
+- [x] TwinCAT 없을 때 **시뮬만으로 실행**하는 방법을 `README.md`에 명시
 
 ### 2. 문서·포트폴리오
 
 - [ ] `PROTO_실행순서.md`의 `D:\`, `C:\etchflask` 절대경로 → 「Flask는 별도 저장소」로 정리
 - [ ] README에 스크린샷·데모 시나리오 추가 (로그인 → 시뮬 허용 → 공정 Start)
-- [ ] 구현 상태 체크리스트를 `docs/`에 유지·갱신
+- [x] 구현 상태 체크리스트를 `docs/`에 유지·갱신 (`docs/구현상태.md`, `PROJECT_진행상황.md`)
 
 ### 3. UI/UX (WPF만)
 
@@ -98,6 +98,7 @@
 
 - [x] 시뮬 1Hz JSONL 수집 (`data/ai_training_snapshots.jsonl`)
 - [x] `train_from_sim.ps1` · 경로 문서 [`docs/AI_학습_모델_경로.md`](AI_학습_모델_경로.md)
+- [x] 헤드리스 JSONL 계약 (`--sim-ai-jsonl`)
 - [ ] 시뮬 5분+ 수집 후 재학습·Flask 배포 검증 (로컬)
 
 ---
@@ -129,14 +130,16 @@
 ## E. 빠른 체크리스트
 
 ```
-[ ] README: Flask 별도 repo, 시뮬만 실행 방법
+[x] README: Flask 별도 repo, 시뮬만 실행 방법
 [ ] PROTO 문서: 절대경로 제거
-[ ] MainWindow 빌드 경고 2건
-[ ] 시뮬 허용 + 데모 시나리오 문서화
+[x] MainWindow 빌드 경고 2건
+[x] 시뮬 허용 + 데모 시나리오 문서화
 [ ] UI / 장비 도식 polish
-[ ] AlarmCatalog / 인터락 문구
+[x] AlarmCatalog / 인터락 문구
 [ ] MainWindow → 서비스 클래스 분리 (1차)
 [x] EtchFlaskClient 오프라인 UX (`HmiFlaskStatusPresenter`)
+[x] Flask payload 계약 (EtchTelemetryContractValidator)
+[x] AI JSONL 헤드리스 (--sim-ai-jsonl)
 [ ] (선택) TwinCAT 실연결
 [ ] (etchflask 후) E2E 연동 테스트
 ```

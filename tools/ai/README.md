@@ -1,5 +1,13 @@
 # AI 학습·배포 (식각 HMI)
 
+## 헤드리스 JSONL 검증 (CI·로컬)
+
+```bash
+dotnet run -c Release -- --sim-ai-jsonl --ticks=120
+```
+
+시뮬 틱마다 `AiTrainingDataRecorder`와 동일 스키마로 JSONL을 쓰고, 필수 필드·`AlarmCatalog`↔AI 예측 행을 검증합니다.
+
 ## 시뮬만으로 기본 모델 만들기 (권장)
 
 1. WPF: **시뮬 허용** → **Start** → **5분+** RUNNING  

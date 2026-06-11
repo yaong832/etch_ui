@@ -72,7 +72,7 @@
 | `MainWindow` / `MainViewModel` | 1초 루프, 인터락, Flask POST |
 | `TmTransferSimulator` | **가상 이송** (semitest `TransferController` 축소) |
 | `EquipmentMotionBridge` | 접촉(실) + 시뮬(가상) → 도식 |
-| `EtchFlaskClient` | sensor-data POST · (예정) `ai/latest` GET |
+| `EtchFlaskClient` | sensor-data POST · `ai/latest` GET |
 | `Security/*`, `AlarmCatalog` | 사용자·알람 A001~A006 |
 
 ### 2.3 계층 C — Flask
@@ -81,7 +81,7 @@
 |------|----------|------|
 | 실시간 KPI·차트 | `GET /api/sensors`, 실시간 탭 | 없음 |
 | 이력·이벤트 | `GET /api/etch/history`, `events` | 없음 |
-| **AI 엔진** | `GET /api/etch/ai/status`, `POST .../predict`, (예정) `GET .../ai/latest` | 없음 |
+| **AI 엔진** | `GET /api/etch/ai/status`, `POST .../predict`, `GET .../ai/latest` | 없음 |
 | AI UI | `etch_dashboard.html` **AI 진단** 탭 | 없음 |
 
 ---
@@ -176,10 +176,10 @@
 
 | 영역 | 비율 | 내용 |
 |------|------|------|
-| 좌 | 5* | 가상 도식, 상태·알람, **실측** 센서, 추세 |
-| 중 | 3* | 인터락, 공정 스텝, **(Phase 4) AI 조언** |
-| 우 | 2.2* | **램프**, **Start/Stop/Reset/Maint** |
-| 하단 | ~140px | 운영 로그 |
+| 좌 | 7.5* | **가상 TM** 도식 · TM 진단(↗ 분리) |
+| 중 | 2* | 인터락·공정 스텝·**AI 조언** 요약 |
+| 우 | 1.6* | **램프**·Start/Stop · 잔량 타일 |
+| 하단 | 스트립 | 운영 로그 · **실측 센서는 ↗ 분리 창** |
 
 ### 5.2 Flask 웹
 
@@ -275,7 +275,7 @@
 | `POST /api/etch/ai/predict` | 있음(스텁) | 스냅샷 추론 |
 | `POST /api/etch/ai/train` | (예정) | 웹에서 학습 트리거(승인 필요) |
 | `GET /api/etch/ai/models` | (예정) | 모델 버전·메타데이터 조회 |
-| `GET /api/etch/ai/latest` | **예정** | WPF 2~3초 폴링 |
+| `GET /api/etch/ai/latest` | ✅ | WPF 2~3초 폴링 |
 
 ### 10.4 구현 순서
 

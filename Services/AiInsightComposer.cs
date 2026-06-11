@@ -51,8 +51,8 @@ public static class AiInsightComposer
                 rows.Add(new AiInsightRow
                 {
                     Category = "예측",
-                    Signal = $"예상 알람 {pred}",
-                    Detail = $"신뢰 {diag.PredictionConfidence:P0} · 인터락·Start 자동 변경 없음(조언만)",
+                    Signal = $"예상 알람 {pred}" + AlarmTitleSuffix(pred),
+                    Detail = BuildPredictedAlarmDetail(pred, diag.PredictionConfidence),
                     SeverityLabel = "주의",
                     SeverityBrush = Brushes.DarkGoldenrod
                 });
@@ -174,6 +174,24 @@ public static class AiInsightComposer
             SeverityLabel = "편차",
             SeverityBrush = Brushes.OrangeRed
         });
+    }
+
+    private static string AlarmTitleSuffix(string code)
+    {
+        AlarmCatalog.AlarmInfo? info = AlarmCatalog.TryGet(code);
+        return info is null ? string.Empty : $" · {info.Value.Title}";
+    }
+
+    private static string BuildPredictedAlarmDetail(string code, double confidence)
+    {
+        string tail = $"신뢰 {confidence:P0} · 인터락·Start 자동 변경 없음(조언만)";
+        AlarmCatalog.AlarmInfo? info = AlarmCatalog.TryGet(code);
+        if (info is null)
+        {
+            return tail;
+        }
+
+        return $"{info.Value.Detail} · ▶ 조치: {info.Value.Action} · {tail}";
     }
 
     private static (string Label, Brush Brush) ScoreSeverity(double score) => score switch
