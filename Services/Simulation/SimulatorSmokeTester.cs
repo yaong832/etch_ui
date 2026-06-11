@@ -355,9 +355,19 @@ public static class SimulatorSmokeTester
         ];
         var scheduler = new FoupPickScheduler(ports, 25);
         FoupPortState? selected = scheduler.SelectNextPickSource();
+        if (selected?.PortId != LoadPortId.Lp1)
+        {
+            error = "FOUP policy mismatch: should prefer LP with most remaining (25>10)";
+            return false;
+        }
+
+        ports[0].RemainingInFoup = 5;
+        ports[1].RemainingInFoup = 25;
+        ports[2].RemainingInFoup = 25;
+        selected = scheduler.SelectNextPickSource();
         if (selected?.PortId != LoadPortId.Lp2)
         {
-            error = "FOUP policy mismatch: full-stock block did not prefer partial lot";
+            error = "FOUP policy mismatch: full FOUP should beat draining LP1 (max-remaining)";
             return false;
         }
 
@@ -378,7 +388,7 @@ public static class SimulatorSmokeTester
         selected = scheduler.SelectNextPickSource();
         if (selected?.PortId != LoadPortId.Lp2)
         {
-            error = "FOUP policy mismatch: LP1 drain-only inflight should allow LP2 full FOUP";
+            error = "FOUP policy mismatch: LP1 empty should pick among full FOUPs (LP2 tie)";
             return false;
         }
 

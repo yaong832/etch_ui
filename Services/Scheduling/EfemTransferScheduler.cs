@@ -32,8 +32,6 @@ public sealed class EfemTransferScheduler
             return 0;
         }
 
-        state.PickScheduler.RefreshFreshMountBlocks();
-
         if (TryScheduleSideStorageCassetteSwap(state))
         {
             return 1;
