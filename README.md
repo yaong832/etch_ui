@@ -80,6 +80,7 @@ dotnet run -c Release -- --sim-report --ticks=40000
 | [SCHEDULER_FOUP_PM_정책.md](SCHEDULER_FOUP_PM_정책.md) | FOUP·PM·Side·듀얼 블레이드·헤드리스 시뮬 |
 | `C:\etchflask\ETCH_AI.md` | AI 모델·API |
 | [tools/ai/README.md](tools/ai/README.md) | 로컬 AI 학습 데이터 수집/변환/베이스라인 |
+| [docs/FLASK_E2E.md](docs/FLASK_E2E.md) | Flask HTTP E2E (`--sim-flask-e2e`) |
 
 ## 설정
 

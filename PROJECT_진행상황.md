@@ -115,6 +115,7 @@
 | `--sim-aligner-audit` | PASS |
 
 | `--sim-ai-jsonl` | PASS |
+| `--sim-flask-e2e --require-ml` | PASS |
 
 
 
@@ -170,7 +171,7 @@
 
 |:----:|------|
 
-| 1 | Flask 수동 E2E + `train_from_sim.ps1 -Deploy` ML 확인 |
+| 1 | WPF 수동 B1~B8 (F5 데모) · 브라우저 KPI 육안 확인 |
 | 2 | `MainWindow` PlcPolling / Interlock 분리 |
 | 3 | TwinCAT 현장 |
 | 4 | 가상/실장 2창 UI (검토 보류) |

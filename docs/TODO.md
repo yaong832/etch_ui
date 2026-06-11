@@ -90,7 +90,8 @@
 
 - [x] 상단 Flask 연결 상태 (OK/OFF)
 - [x] `POST /api/etch/sensor-data` payload 계약 검증 (`EtchTelemetryContractValidator` · sim-smoke)
-- [ ] 브라우저 `GET /api/sensors`와 HMI 수치 일치 확인
+- [x] Flask E2E 헤드리스 (`--sim-flask-e2e`, `tools/flask/e2e_flask.ps1`)
+- [ ] 브라우저 `GET /api/sensors`와 HMI 수치 일치 확인 (수동)
 
 ---
 
@@ -99,6 +100,7 @@
 - [x] 시뮬 1Hz JSONL 수집 (`data/ai_training_snapshots.jsonl`)
 - [x] `train_from_sim.ps1` · 경로 문서 [`docs/AI_학습_모델_경로.md`](AI_학습_모델_경로.md)
 - [x] 헤드리스 JSONL 계약 (`--sim-ai-jsonl`)
+- [x] Flask `ai/status` sklearn ready (모델 배포·E2E `--require-ml`)
 - [ ] 시뮬 5분+ 수집 후 재학습·Flask 배포 검증 (로컬)
 
 ---
@@ -141,7 +143,7 @@
 [x] Flask payload 계약 (EtchTelemetryContractValidator)
 [x] AI JSONL 헤드리스 (--sim-ai-jsonl)
 [ ] (선택) TwinCAT 실연결
-[ ] (etchflask 후) E2E 연동 테스트
+[x] (etchflask 후) E2E 연동 테스트 (`--sim-flask-e2e`)
 ```
 
 ---

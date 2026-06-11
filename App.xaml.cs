@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.IO;
 using etch_ui.Security;
+using etch_ui.Services.Hmi;
 using etch_ui.Services.Simulation;
 
 namespace etch_ui
@@ -80,6 +81,34 @@ namespace etch_ui
                 SimulatorSmokeTester.Result result = SimulatorSmokeTester.RunAiJsonlAudit(ticks);
                 Console.WriteLine($"sim_ai_jsonl ticks={result.Ticks} success={result.Success} message={result.Message}");
                 Shutdown(result.Success ? 0 : 10);
+                return;
+            }
+
+            if (e.Args.Any(a => a.Equals("--sim-flask-e2e", StringComparison.OrdinalIgnoreCase)))
+            {
+                string flaskUrl = "http://127.0.0.1:5000";
+                string? urlArg = e.Args.FirstOrDefault(a => a.StartsWith("--flask-url=", StringComparison.OrdinalIgnoreCase));
+                if (urlArg is not null)
+                {
+                    flaskUrl = urlArg.Split('=', 2)[1];
+                }
+
+                int simTicks = 80;
+                string? ticksArg = e.Args.FirstOrDefault(a => a.StartsWith("--ticks=", StringComparison.OrdinalIgnoreCase));
+                if (ticksArg is not null && int.TryParse(ticksArg.Split('=')[1], out int parsedTicks) && parsedTicks > 0)
+                {
+                    simTicks = parsedTicks;
+                }
+
+                bool requireMl = e.Args.Any(a => a.Equals("--require-ml", StringComparison.OrdinalIgnoreCase));
+                FlaskE2eTester.Result result = FlaskE2eTester.Run(flaskUrl, simTicks, requireMl);
+                Console.WriteLine($"sim_flask_e2e success={result.Success} ai_ready={result.AiReady} engine={result.AiEngine} message={result.Message}");
+                if (result.Report is not null)
+                {
+                    Console.WriteLine(result.Report);
+                }
+
+                Shutdown(result.Success ? 0 : 13);
                 return;
             }
 
