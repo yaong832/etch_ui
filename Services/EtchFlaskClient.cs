@@ -77,6 +77,34 @@ public sealed class EtchFlaskClient : IDisposable
         }
     }
 
+    public async Task<FlaskAiStatusSnapshot?> TryGetAiStatusAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using HttpResponseMessage response = await _http
+                .GetAsync($"{BaseUrl.TrimEnd('/')}/api/etch/ai/status", cancellationToken)
+                .ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            System.Text.Json.JsonElement root = doc.RootElement;
+            return new FlaskAiStatusSnapshot
+            {
+                Ready = root.TryGetProperty("ready", out var ready) && ready.GetBoolean(),
+                Engine = root.TryGetProperty("engine", out var eng) ? eng.GetString() : null,
+                Message = root.TryGetProperty("message", out var msg) ? msg.GetString() : null
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<EtchAiDiagnosis?> TryGetAiLatestAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -104,6 +132,13 @@ public sealed class EtchFlaskClient : IDisposable
     };
 
     public void Dispose() => _http.Dispose();
+}
+
+public sealed class FlaskAiStatusSnapshot
+{
+    public bool Ready { get; set; }
+    public string? Engine { get; set; }
+    public string? Message { get; set; }
 }
 
 public sealed class EtchAiDiagnosis

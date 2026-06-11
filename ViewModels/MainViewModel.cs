@@ -21,6 +21,9 @@ public sealed class MainViewModel : ViewModelBase
     private string _flaskStatusText = "확인 중";
     private Brush _flaskStatusBrush = Brushes.Goldenrod;
     private string _flaskStatusHint = "Flask 연결 확인 중";
+    private string _aiEngineStatusText = "—";
+    private Brush _aiEngineStatusBrush = Brushes.DimGray;
+    private string _aiEngineStatusHint = "AI 엔진 확인 중";
     private string _lastUpdateText = "-";
     private string _dataQualityText = "-";
     private Brush _dataQualityBrush = Brushes.LightSteelBlue;
@@ -154,6 +157,24 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => _flaskStatusHint;
         set => SetField(ref _flaskStatusHint, value);
+    }
+
+    public string AiEngineStatusText
+    {
+        get => _aiEngineStatusText;
+        set => SetField(ref _aiEngineStatusText, value);
+    }
+
+    public Brush AiEngineStatusBrush
+    {
+        get => _aiEngineStatusBrush;
+        set => SetField(ref _aiEngineStatusBrush, value);
+    }
+
+    public string AiEngineStatusHint
+    {
+        get => _aiEngineStatusHint;
+        set => SetField(ref _aiEngineStatusHint, value);
     }
 
     public string LastUpdateText

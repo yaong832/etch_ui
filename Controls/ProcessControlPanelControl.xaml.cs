@@ -37,4 +37,11 @@ public partial class ProcessControlPanelControl : UserControl
         CompactButtons.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
         SideInfo.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    public void SetMaintToolsCompactVisible(bool visible)
+    {
+        BtnMaintToolsCompact.Visibility = CompactMode && visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
 }

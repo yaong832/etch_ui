@@ -9,6 +9,7 @@ using etch_ui.Plc;
 using etch_ui.Security;
 using etch_ui.Services;
 using etch_ui.Services.Hmi;
+using etch_ui.Services.Plc;
 using etch_ui.Services.Simulation;
 using etch_ui.Services.Scheduling;
 using etch_ui.Controls;
@@ -26,7 +27,8 @@ public partial class MainWindow : Window, DemoScenarioHost
     private readonly TmTransferSimulator _transferSim = new();
     private bool _lotCompleteHandled;
     private readonly DatabaseService _db;
-    private readonly PlcAdsService _plc = new();
+    private readonly PlcPollingService _plcPolling = new(new PlcAdsService());
+    private InterlockDecision _interlock = InterlockDecision.Empty;
     private readonly EtchFlaskClient _flask = new();
     private readonly HmiFlaskGateway _flaskGateway;
     private readonly HmiTelemetryPublisher _telemetryPublisher;
@@ -73,7 +75,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     /// <summary>EtherCAT 실측 샘플이 있을 때만 센서·접근 표시.</summary>
     private bool HasLiveSensorData =>
-        !_useSimulation && _plc.IsConnected && _lastProcessSampleUtc != DateTime.MinValue;
+        !_useSimulation && _plcPolling.IsConnected && _lastProcessSampleUtc != DateTime.MinValue;
 
     /// <summary>
     /// 시뮬 허용 ON + TwinCAT 미사용(_useSimulation): 레시피·가상 TM·로직 확인용 데모.
@@ -88,12 +90,12 @@ public partial class MainWindow : Window, DemoScenarioHost
     private bool _loggedPlcRequiredOffline;
 
     private bool _ethercatLinkLostLogged;
-    private int _ethercatReconnectCooldown;
     private bool _loadLockOpenWhileRunningLogged;
     private int _aiPollCounter;
     private double _lastAiScore = -1;
     private string _lastAiHint = "Flask AI 대기 중";
     private EtchAiDiagnosis? _lastAiDiagnosis;
+    private FlaskAiStatusSnapshot? _flaskAiStatus;
     private HmiPopoutWindow? _popoutEquipment;
     private HmiPopoutWindow? _popoutInterlock;
     private HmiPopoutWindow? _popoutDiagnostics;
@@ -150,7 +152,7 @@ public partial class MainWindow : Window, DemoScenarioHost
     {
         try
         {
-            bool connected = _plc.TryConnect(AppSettings.AdsPort);
+            bool connected = _plcPolling.TryConnect(AppSettings.AdsPort);
             Dispatcher.BeginInvoke(() =>
             {
                 if (connected)
@@ -158,13 +160,12 @@ public partial class MainWindow : Window, DemoScenarioHost
                     _useSimulation = false;
                     _loggedPlcRequiredOffline = false;
                     _ethercatLinkLostLogged = false;
-                    _ethercatReconnectCooldown = 0;
                     AppendEvent(null, null, "EtherCAT ADS 연결 성공");
                     AddLog($"EtherCAT 연결 성공 (ADS 포트 {AppSettings.AdsPort})");
                 }
                 else
                 {
-                    OnPlcConnectFailed(_plc.LastError ?? "알 수 없음");
+                    OnPlcConnectFailed(_plcPolling.LastError ?? "알 수 없음");
                 }
 
                 SyncViewModel();
@@ -218,9 +219,11 @@ public partial class MainWindow : Window, DemoScenarioHost
             {
                 _lastFlaskSuccessUtc = DateTime.UtcNow;
                 AddLog($"Flask 응답 OK ({_flaskGateway.BaseUrl})");
+                _ = RefreshFlaskAiStatusAsync();
             }
             else
             {
+                _flaskAiStatus = null;
                 AddLog($"Flask 미응답 — C:\\etchflask\\run_flask.bat 확인 ({_flaskGateway.BaseUrl})");
             }
 
@@ -228,11 +231,39 @@ public partial class MainWindow : Window, DemoScenarioHost
         });
     }
 
+    private async Task RefreshFlaskAiStatusAsync()
+    {
+        try
+        {
+            FlaskAiStatusSnapshot? status = await _flaskGateway.PollAiStatusAsync().ConfigureAwait(false);
+            await Dispatcher.BeginInvoke(() =>
+            {
+                _flaskAiStatus = status;
+                SyncAiEngineChip();
+            });
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private void SyncAiEngineChip()
+    {
+        HmiAiEnginePresenter.Presentation chip = HmiAiEnginePresenter.Describe(
+            _flaskReachable,
+            _flaskAiStatus,
+            _lastAiDiagnosis);
+        _vm.AiEngineStatusText = chip.Text;
+        _vm.AiEngineStatusBrush = chip.Brush;
+        _vm.AiEngineStatusHint = chip.Hint;
+    }
+
     private void OnWindowClosed()
     {
         _demoScenarioRunner.Stop();
         _motionAnimator.Dispose();
-        _plc.Dispose();
+        _plcPolling.Dispose();
         _flask.Dispose();
     }
 
@@ -263,33 +294,50 @@ public partial class MainWindow : Window, DemoScenarioHost
     {
         if (!_useSimulation)
         {
-            if (_plc.IsConnected)
+            PlcPollResult poll = _plcPolling.PollConnected();
+            switch (poll.Kind)
             {
-                if (_plc.TryReadSnapshot(out PlcProcessSnapshot snap))
-                {
+                case PlcPollKind.Snapshot:
                     if (_ethercatLinkLostLogged)
                     {
                         _ethercatLinkLostLogged = false;
                         AddLog("EtherCAT 통신 복구됨");
                     }
 
-                    ApplyPlcSnapshot(snap);
-                }
-                else
-                {
-                    OnEthercatLinkLost(_plc.LastError ?? "EtherCAT 읽기 실패");
-                }
-            }
-            else
-            {
-                TryEthercatReconnect();
+                    ApplyPlcSnapshot(poll.Snapshot);
+                    break;
+                case PlcPollKind.LinkLost:
+                    OnEthercatLinkLost(poll.Error ?? "EtherCAT 읽기 실패");
+                    break;
+                case PlcPollKind.NeedReconnect:
+                    _ = Task.Run(() =>
+                    {
+                        bool ok = _plcPolling.TryReconnect(AppSettings.AdsPort);
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            if (ok)
+                            {
+                                _useSimulation = false;
+                                _ethercatLinkLostLogged = false;
+                                _loggedPlcRequiredOffline = false;
+                                AddLog($"EtherCAT 재연결 성공 (ADS {AppSettings.AdsPort})");
+                                SyncViewModel();
+                            }
+                            else
+                            {
+                                _plcPolling.ArmReconnectCooldown();
+                            }
+                        });
+                    });
+                    break;
             }
         }
-        else if (_useSimulation)
+        else
         {
             SimulateSensors();
         }
 
+        RefreshInterlockDecision();
         AutoEvaluateState();
         EnforceLoadLockContactDuringTransfer();
 
@@ -383,13 +431,13 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private void OnEthercatLinkLost(string err)
     {
-        _plc.Disconnect();
+        _plcPolling.Disconnect();
         _lastProcessSampleUtc = DateTime.MinValue;
 
         if (!_ethercatLinkLostLogged)
         {
             _ethercatLinkLostLogged = true;
-            _ethercatReconnectCooldown = 3;
+            _plcPolling.ArmReconnectCooldown();
             if (_simulationFallbackEnabled)
             {
                 _useSimulation = true;
@@ -404,35 +452,6 @@ public partial class MainWindow : Window, DemoScenarioHost
                 AddLog($"EtherCAT 통신 끊김: {err}");
             }
         }
-    }
-
-    private void TryEthercatReconnect()
-    {
-        if (_ethercatReconnectCooldown > 0)
-        {
-            _ethercatReconnectCooldown--;
-            return;
-        }
-
-        _ = Task.Run(() =>
-        {
-            bool ok = _plc.TryConnect(AppSettings.AdsPort);
-            Dispatcher.BeginInvoke(() =>
-            {
-                if (ok)
-                {
-                    _useSimulation = false;
-                    _ethercatLinkLostLogged = false;
-                    _loggedPlcRequiredOffline = false;
-                    AddLog($"EtherCAT 재연결 성공 (ADS {AppSettings.AdsPort})");
-                    SyncViewModel();
-                }
-                else
-                {
-                    _ethercatReconnectCooldown = 3;
-                }
-            });
-        });
     }
 
     private void ApplyPlcSnapshot(PlcProcessSnapshot snap)
@@ -510,83 +529,38 @@ public partial class MainWindow : Window, DemoScenarioHost
         _lastProcessSampleUtc = DateTime.UtcNow;
     }
 
-    private InterlockSeverity PressureSeverity =>
-        InterlockSeverityEvaluator.Pressure(_pressureMtorr, _pressureSignalValid);
-
-    private InterlockSeverity VibrationSeverity => InterlockSeverityEvaluator.Vibration(_vib);
-
-    private InterlockSeverity TempSeverity => InterlockSeverityEvaluator.Temperature(_temp);
-
-    private InterlockSeverity HumiSeverity => InterlockSeverityEvaluator.Humidity(_humi);
-
-    private bool HasSensorAlarm =>
-        InterlockSeverityEvaluator.AnyAlarm(PressureSeverity, VibrationSeverity, TempSeverity, HumiSeverity);
-
-    private bool HasSensorWarning =>
-        InterlockSeverityEvaluator.AnyWarning(PressureSeverity, VibrationSeverity, TempSeverity, HumiSeverity);
-
-    /// <summary>
-    /// 인터락 판정용 "실데이터" 기준.
-    /// EtherCAT이 연결되지 않았거나(_useSimulation 상태 포함) 실제 샘플이 없으면 false.
-    /// </summary>
-    private bool PlcLinkOk => HasLiveSensorData;
-
     private bool EffectiveAccessSafe =>
         _maintenanceMode ? _maintVirtualLoadLockClosed : _accessSafe;
 
-    private bool AccessInterlockOk =>
-        HasLiveSensorData && _accessInputValid && EffectiveAccessSafe;
+    private bool ProductionInterlockOk => _interlock.ProductionInterlockOk;
 
-    private bool ProductionInterlockOk =>
-        PlcLinkOk
-        && AccessInterlockOk
-        && InterlockSeverityEvaluator.AllOk(PressureSeverity, VibrationSeverity, TempSeverity, HumiSeverity);
+    private bool HasSensorAlarm => _interlock.HasSensorAlarm;
+
+    private bool HasSensorWarning => _interlock.HasSensorWarning;
+
+    private string? ComputePrimaryAlarmCode() => _interlock.PrimaryAlarmCode;
 
     private bool CanStartProcess() =>
         SessionContext.HasRole(UserRole.Worker)
         && !_maintenanceMode
         && (IsBenchMode || ProductionInterlockOk);
 
-    private string? ComputePrimaryAlarmCode()
+    private InterlockSensorContext BuildInterlockContext() => new()
     {
-        if (_maintenanceMode || IsBenchMode)
-        {
-            return null;
-        }
+        HasLiveSensorData = HasLiveSensorData,
+        IsBenchMode = IsBenchMode,
+        MaintenanceMode = _maintenanceMode,
+        AccessInputValid = _accessInputValid,
+        EffectiveAccessSafe = EffectiveAccessSafe,
+        PressureMtorr = _pressureMtorr,
+        PressureSignalValid = _pressureSignalValid,
+        VibrationG = _vib,
+        TempC = _temp,
+        HumidityPct = _humi
+    };
 
-        if (!PlcLinkOk)
-        {
-            return "A001";
-        }
-
-        if (_accessInputValid && !EffectiveAccessSafe
-            && !_maintenanceMode)
-        {
-            return "A004";
-        }
-
-        if (PressureSeverity == InterlockSeverity.Alarm)
-        {
-            return "A002";
-        }
-
-        if (VibrationSeverity == InterlockSeverity.Alarm)
-        {
-            return "A003";
-        }
-
-        if (TempSeverity == InterlockSeverity.Alarm)
-        {
-            return "A005";
-        }
-
-        if (HumiSeverity == InterlockSeverity.Alarm)
-        {
-            return "A006";
-        }
-
-        return null;
-    }
+    private void RefreshInterlockDecision() =>
+        _interlock = InterlockEvaluator.Evaluate(BuildInterlockContext());
 
     /// <summary>Load Lock 접촉 열림 시 RUNNING·가상 이송 즉시 중단 (Phase 1.2). 데모 모드는 실접촉 미사용.</summary>
     private void EnforceLoadLockContactDuringTransfer()
@@ -669,7 +643,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             return;
         }
 
-        bool severe = !PlcLinkOk
+        bool severe = !_interlock.PlcLinkOk
             || (_accessInputValid && !EffectiveAccessSafe)
             || HasSensorAlarm;
         if (severe)
@@ -716,7 +690,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private void PushOutputsToPlc()
     {
-        if (_useSimulation || !_plc.IsConnected)
+        if (_useSimulation || !_plcPolling.IsConnected)
         {
             return;
         }
@@ -730,7 +704,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             _ => 0
         };
 
-        _plc.WriteDigitalOutputLamps(bits);
+        _plcPolling.Plc.WriteDigitalOutputLamps(bits);
     }
 
     private void ProcessHardwareButtons(ushort bits)
@@ -815,7 +789,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         HmiConnectionPresenter.StatusPresentation plc = HmiConnectionPresenter.DescribePlc(
             IsBenchMode,
             HasLiveSensorData,
-            _plc.IsConnected,
+            _plcPolling.IsConnected,
             _simulationFallbackEnabled);
         _vm.PlcStatusText = plc.Text;
         _vm.PlcStatusBrush = plc.Brush;
@@ -906,151 +880,16 @@ public partial class MainWindow : Window, DemoScenarioHost
             _vm.PressureText = _pressureMtorr.ToString(fmt);
         }
 
-        bool hasLive = HasLiveSensorData;
-        if (_maintenanceMode)
-        {
-            string pressureFmtMnt = "F" + AppSettings.PressureDecimals;
-            string pressureRangeMnt =
-                $"{AppSettings.PressureMtorrMin.ToString(pressureFmtMnt)}–{AppSettings.PressureMtorrMax.ToString(pressureFmtMnt)} mTorr";
-            _vm.InterlockPlcText = hasLive ? "[MNT] EtherCAT 연결 (모니터링)" : "[MNT] EtherCAT 미연결";
-            _vm.InterlockPlcBrush = Brushes.MediumPurple;
-            _vm.InterlockPressureText = hasLive && _pressureSignalValid
-                ? $"[MNT] 압력 {pressureRangeMnt}"
-                : "[MNT] 압력 신호 없음";
-            _vm.InterlockPressureBrush = Brushes.MediumPurple;
-            _vm.InterlockPressureDetailText = hasLive && _pressureSignalValid
-                ? $"현재 {_pressureMtorr.ToString(pressureFmtMnt)} mTorr · Start 차단"
-                : $"허용 {pressureRangeMnt} (참고)";
-            _vm.InterlockVibText = hasLive ? "[MNT] 진동 모니터링" : "[MNT] 진동 미측정";
-            _vm.InterlockVibBrush = Brushes.MediumPurple;
-            _vm.InterlockTempText = hasLive ? "[MNT] 온도 모니터링" : "[MNT] 온도 미측정";
-            _vm.InterlockTempBrush = Brushes.MediumPurple;
-            _vm.InterlockHumiText = hasLive ? "[MNT] 습도 모니터링" : "[MNT] 습도 미측정";
-            _vm.InterlockHumiBrush = Brushes.MediumPurple;
-            _vm.InterlockAccessText = hasLive && _accessInputValid
-                ? (EffectiveAccessSafe ? "[MNT] Load Lock 닫힘" : "[MNT] Load Lock 열림")
-                : "[MNT] Load Lock 미측정";
-            _vm.InterlockAccessBrush = Brushes.MediumPurple;
-            _vm.InterlockResultText = "유지보수 — 공정 시작 불가 · 정비 후 해제";
-            _vm.InterlockResultBrush = Brushes.MediumPurple;
-            _vm.CanStart = false;
-            _vm.StartButtonToolTip = BuildStartButtonToolTip();
-            goto AfterInterlockRows;
-        }
+        RefreshInterlockDecision();
+        InterlockPanelPresenter.Apply(_vm, BuildInterlockContext(), _interlock, EffectiveAccessSafe);
+        _vm.CanStart = CanStartProcess();
+        _vm.StartButtonToolTip = BuildStartButtonToolTip();
 
-        if (IsBenchMode)
-        {
-            _vm.InterlockPlcText = "[데모] EtherCAT·인터락 미적용";
-            _vm.InterlockPlcBrush = Brushes.Goldenrod;
-            _vm.InterlockPressureText = "[데모] 압력(시뮬 표시)";
-            _vm.InterlockPressureBrush = Brushes.Goldenrod;
-            _vm.InterlockPressureDetailText =
-                $"허용 {AppSettings.PressureMtorrMin.ToString("F" + AppSettings.PressureDecimals)}–" +
-                $"{AppSettings.PressureMtorrMax.ToString("F" + AppSettings.PressureDecimals)} mTorr · 현재 {_pressureMtorr.ToString("F" + AppSettings.PressureDecimals)} (참고)";
-            _vm.InterlockVibText = "[데모] 진동(시뮬)";
-            _vm.InterlockVibBrush = Brushes.Goldenrod;
-            _vm.InterlockTempText = "[데모] 온도(시뮬)";
-            _vm.InterlockTempBrush = Brushes.Goldenrod;
-            _vm.InterlockHumiText = "[데모] 습도(시뮬)";
-            _vm.InterlockHumiBrush = Brushes.Goldenrod;
-            _vm.InterlockAccessText = "[데모] Load Lock(시뮬)";
-            _vm.InterlockAccessBrush = Brushes.Goldenrod;
-            _vm.InterlockResultText = "데모 모드 · 가상 이송·로직 확인용 Start 가능";
-            _vm.InterlockResultBrush = Brushes.DarkGoldenrod;
-            _vm.CanStart = CanStartProcess();
-            _vm.StartButtonToolTip = BuildStartButtonToolTip();
-            goto AfterInterlockRows;
-        }
-
-        bool interlockPlcOk = PlcLinkOk; // = HasLiveSensorData
-        InterlockSeverity pressureSev = hasLive ? PressureSeverity : InterlockSeverity.Alarm;
-        InterlockSeverity vibSev = hasLive ? VibrationSeverity : InterlockSeverity.Alarm;
-        InterlockSeverity tempSev = hasLive ? TempSeverity : InterlockSeverity.Alarm;
-        InterlockSeverity humiSev = hasLive ? HumiSeverity : InterlockSeverity.Alarm;
-        bool interlockAccessOk = hasLive && _accessInputValid && EffectiveAccessSafe;
-
-        string pressureFmt = "F" + AppSettings.PressureDecimals;
-        string pressureRange =
-            $"{AppSettings.PressureMtorrMin.ToString(pressureFmt)}–{AppSettings.PressureMtorrMax.ToString(pressureFmt)} mTorr";
-
-        if (!hasLive)
-        {
-            _vm.InterlockPlcText = "[－] EtherCAT 샘플 미측정";
-            _vm.InterlockPlcBrush = Brushes.DimGray;
-
-            _vm.InterlockPressureText = "[－] 압력 신호 미측정";
-            _vm.InterlockPressureBrush = Brushes.DimGray;
-            _vm.InterlockPressureDetailText = $"허용 {pressureRange} (EtherCAT 미연결/샘플 없음)";
-
-            _vm.InterlockVibText = "[－] 진동 신호 미측정";
-            _vm.InterlockVibBrush = Brushes.DimGray;
-
-            _vm.InterlockTempText = "[－] 온도 신호 미측정";
-            _vm.InterlockTempBrush = Brushes.DimGray;
-
-            _vm.InterlockHumiText = "[－] 습도 신호 미측정";
-            _vm.InterlockHumiBrush = Brushes.DimGray;
-        }
-        else
-        {
-            _vm.InterlockPlcText = $"[{ToMark(interlockPlcOk)}] EtherCAT/데이터 통신";
-            _vm.InterlockPlcBrush = InterlockItemBrush(interlockPlcOk);
-
-            _vm.InterlockPressureText =
-                _pressureSignalValid
-                    ? $"[{ToMark(pressureSev)}] 압력 ({pressureRange})"
-                    : "[✗] 압력 신호 없음";
-            _vm.InterlockPressureBrush =
-                _pressureSignalValid ? InterlockItemBrush(pressureSev) : Brushes.OrangeRed;
-
-            if (_pressureSignalValid)
-            {
-                string cur = _pressureMtorr.ToString(pressureFmt);
-                string alarmRange =
-                    $"{AppSettings.PressureMtorrAlarmMin.ToString(pressureFmt)}–{AppSettings.PressureMtorrAlarmMax.ToString(pressureFmt)} mTorr";
-                _vm.InterlockPressureDetailText =
-                    $"정상 {pressureRange}  ·  알람 {alarmRange}  ·  현재 {cur} mTorr" +
-                    (pressureSev == InterlockSeverity.Ok ? "" : pressureSev == InterlockSeverity.Warning ? "  ← 경고" : "  ← 알람");
-            }
-            else
-            {
-                _vm.InterlockPressureDetailText = $"허용 {pressureRange} (압력 신호 없음)";
-            }
-
-            _vm.InterlockVibText = $"[{ToMark(vibSev)}] 진동 (정상 ≤{AppSettings.VibrationGMax:F2} g)";
-            _vm.InterlockVibBrush = InterlockItemBrush(vibSev);
-
-            _vm.InterlockTempText = $"[{ToMark(tempSev)}] 온도 (정상 {AppSettings.TempCMin:F0}–{AppSettings.TempCMax:F0} ℃)";
-            _vm.InterlockTempBrush = InterlockItemBrush(tempSev);
-
-            _vm.InterlockHumiText = $"[{ToMark(humiSev)}] 습도 (정상 {AppSettings.HumiMin:F0}–{AppSettings.HumiMax:F0} %)";
-            _vm.InterlockHumiBrush = InterlockItemBrush(humiSev);
-        }
-        if (!HasLiveSensorData || !_accessInputValid)
-        {
-            _vm.InterlockAccessText = "[－] Load Lock 접촉 미측정";
-            _vm.InterlockAccessBrush = Brushes.DimGray;
-        }
-        else
-        {
-            _vm.InterlockAccessText = $"[{ToMark(interlockAccessOk)}] Load Lock 접촉(닫힘)";
-            _vm.InterlockAccessBrush = InterlockItemBrush(interlockAccessOk);
-        }
-        // InterlockTemp/InterlockHumi/InterlockPressure/InterlockPlc는 hasLive 분기에서 이미 세팅됨.
-        _vm.InterlockResultText = ProductionInterlockOk ? "공정 시작 가능" : "공정 시작 불가";
-        _vm.InterlockResultBrush = ProductionInterlockOk ? Brushes.ForestGreen : Brushes.OrangeRed;
-
-        AfterInterlockRows:
         _vm.LampReadyOn = _state == EquipmentState.Ready;
         _vm.LampRunOn = _state == EquipmentState.Running;
         _vm.LampWarnOn = _state is EquipmentState.Warning or EquipmentState.Maintenance;
         _vm.LampAlarmOn = _state == EquipmentState.Alarm;
 
-        if (!IsBenchMode)
-        {
-            _vm.CanStart = CanStartProcess();
-            _vm.StartButtonToolTip = BuildStartButtonToolTip();
-        }
         _vm.CanStop = SessionContext.HasRole(UserRole.Worker);
         _vm.CanReset = SessionContext.HasRole(UserRole.Admin);
         _vm.CanMaint = SessionContext.HasRole(UserRole.Admin);
@@ -1084,6 +923,8 @@ public partial class MainWindow : Window, DemoScenarioHost
         _vm.SetModuleSnapshots(moduleSnapshots);
         MaybeRecordAiTrainingSnapshot(moduleSnapshots);
         SyncAiInsights();
+        SyncAiEngineChip();
+        EmbeddedProcessPanel.SetMaintToolsCompactVisible(_vm.MaintenanceBannerVisible);
     }
 
     private void SyncAiInsights()
@@ -1109,11 +950,15 @@ public partial class MainWindow : Window, DemoScenarioHost
         panel.BtnReset.Click += BtnReset_Click;
         panel.BtnMaint.Click += BtnMaint_Click;
         panel.BtnMaintTools.Click += BtnMaintTools_Click;
+        panel.BtnMaintToolsCompact.Click += BtnMaintTools_Click;
         panel.BtnStartCompact.Click += BtnStart_Click;
         panel.BtnStopCompact.Click += BtnStop_Click;
         panel.BtnResetCompact.Click += BtnReset_Click;
         panel.BtnMaintCompact.Click += BtnMaint_Click;
     }
+
+    private void EmbeddedInterlock_OpenDetailRequested(object sender, RoutedEventArgs e) =>
+        BtnPopoutInterlock_Click(sender, e);
 
     private void BtnPopoutEquipment_Click(object sender, RoutedEventArgs e)
     {
@@ -1123,22 +968,14 @@ public partial class MainWindow : Window, DemoScenarioHost
             return;
         }
 
-        var host = new Grid();
-        host.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3, GridUnitType.Star) });
-        host.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var schematic = new EquipmentSchematicControl { DataContext = _vm.Equipment };
-        var diagnostics = new EquipmentDiagnosticsControl { DataContext = _vm.Equipment };
-        Grid.SetRow(schematic, 0);
-        Grid.SetRow(diagnostics, 1);
-        host.Children.Add(schematic);
-        host.Children.Add(diagnostics);
-
         _popoutEquipment = new HmiPopoutWindow(
-            "클러스터 도식 · TM",
-            "가상 TM 도식 + 스케줄·듀얼블레이드·타임라인",
-            host,
-            1180,
-            860)
+            HmiPopoutKind.Equipment,
+            "클러스터 도식",
+            "가상 TM 전체 화면 — TM·스케줄 진단은 「TM·스케줄」 분리 창",
+            schematic,
+            1100,
+            780)
         {
             Owner = this
         };
@@ -1156,11 +993,12 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         var panel = new EquipmentDiagnosticsControl { DataContext = _vm.Equipment };
         _popoutDiagnostics = new HmiPopoutWindow(
+            HmiPopoutKind.Diagnostics,
             "TM · 스케줄 · 듀얼블레이드",
             "로봇 상태 · 파이프라인 · HOLD · 웨이퍼 타임라인",
             panel,
-            720,
-            640)
+            760,
+            680)
         {
             Owner = this
         };
@@ -1178,11 +1016,12 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         var panel = new SensorMetricsControl { DataContext = _vm };
         _popoutSensors = new HmiPopoutWindow(
+            HmiPopoutKind.Sensors,
             "센서 · 추세 · 상태",
             "실측/데모 센서 · 스파크라인 · 정상 대역",
             panel,
-            560,
-            620)
+            580,
+            640)
         {
             Owner = this
         };
@@ -1201,11 +1040,12 @@ public partial class MainWindow : Window, DemoScenarioHost
         var panel = new ProcessControlPanelControl { DataContext = _vm, CompactMode = false };
         WireProcessPanel(panel);
         _popoutControl = new HmiPopoutWindow(
+            HmiPopoutKind.Control,
             "제어 · 상태 램프",
             "패널 램프 · 시작 · 정지 · 알람 리셋 · 정비",
             panel,
-            360,
-            520)
+            400,
+            560)
         {
             Owner = this
         };
@@ -1223,11 +1063,12 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         var panel = new InterlockAiMonitorControl { DataContext = _vm };
         _popoutInterlock = new HmiPopoutWindow(
+            HmiPopoutKind.Interlock,
             "인터락 · AI 모니터",
             "인터락 판정 · AI 세부 근거 · 모듈 상태",
             panel,
-            520,
-            720)
+            540,
+            760)
         {
             Owner = this
         };
@@ -1303,25 +1144,6 @@ public partial class MainWindow : Window, DemoScenarioHost
         _vm.ProcessStepCaption = step.ActiveCaption;
         _vm.ProcessStepDetailText = step.Detail;
     }
-
-    private static Brush InterlockItemBrush(bool ok) =>
-        ok ? Brushes.ForestGreen : Brushes.OrangeRed;
-
-    private static Brush InterlockItemBrush(InterlockSeverity severity) =>
-        severity switch
-        {
-            InterlockSeverity.Ok => Brushes.ForestGreen,
-            InterlockSeverity.Warning => Brushes.Goldenrod,
-            _ => Brushes.OrangeRed
-        };
-
-    private static string ToMark(InterlockSeverity severity) =>
-        severity switch
-        {
-            InterlockSeverity.Ok => "✓",
-            InterlockSeverity.Warning => "△",
-            _ => "✗"
-        };
 
     private string BuildStartButtonToolTip()
     {
@@ -1725,12 +1547,12 @@ public partial class MainWindow : Window, DemoScenarioHost
         if (_simulationFallbackEnabled)
         {
             AddLog("시뮬 허용 ON — TwinCAT 없으면 데모(가상 센서·TM 이송), 연결되면 실데이터 우선.");
-            if (_plc.TryReadSnapshot(out PlcProcessSnapshot snap))
+            if (_plcPolling.Plc.TryReadSnapshot(out PlcProcessSnapshot snap))
             {
                 _useSimulation = false;
                 ApplyPlcSnapshot(snap);
             }
-            else if (_plc.TryConnect(AppSettings.AdsPort) && _plc.TryReadSnapshot(out snap))
+            else if (_plcPolling.TryConnect(AppSettings.AdsPort) && _plcPolling.Plc.TryReadSnapshot(out snap))
             {
                 _useSimulation = false;
                 ApplyPlcSnapshot(snap);
@@ -1749,7 +1571,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             AddLog("시뮬 허용 OFF — EtherCAT 실데이터만 사용합니다.");
             _useSimulation = false;
             ClearOperationalSampleCache();
-            if (_plc.TryConnect(AppSettings.AdsPort) && _plc.TryReadSnapshot(out PlcProcessSnapshot snap))
+            if (_plcPolling.TryConnect(AppSettings.AdsPort) && _plcPolling.Plc.TryReadSnapshot(out PlcProcessSnapshot snap))
             {
                 ApplyPlcSnapshot(snap);
             }
@@ -1760,6 +1582,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             }
         }
 
+        RefreshInterlockDecision();
         AutoEvaluateState();
         PushOutputsToPlc();
         SyncViewModel();
@@ -1849,6 +1672,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             _vm.AiPredictedAlarmText = "예상 알람: —";
             _lastAiDiagnosis = null;
             SyncAiInsights();
+            SyncAiEngineChip();
             return;
         }
 
@@ -1857,10 +1681,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         _lastAiHint = diag.SuggestedAction ?? diag.Note ?? "—";
         _vm.AiScoreText = $"이상 점수: {diag.AnomalyScore:F2}" + (diag.Stub ? " (규칙 스텁)" : " (ML)");
         _vm.AiHintText = _lastAiHint;
-        string pred = diag.PredictedAlarm?.Trim().ToUpperInvariant() ?? "NONE";
-        _vm.AiPredictedAlarmText = pred is "" or "NONE"
-            ? "예상 알람: 없음 (정상 추세)"
-            : $"예상 알람: {pred} · 신뢰 {diag.PredictionConfidence:P0} (조언만)";
+        _vm.AiPredictedAlarmText = HmiAiAlarmText.FormatPredictedLine(diag);
         _vm.AiScoreBrush = diag.AnomalyScore switch
         {
             >= 0.75 => Brushes.OrangeRed,
@@ -1875,13 +1696,14 @@ public partial class MainWindow : Window, DemoScenarioHost
         }
 
         SyncAiInsights();
+        SyncAiEngineChip();
     }
 
     private void BtnLogout_Click(object sender, RoutedEventArgs e)
     {
         string user = CurrentUserName() ?? "?";
         _uiTimer.Stop();
-        _plc.Disconnect();
+        _plcPolling.Disconnect();
         _lastProcessSampleUtc = DateTime.MinValue;
         _accessInputValid = false;
         _accessSafe = false;

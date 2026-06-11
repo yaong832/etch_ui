@@ -92,6 +92,13 @@
                             <TextBlock Text="{Binding LastUpdateText}" Style="{StaticResource HmiStatusChipValue}"/>
                         </StackPanel>
                     </Border>
+                    <Border Style="{StaticResource HmiStatusChip}" ToolTip="{Binding AiEngineStatusHint}">
+                        <StackPanel>
+                            <TextBlock Text="AI 엔진" Style="{StaticResource HmiStatusChipLabel}"/>
+                            <TextBlock Text="{Binding AiEngineStatusText}" Foreground="{Binding AiEngineStatusBrush}"
+                                       Style="{StaticResource HmiStatusChipValue}"/>
+                        </StackPanel>
+                    </Border>
                     <Border Background="#4C1D95" CornerRadius="8" Padding="12,6" Margin="0,0,8,0"
                             Visibility="{Binding MaintenanceBannerVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock Text="{Binding MaintenanceBannerText}" Foreground="#EDE9FE" FontWeight="SemiBold" FontSize="12"/>
@@ -126,16 +133,16 @@
                 <Border Style="{StaticResource HmiCardHeader}">
                     <DockPanel LastChildFill="False">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Button Content="↗ 도식" Style="{StaticResource HmiToolbarButton}" Margin="0,0,4,0"
-                                    Click="BtnPopoutEquipment_Click" ToolTip="클러스터 도식·TM 진단 전체 화면"/>
-                            <Button Content="↗ TM·스케줄" Style="{StaticResource HmiToolbarButton}" Margin="0,0,4,0"
-                                    Click="BtnPopoutDiagnostics_Click" ToolTip="TM·듀얼블레이드·파이프라인·타임라인"/>
-                            <Button Content="↗ 센서" Style="{StaticResource HmiToolbarButton}"
-                                    Click="BtnPopoutSensors_Click" ToolTip="센서·추세·상태 메트릭"/>
+                            <Button Content="도식 확대" Style="{StaticResource HmiToolbarButton}" Margin="0,0,4,0"
+                                    Click="BtnPopoutEquipment_Click" ToolTip="클러스터 도식만 전체 화면 (TM 진단은 별도)"/>
+                            <Button Content="TM·스케줄" Style="{StaticResource HmiToolbarButton}" Margin="0,0,4,0"
+                                    Click="BtnPopoutDiagnostics_Click" ToolTip="듀얼블레이드·HOLD·파이프라인·웨이퍼 타임라인"/>
+                            <Button Content="센서 패널" Style="{StaticResource HmiToolbarButton}"
+                                    Click="BtnPopoutSensors_Click" ToolTip="실측/데모 센서·스파크라인·Load Lock 접촉"/>
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Text="장비 도식" Style="{StaticResource HmiCardTitle}"/>
-                            <TextBlock Text="가상 TM 시뮬 · 상세는 ↗ 분리 창" Style="{StaticResource HmiCardSubtitle}"/>
+                            <TextBlock Text="가상 TM · TM·스케줄·센서는 상단 버튼" Style="{StaticResource HmiCardSubtitle}"/>
                         </StackPanel>
                     </DockPanel>
                 </Border>
@@ -165,16 +172,17 @@
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource HmiCardHeader}">
                     <DockPanel LastChildFill="False">
-                        <Button DockPanel.Dock="Right" Content="↗ 분리" Style="{StaticResource HmiToolbarButton}"
-                                Click="BtnPopoutInterlock_Click" ToolTip="인터락·AI·레시피 전체"/>
+                        <Button DockPanel.Dock="Right" Content="인터락·AI" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnPopoutInterlock_Click" ToolTip="레시피·인터락 전체·AI 근거·모듈 상태"/>
                         <StackPanel>
                             <TextBlock Text="인터락 · 공정" Style="{StaticResource HmiCardTitle}"/>
-                            <TextBlock Text="요약 · 상세는 분리 창" Style="{StaticResource HmiCardSubtitle}"/>
+                            <TextBlock Text="요약 + AI · 상세는 분리 창" Style="{StaticResource HmiCardSubtitle}"/>
                         </StackPanel>
                     </DockPanel>
                 </Border>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="10,8,10,10">
-                    <controls:InterlockCompactControl DataContext="{Binding}"/>
+                    <controls:InterlockCompactControl x:Name="EmbeddedInterlock" DataContext="{Binding}"
+                                                      OpenDetailRequested="EmbeddedInterlock_OpenDetailRequested"/>
                 </ScrollViewer>
             </Grid>
         </Border>
@@ -188,8 +196,8 @@
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource HmiCardHeader}">
                     <DockPanel LastChildFill="False">
-                        <Button DockPanel.Dock="Right" Content="↗ 분리" Style="{StaticResource HmiToolbarButton}"
-                                Click="BtnPopoutControl_Click" ToolTip="램프·시작·정지·정비 전체 패널"/>
+                        <Button DockPanel.Dock="Right" Content="제어 패널" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnPopoutControl_Click" ToolTip="램프·Start/Stop·Reset·Maint 전체 크기"/>
                         <StackPanel>
                             <TextBlock Text="제어" Style="{StaticResource HmiCardTitle}"/>
                             <TextBlock Text="램프 · 조작" Style="{StaticResource HmiCardSubtitle}"/>

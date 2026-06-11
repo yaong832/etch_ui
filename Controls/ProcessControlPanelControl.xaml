@@ -92,6 +92,10 @@
                 </Button.Style>
             </Button>
             </UniformGrid>
+            <Button x:Name="BtnMaintToolsCompact" Content="정비 도구"
+                    MinHeight="32" Margin="2,6,2,0"
+                    Style="{StaticResource HmiSecondaryButton}"
+                    Visibility="Collapsed"/>
         </StackPanel>
         <controls:ControlPanelSideInfoControl x:Name="SideInfo" Grid.Row="2"
             Visibility="Collapsed" VerticalAlignment="Stretch"/>

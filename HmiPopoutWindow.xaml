@@ -9,10 +9,21 @@
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <TextBlock x:Name="TxtSubtitle" Style="{StaticResource HmiCardSubtitle}" Margin="0,0,0,8"/>
-        <Border Grid.Row="1" Style="{StaticResource HmiCard}" Padding="8">
+        <DockPanel Grid.Row="0" Margin="0,0,0,4">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <CheckBox x:Name="ChkTopmost" Content="항상 위" VerticalAlignment="Center" Margin="0,0,12,0"
+                          Checked="ChkTopmost_Changed" Unchecked="ChkTopmost_Changed"/>
+                <Button Content="→ 외부 모니터" Style="{StaticResource HmiToolbarButton}" Padding="8,4"
+                        Click="BtnSecondaryMonitor_Click" ToolTip="주 모니터 오른쪽(2번 모니터)으로 이동"/>
+            </StackPanel>
+            <TextBlock x:Name="TxtTitle" Style="{StaticResource HmiCardTitle}"/>
+        </DockPanel>
+        <TextBlock x:Name="TxtSubtitle" Grid.Row="1" Style="{StaticResource HmiCardSubtitle}" Margin="0,0,0,8"/>
+        <Border Grid.Row="3" Style="{StaticResource HmiCard}" Padding="8">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ContentControl x:Name="Host"/>
             </ScrollViewer>

@@ -24,4 +24,7 @@ public sealed class HmiFlaskGateway
 
     public Task<EtchAiDiagnosis?> PollAiLatestAsync(CancellationToken cancellationToken = default) =>
         _flask.TryGetAiLatestAsync(cancellationToken);
+
+    public Task<FlaskAiStatusSnapshot?> PollAiStatusAsync(CancellationToken cancellationToken = default) =>
+        _flask.TryGetAiStatusAsync(cancellationToken);
 }

@@ -59,8 +59,8 @@
 ### 8. 아키텍처 리팩터링
 
 - [ ] `MainWindow.xaml.cs` 분리 (예시)
-  - [ ] `PlcPollingService`
-  - [ ] `InterlockEvaluator`
+  - [x] `PlcPollingService`
+  - [x] `InterlockEvaluator` · `InterlockPanelPresenter`
   - [ ] `EquipmentStateMachine`
   - [x] `HmiTelemetryPublisher` · `HmiFlaskGateway` · `HmiConnectionPresenter`
 - [ ] ViewModel `ICommand` 이동, 코드비하인드 축소
