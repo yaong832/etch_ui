@@ -20,6 +20,7 @@ public sealed class MainViewModel : ViewModelBase
     private Brush _plcStatusBrush = Brushes.OrangeRed;
     private string _flaskStatusText = "확인 중";
     private Brush _flaskStatusBrush = Brushes.Goldenrod;
+    private string _flaskStatusHint = "Flask 연결 확인 중";
     private string _lastUpdateText = "-";
     private string _dataQualityText = "-";
     private Brush _dataQualityBrush = Brushes.LightSteelBlue;
@@ -147,6 +148,12 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => _flaskStatusBrush;
         set => SetField(ref _flaskStatusBrush, value);
+    }
+
+    public string FlaskStatusHint
+    {
+        get => _flaskStatusHint;
+        set => SetField(ref _flaskStatusHint, value);
     }
 
     public string LastUpdateText

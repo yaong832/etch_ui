@@ -89,7 +89,7 @@
 > `etchflask`를 로컬에서 실행한 뒤 검증. API는 **현재 문서에 있는 엔드포인트** 기준.
 
 - [x] 상단 Flask 연결 상태 (OK/OFF)
-- [ ] `POST /api/etch/sensor-data` 전송 주기·payload 검증
+- [x] `POST /api/etch/sensor-data` payload 계약 검증 (`EtchTelemetryContractValidator` · sim-smoke)
 - [ ] 브라우저 `GET /api/sensors`와 HMI 수치 일치 확인
 
 ---
@@ -136,7 +136,7 @@
 [ ] UI / 장비 도식 polish
 [ ] AlarmCatalog / 인터락 문구
 [ ] MainWindow → 서비스 클래스 분리 (1차)
-[ ] EtchFlaskClient 오프라인 UX
+[x] EtchFlaskClient 오프라인 UX (`HmiFlaskStatusPresenter`)
 [ ] (선택) TwinCAT 실연결
 [ ] (etchflask 후) E2E 연동 테스트
 ```

@@ -63,6 +63,7 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private bool _flaskProbeDone;
     private bool _flaskReachable;
+    private DateTime? _lastFlaskSuccessUtc;
     private DateTime _nextFlaskFailLogUtc = DateTime.MinValue;
     private DateTime _nextFlaskEventFailLogUtc = DateTime.MinValue;
 
@@ -215,6 +216,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             _flaskProbeDone = true;
             if (ok)
             {
+                _lastFlaskSuccessUtc = DateTime.UtcNow;
                 AddLog($"Flask 응답 OK ({_flaskGateway.BaseUrl})");
             }
             else
@@ -818,16 +820,14 @@ public partial class MainWindow : Window, DemoScenarioHost
         _vm.PlcStatusText = plc.Text;
         _vm.PlcStatusBrush = plc.Brush;
 
-        if (!_flaskProbeDone)
-        {
-            _vm.FlaskStatusText = "…";
-            _vm.FlaskStatusBrush = Brushes.Goldenrod;
-        }
-        else
-        {
-            _vm.FlaskStatusText = _flaskReachable ? "OK" : "OFF";
-            _vm.FlaskStatusBrush = _flaskReachable ? Brushes.LimeGreen : Brushes.OrangeRed;
-        }
+        HmiFlaskStatusPresenter.FlaskPresentation flask = HmiFlaskStatusPresenter.Describe(
+            _flaskProbeDone,
+            _flaskReachable,
+            _lastFlaskSuccessUtc,
+            _flaskGateway.BaseUrl);
+        _vm.FlaskStatusText = flask.Text;
+        _vm.FlaskStatusBrush = flask.Brush;
+        _vm.FlaskStatusHint = flask.Hint;
 
         _vm.LastUpdateText = DateTime.Now.ToString("HH:mm:ss");
 
@@ -1601,40 +1601,45 @@ public partial class MainWindow : Window, DemoScenarioHost
             bool live = HasLiveSensorData;
             string dataSource = live ? "live" : IsBenchMode ? "demo" : "offline";
             IReadOnlyList<Equipment.Models.ModuleStateSnapshot> moduleSnapshots = BuildModuleSnapshots();
-            var payload = new EtchTelemetryPayload
+            var payload = HmiTelemetryPayloadFactory.Create(
+                dataSource,
+                live,
+                IsBenchMode,
+                _maintenanceMode,
+                live,
+                _state.ToString().ToUpperInvariant(),
+                _state == EquipmentState.Alarm ? ComputePrimaryAlarmCode() : null,
+                ProductionInterlockOk,
+                CurrentUserName(),
+                _temp,
+                _humi,
+                _pressureMtorr,
+                _vib,
+                EffectiveAccessSafe,
+                HmiTelemetryPayloadFactory.FromModuleSnapshots(moduleSnapshots),
+                BuildRecipeTelemetry());
+
+            if (!EtchTelemetryContractValidator.TryValidate(payload, out string contractError))
             {
-                EquipmentId = 1,
-                PowerOn = true,
-                Connected = live,
-                SensorsLive = live,
-                DataSource = dataSource,
-                BenchMode = IsBenchMode,
-                MaintenanceMode = _maintenanceMode,
-                LastUpdate = DateTime.UtcNow.ToString("o"),
-                Temperature = _temp,
-                Humidity = _humi,
-                Pressure = _pressureMtorr,
-                Vibration = _vib,
-                AccessSafe = EffectiveAccessSafe,
-                EquipmentState = _state.ToString().ToUpperInvariant(),
-                AlarmCode = _state == EquipmentState.Alarm ? ComputePrimaryAlarmCode() : null,
-                InterlockOk = ProductionInterlockOk,
-                Username = CurrentUserName(),
-                Modules = moduleSnapshots.Select(m => new ModuleTelemetryModule
+                _ = Dispatcher.BeginInvoke(() =>
                 {
-                    Id = m.Id,
-                    State = m.StateText,
-                    DoorClosed = m.DoorClosed,
-                    HasWafer = m.HasWafer,
-                    Detail = m.Detail
-                }).ToList(),
-                Recipe = BuildRecipeTelemetry()
-            };
+                    if (DateTime.UtcNow >= _nextFlaskFailLogUtc)
+                    {
+                        _nextFlaskFailLogUtc = DateTime.UtcNow.AddSeconds(25);
+                        AddLog($"Flask payload 검증 실패 — {contractError}");
+                    }
+                });
+                return;
+            }
 
             bool ok = await _telemetryPublisher.PublishAsync(payload).ConfigureAwait(false);
             _ = Dispatcher.BeginInvoke(() =>
             {
                 _flaskReachable = ok;
+                if (ok)
+                {
+                    _lastFlaskSuccessUtc = DateTime.UtcNow;
+                }
                 if (!ok && DateTime.UtcNow >= _nextFlaskFailLogUtc)
                 {
                     _nextFlaskFailLogUtc = DateTime.UtcNow.AddSeconds(25);

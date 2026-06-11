@@ -58,6 +58,11 @@ public static class SimulatorSmokeTester
             return new Result { Success = false, Ticks = ticks, Message = connectionError };
         }
 
+        if (!ValidateFlaskTelemetryContract(out string flaskContractError))
+        {
+            return new Result { Success = false, Ticks = ticks, Message = flaskContractError };
+        }
+
         var sim = new TmTransferSimulator(capacity);
         sim.StartDemoLoop();
 
@@ -627,6 +632,74 @@ public static class SimulatorSmokeTester
         if (!offline.Text.Contains("시뮬 허용", StringComparison.Ordinal))
         {
             error = "connection: offline hint";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static bool ValidateFlaskTelemetryContract(out string error)
+    {
+        var sim = new TmTransferSimulator();
+        sim.StartDemoLoop();
+        for (int i = 0; i < 24; i++)
+        {
+            sim.Tick();
+        }
+
+        var ctx = new ModuleStateAggregator.Context
+        {
+            EquipmentState = "RUNNING",
+            MaintenanceMode = false,
+            HasLiveSensorData = false,
+            InterlockOk = true,
+            BenchMode = true,
+            AccessSafe = true,
+            AccessInputValid = true,
+            Transfer = sim
+        };
+        List<ModuleTelemetryModule> modules =
+            HmiTelemetryPayloadFactory.FromModuleSnapshots(ModuleStateAggregator.Build(ctx));
+        ProcessRecipeTelemetry recipe = HmiTelemetryPayloadFactory.DefaultRecipe();
+
+        EtchTelemetryPayload demo = HmiTelemetryPayloadFactory.Create(
+            "demo", false, true, false, false, "RUNNING", null, true, "smoke",
+            25, 40, 5, 0.1, true, modules, recipe);
+        if (!EtchTelemetryContractValidator.TryValidate(demo, out error))
+        {
+            return false;
+        }
+
+        EtchTelemetryPayload live = HmiTelemetryPayloadFactory.Create(
+            "live", true, false, false, true, "RUNNING", null, true, "smoke",
+            25, 40, 5, 0.1, true, modules, recipe);
+        if (!EtchTelemetryContractValidator.TryValidate(live, out error))
+        {
+            return false;
+        }
+
+        EtchTelemetryPayload offline = HmiTelemetryPayloadFactory.Create(
+            "offline", false, false, false, false, "IDLE", null, false, "smoke",
+            0, 0, 0, 0, true, modules, recipe);
+        if (!EtchTelemetryContractValidator.TryValidate(offline, out error))
+        {
+            return false;
+        }
+
+        HmiFlaskStatusPresenter.FlaskPresentation ok = HmiFlaskStatusPresenter.Describe(
+            true, true, DateTime.UtcNow, "http://127.0.0.1:5000");
+        if (!ok.Text.StartsWith("OK", StringComparison.Ordinal))
+        {
+            error = "flask-status: reachable label";
+            return false;
+        }
+
+        HmiFlaskStatusPresenter.FlaskPresentation off = HmiFlaskStatusPresenter.Describe(
+            true, false, null, "http://127.0.0.1:5000");
+        if (!off.Hint.Contains("미연결", StringComparison.Ordinal))
+        {
+            error = "flask-status: offline hint";
             return false;
         }
 

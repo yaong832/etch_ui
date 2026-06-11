@@ -65,7 +65,7 @@
                     </StackPanel>
                 </DockPanel>
                 <WrapPanel Grid.Row="1" Margin="0,12,0,0">
-                    <Border Style="{StaticResource HmiStatusChip}">
+                    <Border Style="{StaticResource HmiStatusChip}" ToolTip="{Binding FlaskStatusHint}">
                         <StackPanel>
                             <TextBlock Text="Flask" Style="{StaticResource HmiStatusChipLabel}"/>
                             <TextBlock Text="{Binding FlaskStatusText}" Foreground="{Binding FlaskStatusBrush}"
