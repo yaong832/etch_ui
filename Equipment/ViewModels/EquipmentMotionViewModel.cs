@@ -367,9 +367,9 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         int sideMax = state.Capacity.SideStorageSlotCount;
 
         FoupSlotCapacity = foupMax;
-        Foup1Remaining = state.FoupPorts[0].RemainingInFoup;
-        Foup2Remaining = state.FoupPorts[1].RemainingInFoup;
-        Foup3Remaining = state.FoupPorts[2].RemainingInFoup;
+        Foup1Remaining = state.FoupPorts[0].PhysicallyInFoup;
+        Foup2Remaining = state.FoupPorts[1].PhysicallyInFoup;
+        Foup3Remaining = state.FoupPorts[2].PhysicallyInFoup;
         Foup1InventoryText = FormatFoupInventory(state.FoupPorts[0], foupMax);
         Foup2InventoryText = FormatFoupInventory(state.FoupPorts[1], foupMax);
         Foup3InventoryText = FormatFoupInventory(state.FoupPorts[2], foupMax);
@@ -459,7 +459,15 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
             return "미장착";
         }
 
-        string text = $"{port.RemainingInFoup}/{capacity}";
+        int inCassette = port.PhysicallyInFoup;
+        string text = port.ReservedForPickupCount > 0 && port.RemainingInFoup == 0
+            ? $"0+{port.ReservedForPickupCount}/{capacity}"
+            : $"{inCassette}/{capacity}";
+        if (port.ReservedForPickupCount > 0 && port.RemainingInFoup > 0)
+        {
+            text = $"{inCassette}/{capacity} (예약 {port.ReservedForPickupCount})";
+        }
+
         return port.InFlightCount > 0 ? $"{text} · 장내 {port.InFlightCount}" : text;
     }
 

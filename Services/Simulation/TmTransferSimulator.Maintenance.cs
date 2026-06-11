@@ -5,6 +5,33 @@ namespace etch_ui.Services.Simulation;
 
 public sealed partial class TmTransferSimulator
 {
+    public string DescribeTransferQueues()
+    {
+        static string Fmt(TransferJob j) => $"{j.Pickup}->{j.Dropoff} #{j.Wafer.Id}";
+        var lines = new List<string>();
+        foreach (TransferJob j in _efem.Queue)
+        {
+            lines.Add($"EFEM-Q {Fmt(j)}");
+        }
+
+        foreach (TransferJob j in _efem.PendingDropoffs)
+        {
+            lines.Add($"EFEM-PEND {Fmt(j)}");
+        }
+
+        foreach (TransferJob j in _vacuum.Queue)
+        {
+            lines.Add($"VAC-Q {Fmt(j)}");
+        }
+
+        foreach (TransferJob j in _vacuum.PendingDropoffs)
+        {
+            lines.Add($"VAC-PEND {Fmt(j)}");
+        }
+
+        return lines.Count == 0 ? "(empty)" : string.Join("; ", lines);
+    }
+
     public string DescribeMaintenanceState()
     {
         ClusterEquipmentState s = _state;

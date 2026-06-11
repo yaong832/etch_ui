@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>etch_ui.Tools.Sim</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+  </ItemGroup>
+
+  <!-- WPF 메인 exe 대신 빌드된 DLL만 참조 (App.OnStartup / HMI 미기동) -->
+  <ItemGroup>
+    <Reference Include="etch_ui">
+      <HintPath>..\..\..\bin\Release\net8.0-windows\etch_ui.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

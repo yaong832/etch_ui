@@ -91,8 +91,8 @@ public sealed class ProcessRecipeSettings
     /// <summary>식각 PM 순서 (예: PM2,PM3,PM4).</summary>
     public string EtchPmSequence { get; set; } = "PM2,PM3,PM4";
 
-    public int EtchProcessTicks { get; set; } = 120;
-    public int StripProcessTicks { get; set; } = 28;
+    public int EtchProcessTicks { get; set; } = 300;
+    public int StripProcessTicks { get; set; } = 45;
     public int AlignProcessTicks { get; set; } = 2;
 
     public static ProcessRecipeSettings FromCurrent() => new()

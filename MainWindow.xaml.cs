@@ -894,6 +894,10 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         _vm.CanStop = SessionContext.HasRole(UserRole.Worker);
         _vm.CanReset = SessionContext.HasRole(UserRole.Admin);
+        _vm.CanProcessReset = SessionContext.HasRole(UserRole.Admin)
+            && !_maintenanceMode
+            && !_transferSim.IsRunning
+            && _state != EquipmentState.Running;
         _vm.CanMaint = SessionContext.HasRole(UserRole.Admin);
 
         _vm.PressureSparkYMax = AppSettings.PressureMtorrAtRawMax;
@@ -950,12 +954,14 @@ public partial class MainWindow : Window, DemoScenarioHost
         panel.BtnStart.Click += BtnStart_Click;
         panel.BtnStop.Click += BtnStop_Click;
         panel.BtnReset.Click += BtnReset_Click;
+        panel.BtnProcessReset.Click += BtnProcessReset_Click;
         panel.BtnMaint.Click += BtnMaint_Click;
         panel.BtnMaintTools.Click += BtnMaintTools_Click;
         panel.BtnMaintToolsCompact.Click += BtnMaintTools_Click;
         panel.BtnStartCompact.Click += BtnStart_Click;
         panel.BtnStopCompact.Click += BtnStop_Click;
         panel.BtnResetCompact.Click += BtnReset_Click;
+        panel.BtnProcessResetCompact.Click += BtnProcessReset_Click;
         panel.BtnMaintCompact.Click += BtnMaint_Click;
     }
 
@@ -1311,7 +1317,7 @@ public partial class MainWindow : Window, DemoScenarioHost
     {
         if (!SessionContext.HasRole(UserRole.Worker))
         {
-            AddLog("권한 부족: Stop 불가");
+            AddLog("권한 부족: 일시정지 불가");
             return;
         }
 
@@ -1319,7 +1325,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         _demoWarningTicksLeft = 0;
         _state = CanStartProcess() ? EquipmentState.Ready : EquipmentState.Idle;
         AppendEvent( _state.ToString().ToUpperInvariant(), null, $"{source}: 일시정지");
-        AddLog($"{source}: Stop · 가상 이송 일시정지 (상태 유지 · Start로 재개)");
+        AddLog($"{source}: 일시정지 · 가상 이송 상태 유지 (시작으로 재개)");
         SyncViewModel();
     }
 
@@ -1349,9 +1355,49 @@ public partial class MainWindow : Window, DemoScenarioHost
         }
         else
         {
-            AddLog($"{source}: Reset");
+            AddLog($"{source}: 알람 리셋 — 현재 알람 상태 아님");
         }
 
+        SyncViewModel();
+    }
+
+    private void BtnProcessReset_Click(object sender, RoutedEventArgs e) => RequestProcessReset("UI Process Reset");
+
+    private void RequestProcessReset(string source)
+    {
+        if (!SessionContext.HasRole(UserRole.Admin))
+        {
+            AddLog("권한 부족: 공정 리셋 불가");
+            return;
+        }
+
+        if (_maintenanceMode)
+        {
+            AddLog($"{source}: 유지보수 모드 — 공정 리셋은 해제 후 수행");
+            return;
+        }
+
+        if (_transferSim.IsRunning || _state == EquipmentState.Running)
+        {
+            AddLog($"{source}: 공정 리셋 — 일시정지 후 수행");
+            return;
+        }
+
+        if (MessageBox.Show(
+                "FOUP·슬롯·LOT·로봇 큐를 데모 초기 상태로 되돌립니다.\n계속하시겠습니까?",
+                "공정 리셋",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        _lotCompleteHandled = false;
+        _demoWarningTicksLeft = 0;
+        _transferSim.ResetDemoLine();
+        _state = CanStartProcess() ? EquipmentState.Ready : EquipmentState.Idle;
+        AppendEvent(_state.ToString().ToUpperInvariant(), null, $"{source}: 공정 리셋 완료");
+        AddLog($"{source}: 공정 리셋 · FOUP·LOT·큐 초기화");
         SyncViewModel();
     }
 

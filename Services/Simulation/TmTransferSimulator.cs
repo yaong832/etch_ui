@@ -273,20 +273,13 @@ public sealed partial class TmTransferSimulator
         ClearStalePmReservations();
         FoupInFlightReconciler.Reconcile(_state, CollectCarriedWafers(), CollectInFlightJobs());
 
-        if (_running && !_state.Lot.IsTargetMet)
-        {
-            foreach (FoupPortState port in _state.FoupPorts)
-            {
-                _state.PickScheduler.SimulateRemountIfEmpty(port.PortId);
-            }
-        }
-
         if (!_efem.IsBusy && _efem.Active is null)
         {
             ReconcileRobotBladeJobs(_efem);
             StartNextJob(_efem);
             if (!_efem.IsBusy && _efem.Active is null)
             {
+                DropBlockedFoupQueueJobs(_efem);
                 TrySchedule(_efem, _efemScheduler);
             }
 
@@ -358,17 +351,17 @@ public sealed partial class TmTransferSimulator
 
         if (region == EquipmentRegion.FoupA)
         {
-            return _state.FoupPorts[0].RemainingInFoup > 0;
+            return _state.FoupPorts[0].PhysicallyInFoup > 0;
         }
 
         if (region == EquipmentRegion.FoupB)
         {
-            return _state.FoupPorts[1].RemainingInFoup > 0;
+            return _state.FoupPorts[1].PhysicallyInFoup > 0;
         }
 
         if (region == EquipmentRegion.FoupC)
         {
-            return _state.FoupPorts[2].RemainingInFoup > 0;
+            return _state.FoupPorts[2].PhysicallyInFoup > 0;
         }
 
         if (IsNextProcessFoup(region))
@@ -650,6 +643,15 @@ public sealed partial class TmTransferSimulator
 
     private bool CanStartQueueJob(RobotRun run, TransferJob job)
     {
+        if (job.Pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC)
+        {
+            FoupPortState? foupPort = GetFoupPort(job.Pickup);
+            if (foupPort is null || foupPort.ReservedForPickupCount <= 0)
+            {
+                return false;
+            }
+        }
+
         if (job.Dropoff == EquipmentRegion.LoadLock)
         {
             bool isStripDrop = job.Wafer.HasCompletedStrip
@@ -680,12 +682,29 @@ public sealed partial class TmTransferSimulator
 
         if (job.Dropoff == EquipmentRegion.Aligner && _state.AlignerBuffer.IsFull)
         {
-            return false;
+            bool efemBladeBufferPickup = run.Robot == TransferRobotKind.EfemAtmospheric
+                                         && _efemBladeCapacity >= 2
+                                         && job.Pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC
+                                         && LoadLockAdmissionPolicy.IsPreEtchBmFull(_state)
+                                         && !run.PendingDropoffs.Any(j => j.Dropoff == EquipmentRegion.Aligner);
+            if (!efemBladeBufferPickup)
+            {
+                return false;
+            }
         }
 
         if (job.Dropoff == EquipmentRegion.ChamberA && !CanPlaceOnPm1())
         {
-            return false;
+            bool etchBladeHoldPickup = run.Robot == TransferRobotKind.VacuumTm
+                                       && _vacuumBladeCapacity >= 2
+                                       && job.Pickup is EquipmentRegion.ChamberB or EquipmentRegion.ChamberC or EquipmentRegion.ChamberD
+                                       && job.Wafer.HasCompletedEtch
+                                       && run.Blades.FreeCount > 0
+                                       && NeedsFreeBladeForPickup(run, job);
+            if (!etchBladeHoldPickup)
+            {
+                return false;
+            }
         }
 
         if (job.Dropoff == EquipmentRegion.SideStorage && _state.SideStorage.IsFull)
@@ -1056,6 +1075,16 @@ public sealed partial class TmTransferSimulator
                 Enter(run, SimPhase.PickupGrip, 2, pickup, 1.18, false, $"{Label(pickup)} 웨이퍼 그립");
                 break;
             case SimPhase.PickupGrip:
+                if (pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC)
+                {
+                    FoupPortState? foupPort = GetFoupPort(pickup);
+                    if (foupPort is null || foupPort.ReservedForPickupCount <= 0)
+                    {
+                        ReleaseStaleFoupPickupJob(run, job);
+                        break;
+                    }
+                }
+
                 int placeSlot = ResolvePickupSlot(run, job);
                 if (placeSlot < 0)
                 {
@@ -1553,11 +1582,42 @@ public sealed partial class TmTransferSimulator
             }
         }
 
-        if (!_efem.IsBusy && _efem.Queue.Count == 0)
+        if (!_efem.IsBusy && !EfemHasPickupFrom(_efem, EquipmentRegion.Aligner))
         {
             _state.AlignerBuffer.ResetPickupScheduledFlags();
+        }
+
+        if (!_efem.IsBusy && !EfemHasPickupFrom(_efem, EquipmentRegion.LoadLock))
+        {
             _state.LoadLockBuffer.ResetPickupScheduledFlags();
         }
+    }
+
+    /// <summary>버퍼에서 픽업 예정인 EFEM 작업이 있는지 (드롭 대기만으로는 플래그 유지).</summary>
+    private static bool EfemHasPickupFrom(RobotRun efem, EquipmentRegion pickupRegion)
+    {
+        if (efem.Active?.Pickup == pickupRegion)
+        {
+            return true;
+        }
+
+        foreach (TransferJob job in efem.Queue)
+        {
+            if (job.Pickup == pickupRegion)
+            {
+                return true;
+            }
+        }
+
+        foreach (TransferJob job in efem.PendingDropoffs)
+        {
+            if (job.Pickup == pickupRegion)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private int ResolveDropoffSlot(RobotRun run, TransferJob job)
@@ -1646,6 +1706,50 @@ public sealed partial class TmTransferSimulator
         }
 
         return true;
+    }
+
+    private FoupPortState? GetFoupPort(EquipmentRegion region) =>
+        region switch
+        {
+            EquipmentRegion.FoupA => _state.FoupPorts[0],
+            EquipmentRegion.FoupB => _state.FoupPorts[1],
+            EquipmentRegion.FoupC => _state.FoupPorts[2],
+            _ => null
+        };
+
+    private void DropBlockedFoupQueueJobs(RobotRun run)
+    {
+        if (run.Robot != TransferRobotKind.EfemAtmospheric || run.Queue.Count == 0)
+        {
+            return;
+        }
+
+        var kept = new List<TransferJob>(run.Queue.Count);
+        while (run.Queue.Count > 0)
+        {
+            TransferJob job = run.Queue.Dequeue();
+            if (job.Pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC
+                && !CanStartQueueJob(run, job))
+            {
+                GetFoupPort(job.Pickup)?.OnWaferPickupReservationReleased();
+                continue;
+            }
+
+            kept.Add(job);
+        }
+
+        foreach (TransferJob job in kept)
+        {
+            run.Queue.Enqueue(job);
+        }
+    }
+
+    private void ReleaseStaleFoupPickupJob(RobotRun run, TransferJob job)
+    {
+        GetFoupPort(job.Pickup)?.OnWaferPickupReservationReleased();
+        run.Active = null;
+        run.Phase = SimPhase.Idle;
+        ParkRobotAtHome(run);
     }
 
     private static void ParkRobotAtHome(RobotRun run)

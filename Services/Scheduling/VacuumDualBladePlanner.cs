@@ -31,6 +31,11 @@ public static class VacuumDualBladePlanner
         RobotBladeSlots blades,
         Action<string> setHint)
     {
+        if (!state.Pm1.IsEmpty)
+        {
+            return 0;
+        }
+
         int pipelineRoom = blades.Capacity - blades.OccupiedCount - CountPickupReservations(blades, queue);
         if (pipelineRoom <= 0)
         {
@@ -155,6 +160,10 @@ public static class VacuumDualBladePlanner
 
         return n;
     }
+
+    /// <summary>물리적으로 비어 있는 블레이드가 있는지 (큐 예약 무시 · BM/Aligner 회수 우선).</summary>
+    public static bool HasPhysicalBladeFree(RobotBladeSlots? blades, int bladeCapacity) =>
+        (blades?.FreeCount ?? bladeCapacity) > 0;
 
     /// <summary>신규 픽업 Job을 큐에 넣을 빈 블레이드 여유.</summary>
     public static bool HasFreeBladeForPickup(

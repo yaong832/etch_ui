@@ -23,11 +23,11 @@ public sealed class EquipmentCapacityConfig
     /// <summary>EFEM 블레이드 슬롯 수 (회전 듀얼암=2).</summary>
     public int EfemBladeSlotCount { get; init; } = 2;
 
-    /// <summary>PM2~4 식각 — TM 이송 tick과 분리(가공만 길게).</summary>
-    public int EtchProcessTicks { get; init; } = 120;
+    /// <summary>PM2~4 식각 — TM 이송 tick과 분리(가공만 길게). 데모·듀얼블레이드 관측용 기본 300.</summary>
+    public int EtchProcessTicks { get; init; } = 300;
 
     /// <summary>PM1 Strip — Etch보다 짧게, TM 이송과 분리.</summary>
-    public int StripProcessTicks { get; init; } = 28;
+    public int StripProcessTicks { get; init; } = 45;
 
     /// <summary>Aligner 정렬 대기 tick.</summary>
     public int AlignProcessTicks { get; init; } = 2;

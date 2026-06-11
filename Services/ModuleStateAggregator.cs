@@ -155,7 +155,7 @@ public static class ModuleStateAggregator
         }
 
         var p = ports[idx.Value];
-        string flow = $"잔량 {p.RemainingInFoup} / 25 · InFlight {p.InFlightCount}";
+        string flow = $"카세트 {p.PhysicallyInFoup} / 25 · 예약 {p.ReservedForPickupCount} · 장내 {p.InFlightCount}";
         return pickupOpen ? $"픽업 도어 열림(가상) · {flow}" : flow;
     }
 

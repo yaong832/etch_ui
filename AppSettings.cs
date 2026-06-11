@@ -39,8 +39,8 @@ public static class AppSettings
     public static string RecipeDescription { get; private set; } = string.Empty;
     public static string EtchPmSequence { get; private set; } = "PM2,PM3,PM4";
 
-    public static int EtchProcessTicks { get; private set; } = 120;
-    public static int StripProcessTicks { get; private set; } = 28;
+    public static int EtchProcessTicks { get; private set; } = 300;
+    public static int StripProcessTicks { get; private set; } = 45;
     public static int AlignProcessTicks { get; private set; } = 2;
 
     static AppSettings() => ReloadFromDisk();

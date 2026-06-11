@@ -64,7 +64,7 @@ public sealed class FoupPickScheduler
     {
     }
 
-    /// <summary>데모: LP 비운 뒤 신규 FOUP 장착.</summary>
+    /// <summary>정비 도구 전용: LP 비운 뒤 신규 FOUP 장착 (자동 리필 없음).</summary>
     public void SimulateRemountIfEmpty(LoadPortId portId, int slotCount = 0)
     {
         var port = _ports.First(p => p.PortId == portId);

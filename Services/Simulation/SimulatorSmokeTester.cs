@@ -51,6 +51,11 @@ public static class SimulatorSmokeTester
             return new Result { Success = false, Ticks = ticks, Message = efemBufferError };
         }
 
+        if (!ValidateFoupPickupPolicy(out string foupPickupError))
+        {
+            return new Result { Success = false, Ticks = ticks, Message = foupPickupError };
+        }
+
         if (!ValidateAlarmCatalog(out string alarmCatalogError))
         {
             return new Result { Success = false, Ticks = ticks, Message = alarmCatalogError };
@@ -575,6 +580,124 @@ public static class SimulatorSmokeTester
         if (opposite == nearest || opposite < 0)
         {
             error = "efem-aligner-pick: occupied blade should force opposite slot";
+            return false;
+        }
+
+        var bufferState = new ClusterEquipmentState(new EquipmentCapacityConfig
+        {
+            EfemBladeSlotCount = 2,
+            AlignerSlotCount = 2,
+            LoadLockSlotCount = 3
+        });
+        for (int i = 0; i < bufferState.Capacity.AlignerSlotCount; i++)
+        {
+            bufferState.AlignerBuffer.TryEnqueue(
+                new WaferTrack(LoadPortId.Lp1, EquipmentRegion.NextProcessFoupA),
+                i);
+        }
+
+        var bmPre1 = new WaferTrack(LoadPortId.Lp2, EquipmentRegion.NextProcessFoupB);
+        var bmPre2 = new WaferTrack(LoadPortId.Lp3, EquipmentRegion.NextProcessFoupC);
+        bufferState.LoadLockBuffer.TryEnqueue(bmPre1, 0);
+        bufferState.LoadLockBuffer.TryEnqueue(bmPre2, 1);
+        bufferState.FoupPorts[0].RemainingInFoup = 5;
+
+        var bufferQueue = new Queue<TransferJob>();
+        var bufferScheduler = new EfemTransferScheduler();
+        if (bufferScheduler.TryScheduleOne(
+                bufferState,
+                bufferQueue,
+                activeJob: null,
+                vacuumActiveJob: null,
+                efemBlades: new RobotBladeSlots(2),
+                efemBladeCapacity: 2) <= 0
+            || bufferQueue.Count == 0)
+        {
+            error = "efem-buffer: expected FOUP blade-buffer job when Align+BM Pre full";
+            return false;
+        }
+
+        TransferJob bufferJob = bufferQueue.Peek();
+        if (bufferJob.Pickup != EquipmentRegion.FoupA || bufferJob.Dropoff != EquipmentRegion.Aligner)
+        {
+            error = "efem-buffer: blade-buffer must stay FOUP→Aligner (not Load Lock)";
+            return false;
+        }
+
+        if (bufferState.FoupPorts[0].ReservedForPickupCount != 1)
+        {
+            error = "efem-buffer: FOUP reservation missing after blade-buffer schedule";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static bool ValidateFoupPickupPolicy(out string error)
+    {
+        var cfg = new EquipmentCapacityConfig { EfemBladeSlotCount = 2, AlignerSlotCount = 2 };
+        var state = new ClusterEquipmentState(cfg);
+        FoupPortState port = state.FoupPorts[0];
+        port.RemainingInFoup = 0;
+        port.ReservedForPickupCount = 0;
+
+        var queue = new Queue<TransferJob>();
+        var scheduler = new EfemTransferScheduler();
+        scheduler.TryScheduleOne(
+            state,
+            queue,
+            activeJob: null,
+            vacuumActiveJob: null,
+            efemBlades: new RobotBladeSlots(2),
+            efemBladeCapacity: 2);
+
+        if (queue.Any(j => j.Pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC))
+        {
+            error = "foup-pickup: empty FOUP must not schedule pickup";
+            return false;
+        }
+
+        port.RemainingInFoup = 3;
+        state.AlignerBuffer.TryEnqueue(new WaferTrack(LoadPortId.Lp1, EquipmentRegion.NextProcessFoupA), 0);
+        state.AlignerBuffer.TryEnqueue(new WaferTrack(LoadPortId.Lp2, EquipmentRegion.NextProcessFoupB), 1);
+
+        queue.Clear();
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            scheduler.TryScheduleOne(
+                state,
+                queue,
+                activeJob: null,
+                vacuumActiveJob: null,
+                efemBlades: new RobotBladeSlots(2),
+                efemBladeCapacity: 2);
+        }
+
+        if (queue.Any(j =>
+                j.Pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC
+                && j.Dropoff == EquipmentRegion.LoadLock))
+        {
+            error = "foup-pickup: FOUP must not bypass Aligner to Load Lock";
+            return false;
+        }
+
+        if (!port.OnWaferReservedFromFoup())
+        {
+            error = "foup-pickup: reserve should succeed when remaining > 0";
+            return false;
+        }
+
+        if (port.RemainingInFoup != 2 || port.ReservedForPickupCount != 1 || port.PhysicallyInFoup != 3)
+        {
+            error = "foup-pickup: reserve accounting mismatch";
+            return false;
+        }
+
+        port.OnWaferPickedFromFoup();
+        if (port.ReservedForPickupCount != 0 || port.InFlightCount != 1 || port.PhysicallyInFoup != 2)
+        {
+            error = "foup-pickup: grip accounting mismatch";
             return false;
         }
 
@@ -1404,7 +1527,11 @@ public static class SimulatorSmokeTester
 
         ClusterEquipmentState s = sim.ClusterState;
         string report = tracker.FormatReport(sim, ticks);
-        if (!sim.LotCompleteAchieved && ticks >= 100_000)
+        int lotTargetTicks = ticks >= 100_000
+            ? (int)Math.Ceiling(s.Lot.TargetCount
+                * (s.Capacity.EtchProcessTicks + s.Capacity.StripProcessTicks + 120) * 1.15)
+            : 0;
+        if (!sim.LotCompleteAchieved && ticks >= lotTargetTicks && lotTargetTicks > 0)
         {
             return new Result
             {
@@ -1813,7 +1940,7 @@ public static class SimulatorSmokeTester
             return false;
         }
 
-        int foup = s.FoupPorts.Sum(p => p.RemainingInFoup + p.InFlightCount);
+        int foup = s.FoupPorts.Sum(p => p.RemainingInFoup + p.ReservedForPickupCount + p.InFlightCount);
         if (foup > 0)
         {
             return true;

@@ -44,7 +44,7 @@
 
 | PM | 역할 | 시뮬 tick (기본) |
 |----|------|------------------|
-| **PM2~4** | 동일 **식각(Etch)** | `EtchProcessTicks = 120` (기본 · TM 이송과 **분리**) |
+| **PM2~4** | 동일 **식각(Etch)** | `EtchProcessTicks = 300` (기본 · TM 이송과 **분리** · PM4·듀얼블레이드 데모 관측) |
 | **PM1** | **Strip만** (식각 완료 후 후공정) | `StripProcessTicks = 28` (기본) |
 | **진공 TM** | PM 구간 이송 | `VacuumMoveTicks` 등 · UI `VacuumMotionStepsPerUiTick=5` (1초당 모션 5스텝, PM 가공 1스텝) |
 

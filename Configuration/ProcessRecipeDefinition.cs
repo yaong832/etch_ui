@@ -10,8 +10,8 @@ public sealed class ProcessRecipeDefinition
     public string Version { get; init; } = "1";
     public string Description { get; init; } = string.Empty;
 
-    public int EtchProcessTicks { get; init; } = 120;
-    public int StripProcessTicks { get; init; } = 28;
+    public int EtchProcessTicks { get; init; } = 300;
+    public int StripProcessTicks { get; init; } = 45;
     public int AlignProcessTicks { get; init; } = 2;
 
     /// <summary>식각 파이프라인 순서 (예: PM2, PM3, PM4).</summary>

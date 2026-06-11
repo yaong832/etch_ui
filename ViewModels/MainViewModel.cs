@@ -68,6 +68,7 @@ public sealed class MainViewModel : ViewModelBase
     private bool _canStart;
     private bool _canStop;
     private bool _canReset;
+    private bool _canProcessReset;
     private bool _canMaint;
     private bool _maintenanceModeActive;
     private string _maintButtonText = "⚙  유지보수";
@@ -421,6 +422,12 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => _canReset;
         set => SetField(ref _canReset, value);
+    }
+
+    public bool CanProcessReset
+    {
+        get => _canProcessReset;
+        set => SetField(ref _canProcessReset, value);
     }
 
     public bool CanMaint

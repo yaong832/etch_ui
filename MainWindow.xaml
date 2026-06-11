@@ -15,8 +15,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*" MinHeight="360"/>
-            <RowDefinition Height="Auto" MinHeight="80" MaxHeight="160"/>
+            <RowDefinition Height="*" MinHeight="320"/>
+            <RowDefinition Height="130" MinHeight="110" MaxHeight="240"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -218,8 +218,9 @@
         </Border>
 
         <!-- Log strip -->
-        <Border Grid.Row="3" Grid.ColumnSpan="3" Style="{StaticResource HmiCard}" Margin="0,0,0,8" Padding="0">
-            <Grid>
+        <Border Grid.Row="3" Grid.ColumnSpan="3" Style="{StaticResource HmiCard}" Margin="0,0,0,6" Padding="0"
+                MinHeight="110" ClipToBounds="False">
+            <Grid MinHeight="110">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -228,11 +229,15 @@
                     <TextBlock Text="운영 로그" Style="{StaticResource HmiCardTitle}"/>
                 </Border>
                 <ListBox Grid.Row="1" ItemsSource="{Binding LogLines}" Style="{StaticResource HmiLogList}"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="8,4,8,8"/>
+                         VerticalAlignment="Stretch" MinHeight="64"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         Margin="8,4,8,10"/>
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="4" Grid.ColumnSpan="3" Foreground="{StaticResource HmiTextSecondaryBrush}" FontSize="11"
+        <TextBlock Grid.Row="4" Grid.ColumnSpan="3" Margin="0,2,0,0"
+                   Foreground="{StaticResource HmiTextSecondaryBrush}" FontSize="11"
                    Text="현장 PC: WPF + EtherCAT + Flask  ·  모니터링: http://&lt;현장PC IP&gt;:5000 (조회 전용)"/>
     </Grid>
 </Window>

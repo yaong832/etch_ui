@@ -11,8 +11,12 @@ public sealed class FoupPortState
 
     public bool IsMounted { get; set; } = true;
     public int RemainingInFoup { get; set; }
+    /// <summary>스케줄됐으나 아직 EFEM 그립 전(카세트 내 물리 매수).</summary>
+    public int ReservedForPickupCount { get; set; }
     public int InFlightCount { get; set; }
     public int LotGeneration { get; set; }
+
+    public int PhysicallyInFoup => RemainingInFoup + ReservedForPickupCount;
 
     public FoupPortState(LoadPortId portId)
     {
@@ -26,16 +30,37 @@ public sealed class FoupPortState
         };
     }
 
-    /// <summary>스케줄 시 FOUP 잔량만 차감 (InFlight는 실제 그립 시).</summary>
-    public void OnWaferReservedFromFoup()
+    /// <summary>스케줄 시 FOUP 잔량 차감 + 픽업 예약 (InFlight는 실제 그립 시).</summary>
+    public bool OnWaferReservedFromFoup()
     {
-        if (RemainingInFoup > 0)
+        if (RemainingInFoup <= 0)
         {
-            RemainingInFoup--;
+            return false;
         }
+
+        RemainingInFoup--;
+        ReservedForPickupCount++;
+        return true;
     }
 
-    public void OnWaferPickedFromFoup() => InFlightCount++;
+    public void OnWaferPickedFromFoup()
+    {
+        if (ReservedForPickupCount > 0)
+        {
+            ReservedForPickupCount--;
+        }
+
+        InFlightCount++;
+    }
+
+    public void OnWaferPickupReservationReleased()
+    {
+        if (ReservedForPickupCount > 0)
+        {
+            ReservedForPickupCount--;
+            RemainingInFoup++;
+        }
+    }
 
     public void OnWaferLeftClusterToNextProcess()
     {

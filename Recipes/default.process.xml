@@ -2,8 +2,8 @@
 <ProcessRecipe id="default" version="1" name="기본 식각">
   <Description>PM2→PM3→PM4 식각 파이프라인 후 PM1 Strip · Aligner 정렬</Description>
   <Timing>
-    <Etch unit="tick">120</Etch>
-    <Strip unit="tick">28</Strip>
+    <Etch unit="tick">300</Etch>
+    <Strip unit="tick">45</Strip>
     <Align unit="tick">2</Align>
   </Timing>
   <EtchPipeline>

@@ -42,17 +42,23 @@
         </StackPanel>
         <StackPanel Grid.Row="1">
             <TextBlock Text="공정 조작" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
-            <UniformGrid x:Name="FullButtons" Columns="1" Rows="5">
+            <UniformGrid x:Name="FullButtons" Columns="1" Rows="6">
             <Button x:Name="BtnStart" Content="▶  시작" Style="{StaticResource HmiBtnStart}"
-                    MinHeight="52" Margin="4,4,4,4"
+                    MinHeight="48" Margin="4,4,4,4"
                     IsEnabled="{Binding CanStart}"
                     ToolTip="{Binding StartButtonToolTip}"/>
-            <Button x:Name="BtnStop" Content="■  정지" Style="{StaticResource HmiBtnStop}"
-                    MinHeight="52" Margin="4,4,4,4"
-                    IsEnabled="{Binding CanStop}"/>
+            <Button x:Name="BtnStop" Content="‖  일시정지" Style="{StaticResource HmiBtnStop}"
+                    MinHeight="48" Margin="4,4,4,4"
+                    IsEnabled="{Binding CanStop}"
+                    ToolTip="가상 이송 일시정지 (상태 유지 · 시작으로 재개)"/>
             <Button x:Name="BtnReset" Content="↺  알람 리셋" Style="{StaticResource HmiBtnReset}"
-                    MinHeight="52" Margin="4,4,4,4"
-                    IsEnabled="{Binding CanReset}"/>
+                    MinHeight="48" Margin="4,4,4,4"
+                    IsEnabled="{Binding CanReset}"
+                    ToolTip="알람 상태 해제 (공정·웨이퍼 상태는 유지)"/>
+            <Button x:Name="BtnProcessReset" Content="⟲  공정 리셋" Style="{StaticResource HmiBtnProcessReset}"
+                    MinHeight="48" Margin="4,4,4,4"
+                    IsEnabled="{Binding CanProcessReset}"
+                    ToolTip="FOUP·슬롯·LOT·로봇 큐를 데모 초기 상태로 되돌림"/>
             <Button x:Name="BtnMaintTools" Content="정비 도구"
                     MinHeight="44" Margin="4,4,4,4"
                     Style="{StaticResource HmiSecondaryButton}"
@@ -71,14 +77,19 @@
                 </Button.Style>
             </Button>
         </UniformGrid>
-        <UniformGrid x:Name="CompactButtons" Columns="2" Rows="2" Visibility="Collapsed">
+        <UniformGrid x:Name="CompactButtons" Columns="2" Rows="3" Visibility="Collapsed">
             <Button x:Name="BtnStartCompact" Content="▶ 시작" Style="{StaticResource HmiBtnStart}"
-                    MinHeight="40" Margin="2" IsEnabled="{Binding CanStart}"
+                    MinHeight="36" Margin="2" IsEnabled="{Binding CanStart}"
                     ToolTip="{Binding StartButtonToolTip}"/>
-            <Button x:Name="BtnStopCompact" Content="■ 정지" Style="{StaticResource HmiBtnStop}"
-                    MinHeight="40" Margin="2" IsEnabled="{Binding CanStop}"/>
-            <Button x:Name="BtnResetCompact" Content="↺ 리셋" Style="{StaticResource HmiBtnReset}"
-                    MinHeight="36" Margin="2" IsEnabled="{Binding CanReset}"/>
+            <Button x:Name="BtnStopCompact" Content="‖ 일시정지" Style="{StaticResource HmiBtnStop}"
+                    MinHeight="36" Margin="2" IsEnabled="{Binding CanStop}"
+                    ToolTip="가상 이송 일시정지"/>
+            <Button x:Name="BtnResetCompact" Content="↺ 알람" Style="{StaticResource HmiBtnReset}"
+                    MinHeight="32" Margin="2" IsEnabled="{Binding CanReset}"
+                    ToolTip="알람 리셋"/>
+            <Button x:Name="BtnProcessResetCompact" Content="⟲ 공정" Style="{StaticResource HmiBtnProcessReset}"
+                    MinHeight="32" Margin="2" IsEnabled="{Binding CanProcessReset}"
+                    ToolTip="공정·LOT 초기화"/>
             <Button x:Name="BtnMaintCompact" Content="{Binding MaintButtonText}"
                     MinHeight="36" Margin="2" IsEnabled="{Binding CanMaint}">
                 <Button.Style>

@@ -14,6 +14,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="tools/**" />
+    <EmbeddedResource Remove="tools/**" />
+    <Page Remove="tools/**" />
+    <None Remove="tools/**" />
+    <Content Remove="tools/**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

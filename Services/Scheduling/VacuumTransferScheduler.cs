@@ -129,7 +129,35 @@ public sealed class VacuumTransferScheduler
         if (vacuumBladeCapacity >= 2 && vacuumBlades is not null)
         {
             int n = VacuumDualBladePlanner.TryScheduleEtchToPm1Batch(state, queue, vacuumBlades, h => LastHint = h);
-            return n > 0;
+            if (n > 0)
+            {
+                return true;
+            }
+
+            if (!state.Pm1.IsEmpty
+                && VacuumDualBladePlanner.HasPhysicalBladeFree(vacuumBlades, vacuumBladeCapacity))
+            {
+                foreach (EquipmentRegion region in new[] { EquipmentRegion.ChamberB, EquipmentRegion.ChamberC, EquipmentRegion.ChamberD })
+                {
+                    PmChamberState? src = state.GetChamber(region);
+                    if (src is null || !src.IsReadyForPickup || src.CurrentWafer is null || !src.CurrentWafer.HasCompletedEtch)
+                    {
+                        continue;
+                    }
+
+                    if (queue.Any(j => j.Pickup == region && j.Wafer.Id == src.CurrentWafer.Id))
+                    {
+                        continue;
+                    }
+
+                    src.PickupScheduled = true;
+                    Enqueue(queue, region, EquipmentRegion.ChamberA, src.CurrentWafer);
+                    LastHint = $"TM PM{RegionToPmNumber(region)} → 블레이드 대기 (PM1 Strip 점유)";
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         if (!state.Pm1.IsEmpty)

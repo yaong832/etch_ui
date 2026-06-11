@@ -63,8 +63,8 @@ public static class ProcessRecipeXml
             Name = root.Attribute("name")?.Value?.Trim() ?? "기본 식각",
             Version = root.Attribute("version")?.Value?.Trim() ?? "1",
             Description = root.Element("Description")?.Value?.Trim() ?? string.Empty,
-            EtchProcessTicks = ReadTick(timing?.Element("Etch"), 120),
-            StripProcessTicks = ReadTick(timing?.Element("Strip"), 28),
+            EtchProcessTicks = ReadTick(timing?.Element("Etch"), 300),
+            StripProcessTicks = ReadTick(timing?.Element("Strip"), 45),
             AlignProcessTicks = ReadTick(timing?.Element("Align"), 2),
             EtchPmIds = etchPmIds,
             StripPmId = root.Element("Strip")?.Attribute("pm")?.Value?.Trim().ToUpperInvariant() ?? "PM1"
