@@ -39,8 +39,8 @@
                         <TextBlock Text="플라즈마 식각 · Load Lock / 챔버 모니터링" Foreground="White"
                                    FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Background="#1E293B" CornerRadius="8" Padding="10,6" Margin="0,0,8,0">
+                    <WrapPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Border Background="#1E293B" CornerRadius="8" Padding="10,6" Margin="0,0,8,4">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="사용자" Style="{StaticResource HmiStatusChipLabel}" Margin="0,0,8,0"/>
                                 <TextBlock Text="{Binding CurrentUserText}" Foreground="#6EE7B7" FontWeight="SemiBold" FontSize="13"/>
@@ -50,7 +50,7 @@
                                 Click="BtnEventLog_Click" ToolTip="SQLite 이벤트 이력"/>
                         <Button x:Name="BtnAlarmHistory" Content="알람 이력" Style="{StaticResource HmiToolbarButton}"
                                 Click="BtnAlarmHistory_Click" ToolTip="SQLite 알람 발생·해제"/>
-                        <Button x:Name="BtnChangePassword" Content="비밀번호" Style="{StaticResource HmiToolbarButton}"
+                        <Button x:Name="BtnChangePassword" Content="비밀번호 변경" Style="{StaticResource HmiToolbarButton}"
                                 Click="BtnChangePassword_Click" ToolTip="본인 비밀번호 변경"/>
                         <Button x:Name="BtnSettings" Content="설정" Style="{StaticResource HmiToolbarButton}"
                                 Click="BtnSettings_Click" ToolTip="인터락·압력 appsettings (관리자)"
@@ -62,7 +62,7 @@
                                 Click="BtnLogout_Click"/>
                         <Button x:Name="BtnOpenFlask" Content="대시보드" Style="{StaticResource HmiToolbarButtonPrimary}"
                                 Click="BtnOpenFlask_Click" ToolTip="Flask 웹 대시보드"/>
-                    </StackPanel>
+                    </WrapPanel>
                 </DockPanel>
                 <WrapPanel Grid.Row="1" Margin="0,12,0,0">
                     <Border Style="{StaticResource HmiStatusChip}" ToolTip="{Binding FlaskStatusHint}">

@@ -24,6 +24,8 @@ if ($ArchiveFlask -and (Test-Path $FlaskDir)) {
 }
 
 New-Item -ItemType Directory -Force -Path $FlaskDir | Out-Null
-Copy-Item -Path (Join-Path $SourceDir "*") -Destination $FlaskDir -Force
+foreach ($f in $files) {
+    Copy-Item -Path (Join-Path $SourceDir $f) -Destination (Join-Path $FlaskDir $f) -Force
+}
 Write-Host "Deployed to $FlaskDir"
-Get-ChildItem $FlaskDir
+Get-ChildItem $FlaskDir -File

@@ -138,7 +138,28 @@ WPF POST에 `dataSource`가 붙습니다.
 
 ---
 
-## 8. 이벤트 · 서버 이력
+## 8. Flask 재시작 후 — 무엇이 남고 사라지나요?
+
+`run_flask.bat` 기본 실행은 **메모리 + SQLite**(`data/etch_monitoring.db`) 혼합입니다.
+
+| 데이터 | 재시작 후 | 비고 |
+|--------|-----------|------|
+| **이력·이벤트** (`/api/etch/history`, `events`) | **남음** | SQLite에 저장된 demo/live |
+| **모듈·레시피** (`modules/latest`, `recipe`) | **남음** | SQLite 최신 스냅샷 |
+| **AI 모델** (`/api/etch/ai/status`) | **남음** | `models/etch/*.joblib` (디스크) |
+| **실시간 KPI** (`/api/sensors`) | **복원됨** | SQLite 최신 demo → 자동 복원 (2026-06 수정) |
+| **AI 최신 진단** (`/api/etch/ai/latest`) | **복원됨** | 재시작 시 마지막 텔레메트리로 ML 재추론 |
+| **브라우저 실시간 차트 버퍼** | **사라짐** | 탭을 새로 열면 0부터 다시 쌓임 |
+| **메모리 링버퍼** (`demoSamples` 등) | **0으로 시작** | summary의 `samples`는 SQLite 건수 유지 |
+
+WPF를 **아직 안 켠 상태**에서 Flask만 재시작해도, **마지막 demo 스냅샷**이 있으면 웹 실시간 탭에 숫자가 다시 채워집니다.  
+완전 초기 상태는 **WPF Start 후** 새 POST가 들어올 때입니다.
+
+영구 저장만 쓰려면: `set ETCH_USE_DB=1` 후 실행 (레거시 farm DB; 식각 텔레메트리는 항상 `etch_monitoring.db`).
+
+---
+
+## 9. 이벤트 · 서버 이력
 
 | 탭 | 용도 |
 |----|------|
@@ -149,7 +170,7 @@ WPF POST에 `dataSource`가 붙습니다.
 
 ---
 
-## 9. WPF와 함께 쓰는 추천 시나리오
+## 10. WPF와 함께 쓰는 추천 시나리오
 
 ### 발표 (1대 PC)
 
@@ -167,7 +188,7 @@ WPF POST에 `dataSource`가 붙습니다.
 
 ---
 
-## 10. 자동 검증 (개발자용)
+## 11. 자동 검증 (개발자용)
 
 ```powershell
 cd D:\WPFProject\etch_ui
@@ -178,7 +199,7 @@ cd D:\WPFProject\etch_ui
 
 ---
 
-## 11. 더 보기
+## 12. 더 보기
 
 | 문서 | 위치 |
 |------|------|
