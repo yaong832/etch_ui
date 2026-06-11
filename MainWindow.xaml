@@ -49,17 +49,19 @@
                         <Button x:Name="BtnAppMenu" Content="메뉴 ▾" Style="{StaticResource HmiToolbarButton}"
                                 Click="BtnAppMenu_Click" ToolTip="이벤트·알람·계정·관리">
                             <Button.ContextMenu>
-                                <ContextMenu x:Name="AppHeaderMenu" Style="{StaticResource HmiHeaderContextMenu}"
-                                             ItemContainerStyle="{StaticResource HmiHeaderMenuItem}">
-                                    <MenuItem Header="이벤트 로그" Click="BtnEventLog_Click"
-                                              ToolTip="SQLite 운영 이벤트"/>
-                                    <MenuItem Header="알람 이력" Click="BtnAlarmHistory_Click"
-                                              ToolTip="알람 발생·해제 기록"/>
-                                    <MenuItem Header="비밀번호 변경" Click="BtnChangePassword_Click"/>
-                                    <Separator x:Name="MenuAdminSeparator"/>
-                                    <MenuItem x:Name="MenuItemSettings" Header="설정 (관리자)" Click="BtnSettings_Click"
+                                <ContextMenu x:Name="AppHeaderMenu" Style="{StaticResource HmiHeaderContextMenu}">
+                                    <MenuItem Header="이벤트 로그" Style="{StaticResource HmiHeaderMenuItem}"
+                                              Click="BtnEventLog_Click" ToolTip="SQLite 운영 이벤트"/>
+                                    <MenuItem Header="알람 이력" Style="{StaticResource HmiHeaderMenuItem}"
+                                              Click="BtnAlarmHistory_Click" ToolTip="알람 발생·해제 기록"/>
+                                    <MenuItem Header="비밀번호 변경" Style="{StaticResource HmiHeaderMenuItem}"
+                                              Click="BtnChangePassword_Click"/>
+                                    <Separator x:Name="MenuAdminSeparator" Background="#475569" Margin="4,2"/>
+                                    <MenuItem x:Name="MenuItemSettings" Header="설정 (관리자)"
+                                              Style="{StaticResource HmiHeaderMenuItem}" Click="BtnSettings_Click"
                                               ToolTip="인터락·압력·레시피 appsettings"/>
-                                    <MenuItem x:Name="MenuItemUserManage" Header="사용자 관리" Click="BtnUserManage_Click"/>
+                                    <MenuItem x:Name="MenuItemUserManage" Header="사용자 관리"
+                                              Style="{StaticResource HmiHeaderMenuItem}" Click="BtnUserManage_Click"/>
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
