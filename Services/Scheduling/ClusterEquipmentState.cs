@@ -92,6 +92,26 @@ public sealed class ClusterEquipmentState
 
     public LotCompletionTracker Lot { get; } = new();
 
+    public int Pm2EtchInboundCount { get; private set; }
+    public int Pm3EtchInboundCount { get; private set; }
+    public int Pm4EtchInboundCount { get; private set; }
+
+    public void RecordEtchInbound(EquipmentRegion region)
+    {
+        switch (region)
+        {
+            case EquipmentRegion.ChamberB:
+                Pm2EtchInboundCount++;
+                break;
+            case EquipmentRegion.ChamberC:
+                Pm3EtchInboundCount++;
+                break;
+            case EquipmentRegion.ChamberD:
+                Pm4EtchInboundCount++;
+                break;
+        }
+    }
+
     public void ResetForDemo()
 
     {
@@ -135,6 +155,10 @@ public sealed class ClusterEquipmentState
         while (SideStorage.TryDequeue(out _))
         {
         }
+
+        Pm2EtchInboundCount = 0;
+        Pm3EtchInboundCount = 0;
+        Pm4EtchInboundCount = 0;
 
         Lot.Reset(FoupPorts.Length * Capacity.FoupSlotCount);
     }

@@ -35,4 +35,6 @@ public sealed class SideStorageBuffer
         wafer = _fifo.Dequeue();
         return true;
     }
+
+    public WaferTrack[] SnapshotFifo() => _fifo.ToArray();
 }

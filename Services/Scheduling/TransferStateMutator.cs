@@ -7,7 +7,14 @@ public static class TransferStateMutator
 {
     public static void OnPickup(ClusterEquipmentState state, EquipmentRegion pickup, WaferTrack wafer)
     {
-        if (pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC or EquipmentRegion.SideStorage)
+        if (pickup is EquipmentRegion.FoupA or EquipmentRegion.FoupB or EquipmentRegion.FoupC)
+        {
+            FoupPortState? port = state.FoupPorts.FirstOrDefault(p => p.FoupRegion == pickup);
+            port?.OnWaferPickedFromFoup();
+            return;
+        }
+
+        if (pickup == EquipmentRegion.SideStorage)
         {
             return;
         }
@@ -66,6 +73,20 @@ public static class TransferStateMutator
 
         if (dropoff == EquipmentRegion.LoadLock)
         {
+            if (wafer.HasCompletedStrip)
+            {
+                if (!LoadLockAdmissionPolicy.CanAcceptStripFromPm1(state, out string? stripReason))
+                {
+                    throw new InvalidOperationException(
+                        $"BM Strip dropoff rejected · wafer #{wafer.Id} · {stripReason ?? "policy"}");
+                }
+            }
+            else if (!LoadLockAdmissionPolicy.CanAcceptPreEtchFromAligner(state, out string? preReason))
+            {
+                throw new InvalidOperationException(
+                    $"BM Pre-Etch dropoff rejected · wafer #{wafer.Id} · {preReason ?? "policy"}");
+            }
+
             if (!state.LoadLockBuffer.TryEnqueue(wafer, 0))
             {
                 throw new InvalidOperationException($"BM full on dropoff · wafer #{wafer.Id}");
@@ -83,5 +104,10 @@ public static class TransferStateMutator
         ch.ReservedForIncoming = false;
         ch.CurrentWafer = wafer;
         ch.RemainingProcessTicks = processTicks;
+
+        if (ch.IsEtchPm)
+        {
+            state.RecordEtchInbound(dropoff);
+        }
     }
 }

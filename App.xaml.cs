@@ -133,6 +133,61 @@ namespace etch_ui
                 return;
             }
 
+            if (e.Args.Any(a => a.Equals("--sim-ui-hints", StringComparison.OrdinalIgnoreCase)))
+            {
+                int warmup = 600;
+                string? ticksArg = e.Args.FirstOrDefault(a => a.StartsWith("--ticks=", StringComparison.OrdinalIgnoreCase));
+                if (ticksArg is not null && int.TryParse(ticksArg.Split('=')[1], out int parsed) && parsed > 0)
+                {
+                    warmup = parsed;
+                }
+
+                SimulatorSmokeTester.Result result = SimulatorSmokeTester.RunUiHintsAudit(warmup);
+                Console.WriteLine($"sim_ui_hints success={result.Success} {result.Message}");
+                Shutdown(result.Success ? 0 : 10);
+                return;
+            }
+
+            if (e.Args.Any(a => a.Equals("--sim-aligner-audit", StringComparison.OrdinalIgnoreCase)))
+            {
+                int ticks = 160_000;
+                string? ticksArg = e.Args.FirstOrDefault(a => a.StartsWith("--ticks=", StringComparison.OrdinalIgnoreCase));
+                if (ticksArg is not null && int.TryParse(ticksArg.Split('=')[1], out int parsed) && parsed > 0)
+                {
+                    ticks = parsed;
+                }
+
+                SimulatorSmokeTester.Result result = SimulatorSmokeTester.RunAligner2PipelineAudit(ticks);
+                Console.WriteLine($"sim_aligner_audit success={result.Success} {result.Message}");
+                if (result.Report is not null)
+                {
+                    Console.WriteLine(result.Report);
+                }
+
+                Shutdown(result.Success ? 0 : 12);
+                return;
+            }
+
+            if (e.Args.Any(a => a.Equals("--sim-stress", StringComparison.OrdinalIgnoreCase)))
+            {
+                int runs = 3;
+                string? runsArg = e.Args.FirstOrDefault(a => a.StartsWith("--runs=", StringComparison.OrdinalIgnoreCase));
+                if (runsArg is not null && int.TryParse(runsArg.Split('=')[1], out int parsedRuns) && parsedRuns > 0)
+                {
+                    runs = parsedRuns;
+                }
+
+                SimulatorSmokeTester.Result result = SimulatorSmokeTester.RunStressAudit(runs);
+                Console.WriteLine($"sim_stress success={result.Success} runs={result.Runs} {result.Message}");
+                if (result.Report is not null)
+                {
+                    Console.WriteLine(result.Report);
+                }
+
+                Shutdown(result.Success ? 0 : 11);
+                return;
+            }
+
             if (e.Args.Any(a => a.Equals("--sim-policy-batch", StringComparison.OrdinalIgnoreCase)))
             {
                 int runs = 20;

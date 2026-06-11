@@ -1,0 +1,99 @@
+<UserControl x:Class="etch_ui.Controls.ProcessControlPanelControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:etch_ui.Controls"
+             MinWidth="200">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/etch_ui;component/Resources/HmiTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid x:Name="Root" VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="패널 램프" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
+            <Border Style="{StaticResource HmiLampPanel}" Margin="0,0,0,10">
+                <UniformGrid Columns="2" Rows="2">
+                    <Border Style="{StaticResource HmiLampCell}"
+                            Background="{Binding LampReadyOn, Converter={StaticResource LampBrush}, ConverterParameter=Blue}">
+                        <TextBlock Text="준비" Style="{StaticResource HmiLampText}"/>
+                    </Border>
+                    <Border Style="{StaticResource HmiLampCell}"
+                            Background="{Binding LampRunOn, Converter={StaticResource LampBrush}, ConverterParameter=Green}">
+                        <TextBlock Text="운전" Style="{StaticResource HmiLampText}"/>
+                    </Border>
+                    <Border Style="{StaticResource HmiLampCell}"
+                            Background="{Binding LampWarnOn, Converter={StaticResource LampBrush}, ConverterParameter=Gold}">
+                        <TextBlock Text="경고" Style="{StaticResource HmiLampText}"/>
+                    </Border>
+                    <Border Style="{StaticResource HmiLampCell}"
+                            Background="{Binding LampAlarmOn, Converter={StaticResource LampBrush}, ConverterParameter=Red}">
+                        <TextBlock Text="알람" Style="{StaticResource HmiLampText}"/>
+                    </Border>
+                </UniformGrid>
+            </Border>
+        </StackPanel>
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="공정 조작" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
+            <UniformGrid x:Name="FullButtons" Columns="1" Rows="5">
+            <Button x:Name="BtnStart" Content="▶  시작" Style="{StaticResource HmiBtnStart}"
+                    MinHeight="52" Margin="4,4,4,4"
+                    IsEnabled="{Binding CanStart}"
+                    ToolTip="{Binding StartButtonToolTip}"/>
+            <Button x:Name="BtnStop" Content="■  정지" Style="{StaticResource HmiBtnStop}"
+                    MinHeight="52" Margin="4,4,4,4"
+                    IsEnabled="{Binding CanStop}"/>
+            <Button x:Name="BtnReset" Content="↺  알람 리셋" Style="{StaticResource HmiBtnReset}"
+                    MinHeight="52" Margin="4,4,4,4"
+                    IsEnabled="{Binding CanReset}"/>
+            <Button x:Name="BtnMaintTools" Content="정비 도구"
+                    MinHeight="44" Margin="4,4,4,4"
+                    Style="{StaticResource HmiSecondaryButton}"
+                    Visibility="{Binding MaintenanceBannerVisible, Converter={StaticResource BoolVis}}"/>
+            <Button x:Name="BtnMaint" Content="{Binding MaintButtonText}"
+                    MinHeight="52" Margin="4,4,4,4"
+                    IsEnabled="{Binding CanMaint}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource HmiBtnMaint}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding MaintenanceModeActive}" Value="True">
+                                <Setter Property="Background" Value="#7C3AED"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </UniformGrid>
+        <UniformGrid x:Name="CompactButtons" Columns="2" Rows="2" Visibility="Collapsed">
+            <Button x:Name="BtnStartCompact" Content="▶ 시작" Style="{StaticResource HmiBtnStart}"
+                    MinHeight="40" Margin="2" IsEnabled="{Binding CanStart}"
+                    ToolTip="{Binding StartButtonToolTip}"/>
+            <Button x:Name="BtnStopCompact" Content="■ 정지" Style="{StaticResource HmiBtnStop}"
+                    MinHeight="40" Margin="2" IsEnabled="{Binding CanStop}"/>
+            <Button x:Name="BtnResetCompact" Content="↺ 리셋" Style="{StaticResource HmiBtnReset}"
+                    MinHeight="36" Margin="2" IsEnabled="{Binding CanReset}"/>
+            <Button x:Name="BtnMaintCompact" Content="{Binding MaintButtonText}"
+                    MinHeight="36" Margin="2" IsEnabled="{Binding CanMaint}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource HmiBtnMaint}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding MaintenanceModeActive}" Value="True">
+                                <Setter Property="Background" Value="#7C3AED"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            </UniformGrid>
+        </StackPanel>
+        <controls:ControlPanelSideInfoControl x:Name="SideInfo" Grid.Row="2"
+            Visibility="Collapsed" VerticalAlignment="Stretch"/>
+    </Grid>
+</UserControl>

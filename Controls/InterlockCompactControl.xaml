@@ -1,0 +1,33 @@
+<UserControl x:Class="etch_ui.Controls.InterlockCompactControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:etch_ui.Controls"
+             MinWidth="220">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/etch_ui;component/Resources/HmiTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel>
+        <Border Style="{StaticResource HmiInfoBanner}" Background="#EEF2FF" BorderBrush="#C7D2FE" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock Text="인터락 판정" FontWeight="SemiBold" Foreground="#1E3A8A" FontSize="11"/>
+                <TextBlock Text="{Binding InterlockResultText}" Foreground="{Binding InterlockResultBrush}"
+                           FontSize="14" FontWeight="Bold" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+        <TextBlock Text="{Binding InterlockPlcText}" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockPlcBrush}" FontSize="12" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding InterlockPressureText}" Margin="0,4,0,0" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockPressureBrush}" FontSize="11" TextWrapping="Wrap"/>
+        <TextBlock Text="{Binding AiScoreText}" Margin="0,8,0,0" FontWeight="Bold" FontSize="12"
+                   Foreground="{Binding AiScoreBrush}" TextWrapping="Wrap"/>
+        <TextBlock Text="공정 스텝" Style="{StaticResource HmiCaption}" Margin="0,10,0,4"/>
+        <controls:ProcessStepLadderControl ActiveStepIndex="{Binding ProcessStepIndex}"
+            IsWarningStep="{Binding ProcessStepWarning}"
+            ActiveStepCaption="{Binding ProcessStepCaption}"
+            StepDetailText="{Binding ProcessStepDetailText}"/>
+    </StackPanel>
+</UserControl>

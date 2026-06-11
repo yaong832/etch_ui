@@ -78,6 +78,32 @@ public sealed class WaferSlotBuffer
 
     public void Clear() => _entries.Clear();
 
+    public void CollectEntries(List<WaferBufferEntrySnapshot> sink, string location)
+    {
+        foreach (Entry entry in _entries)
+        {
+            string status = entry.RemainingTicks > 0
+                ? $"공정 {entry.RemainingTicks}t"
+                : entry.PickupScheduled ? "픽업 예약" : "대기";
+            sink.Add(new WaferBufferEntrySnapshot(entry.Wafer, location, status, entry.RemainingTicks));
+        }
+    }
+
+    public bool TryPeekFirst(out WaferTrack wafer, out int remainingTicks)
+    {
+        if (_entries.Count == 0)
+        {
+            wafer = null!;
+            remainingTicks = 0;
+            return false;
+        }
+
+        Entry entry = _entries[0];
+        wafer = entry.Wafer;
+        remainingTicks = entry.RemainingTicks;
+        return true;
+    }
+
     public int CountMatching(Func<WaferTrack, bool> predicate) =>
         _entries.Count(e => predicate(e.Wafer));
 

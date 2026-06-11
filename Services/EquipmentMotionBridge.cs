@@ -130,7 +130,8 @@ public sealed class EquipmentMotionBridge
                 transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
                 transfer.EfemCarryingWafer,
                 transfer.EfemFacingAngleDegrees,
-                transfer.EfemActiveBladeSlot);
+                transfer.EfemActiveBladeSlot,
+                transfer.EfemIsRotatingBlade);
         }
 
         _motion.ApplyVacuumMotion(
@@ -169,6 +170,17 @@ public sealed class EquipmentMotionBridge
         _motion.ServoHint = alarm
             ? $"알람 · 이송 정지 · {transfer.PhaseHint}"
             : transfer.PhaseHint;
+        _motion.WaferFlowPipelineText = transfer.DescribeWaferFlowPipeline();
+        _motion.SchedulerStatusText = transfer.PhaseHint;
+        _motion.SchedulerHoldActive = transfer.IsSchedulerHold;
+        _motion.DualBladeDetailText = transfer.DescribeDualBladeStatus();
+        _motion.ApplyWaferTimeline(transfer.GetActiveWaferTimeline());
+        _motion.ApplyTransferDiagnostics(
+            FormatRobotStatusSummary(transfer),
+            FormatBladeSummary("진공 TM", transfer.VacuumActiveBladeSlot, transfer.VacuumCarryingSlotA, transfer.VacuumCarryingSlotB, transfer.VacuumBladeCapacity, transfer.VacuumIsRotatingBlade),
+            FormatBladeSummary("EFEM", transfer.EfemActiveBladeSlot, transfer.EfemCarryingSlotA, transfer.EfemCarryingSlotB, transfer.EfemBladeCapacity, transfer.EfemIsRotatingBlade),
+            FormatHoldSummary(transfer));
+        ApplyWaferVisualBrushes(transfer);
         UpdateChamberLampsFromTransfer(transfer, operational && !alarm);
     }
 
@@ -273,5 +285,81 @@ public sealed class EquipmentMotionBridge
             ? $"진공 TM → {RegionAngleHelper.FormatLabel(transfer.TmRegion, TransferRobotKind.VacuumTm)}"
             : "진공 TM · 대기";
         return $"{efem}  |  {vac}";
+    }
+
+    private static string FormatRobotStatusSummary(TmTransferSimulator transfer)
+    {
+        ThroughputKpiSnapshot kpi = transfer.KpiSnapshot;
+        return $"LOT {transfer.LotCompletedCount}/{transfer.LotTargetCount} · {transfer.PhaseHint} · {kpi}";
+    }
+
+    private static string FormatBladeSummary(
+        string robotName,
+        int activeSlot,
+        bool slotA,
+        bool slotB,
+        int capacity,
+        bool rotating)
+    {
+        if (capacity < 2)
+        {
+            string state = slotA || slotB ? "웨이퍼 적재" : "빈 블레이드";
+            return $"{robotName} · {state}";
+        }
+
+        string active = activeSlot == VacuumDualBladePlanner.BackBladeSlot ? "뒤·A" : "앞·B";
+        string a = slotA ? "A=적재" : "A=빈";
+        string b = slotB ? "B=적재" : "B=빈";
+        string rotate = rotating ? " · 회전 중" : string.Empty;
+        return $"{robotName} · 활성 {active} · {a}, {b}{rotate}";
+    }
+
+    private void ApplyWaferVisualBrushes(TmTransferSimulator transfer)
+    {
+        static Brush At(TmTransferSimulator sim, EquipmentRegion region)
+        {
+            return sim.TryGetWaferAt(region, out WaferTrack? w, out int ticks)
+                ? WaferVisualBrushes.ForWafer(w, ticks)
+                : Brushes.Transparent;
+        }
+
+        _motion.AlignerWaferBrush = At(transfer, EquipmentRegion.Aligner);
+        _motion.LoadLockWaferBrush = At(transfer, EquipmentRegion.LoadLock);
+        _motion.SideStorageWaferBrush = At(transfer, EquipmentRegion.SideStorage);
+        _motion.ChamberAWaferBrush = At(transfer, EquipmentRegion.ChamberA);
+        _motion.ChamberBWaferBrush = At(transfer, EquipmentRegion.ChamberB);
+        _motion.ChamberCWaferBrush = At(transfer, EquipmentRegion.ChamberC);
+        _motion.ChamberDWaferBrush = At(transfer, EquipmentRegion.ChamberD);
+        _motion.FoupWaferBrush = transfer.HasWaferAt(EquipmentRegion.FoupA)
+                                 || transfer.HasWaferAt(EquipmentRegion.FoupB)
+                                 || transfer.HasWaferAt(EquipmentRegion.FoupC)
+            ? WaferVisualBrushes.ForFoupInventory()
+            : Brushes.Transparent;
+        _motion.EfemPaddleBrush0 = WaferVisualBrushes.ForWafer(transfer.GetEfemBladeWafer(0));
+        _motion.EfemPaddleBrush1 = WaferVisualBrushes.ForWafer(transfer.GetEfemBladeWafer(1));
+        _motion.VacuumBladeBrush0 = WaferVisualBrushes.ForWafer(transfer.GetVacuumBladeWafer(0));
+        _motion.VacuumBladeBrush1 = WaferVisualBrushes.ForWafer(transfer.GetVacuumBladeWafer(1));
+        _motion.WaferBrush = WaferVisualBrushes.ForWafer(null);
+    }
+
+    private static string FormatHoldSummary(TmTransferSimulator transfer)
+    {
+        var (efemQueue, vacQueue, vacPending, vacBlades) = transfer.GetQueueDiagnostics();
+        if (transfer.ClusterState.IsSideStorageAwaitingCassetteSwap)
+        {
+            return "Hold · Side Stg 만석 · 카세트 교체";
+        }
+
+        if (vacPending > 0)
+        {
+            return $"Hold · Vacuum drop 대기 {vacPending}건";
+        }
+
+        if (vacQueue > 0 || efemQueue > 0)
+        {
+            return $"Queue · EFEM {efemQueue} / Vac {vacQueue} · B {vacBlades}/{transfer.VacuumBladeCapacity}";
+        }
+
+        return $"Hold 없음 · B {vacBlades}/{transfer.VacuumBladeCapacity}";
     }
 }

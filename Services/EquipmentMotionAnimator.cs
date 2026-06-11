@@ -54,7 +54,8 @@ public sealed class EquipmentMotionAnimator : IDisposable
         _vacuumCurrentAngle = LerpAngle(_vacuumCurrentAngle, _motion.VacuumTargetAngleDegrees, vacAngleLerp);
         _vacuumCurrentExtension = Lerp(_vacuumCurrentExtension, _motion.VacuumTargetExtension, BladeExtendLerp);
 
-        _efemCurrentAngle = LerpAngle(_efemCurrentAngle, _motion.EfemTargetAngleDegrees, BladeAngleLerp);
+        double efemAngleLerp = _motion.EfemIsRotatingBlade ? VacuumRotateAngleLerp : BladeAngleLerp;
+        _efemCurrentAngle = LerpAngle(_efemCurrentAngle, _motion.EfemTargetAngleDegrees, efemAngleLerp);
         _efemCurrentExtension = Lerp(_efemCurrentExtension, _motion.EfemTargetExtension, BladeExtendLerp);
 
         _motion.ApplyInterpolatedFrame(

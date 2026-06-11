@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using etch_ui.Configuration;
@@ -9,6 +10,8 @@ using etch_ui.Security;
 using etch_ui.Services;
 using etch_ui.Services.Simulation;
 using etch_ui.Services.Scheduling;
+using etch_ui.Controls;
+using etch_ui.Equipment.Views;
 using etch_ui.ViewModels;
 using System.Threading.Tasks;
 
@@ -19,8 +22,7 @@ public partial class MainWindow : Window, DemoScenarioHost
     private readonly MainViewModel _vm = new();
     private readonly EquipmentMotionBridge _motionBridge;
     private readonly EquipmentMotionAnimator _motionAnimator;
-    private readonly TmTransferSimulator _transferSim = new(
-        efemBladeCapacity: etch_ui.Services.Scheduling.EquipmentCapacityConfig.Default.EfemBladeSlotCount);
+    private readonly TmTransferSimulator _transferSim = new();
     private bool _lotCompleteHandled;
     private readonly DatabaseService _db;
     private readonly PlcAdsService _plc = new();
@@ -87,6 +89,12 @@ public partial class MainWindow : Window, DemoScenarioHost
     private int _aiPollCounter;
     private double _lastAiScore = -1;
     private string _lastAiHint = "Flask AI 대기 중";
+    private EtchAiDiagnosis? _lastAiDiagnosis;
+    private HmiPopoutWindow? _popoutEquipment;
+    private HmiPopoutWindow? _popoutInterlock;
+    private HmiPopoutWindow? _popoutDiagnostics;
+    private HmiPopoutWindow? _popoutSensors;
+    private HmiPopoutWindow? _popoutControl;
     private DateTime _nextAiHighScoreLogUtc = DateTime.MinValue;
     private readonly DemoScenarioRunner _demoScenarioRunner = new();
     private DateTime _nextAiSnapshotUtc = DateTime.MinValue;
@@ -111,6 +119,7 @@ public partial class MainWindow : Window, DemoScenarioHost
         _aiDataRecorder = new AiTrainingDataRecorder(Path.Combine(dataDir, "ai_training_snapshots.jsonl"));
         InitializeComponent();
         DataContext = _vm;
+        WireProcessPanel(EmbeddedProcessPanel);
         _simulationFallbackEnabled = AppSettings.SimulationEnabled;
         if (_simulationFallbackEnabled)
         {
@@ -329,7 +338,12 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private void SyncTransferMotionFrame()
     {
-        if (!ShouldShowVirtualTransfer || !_transferSim.IsRunning)
+        if (!ShouldShowVirtualTransfer)
+        {
+            return;
+        }
+
+        if (!_transferSim.IsRunning && !_transferSim.CanResume)
         {
             return;
         }
@@ -769,6 +783,32 @@ public partial class MainWindow : Window, DemoScenarioHost
             ? "유지보수 모드 — 공정 Start 차단 · 인터락 미적용(센서 모니터링만)"
             : string.Empty;
 
+        if (_state == EquipmentState.Alarm)
+        {
+            _vm.SafetyBannerVisible = true;
+            string? codeEarly = ComputePrimaryAlarmCode();
+            var alarmInfoEarly = AlarmCatalog.TryGet(codeEarly);
+            string displayCode = codeEarly ?? "—";
+            _vm.SafetyBannerText = alarmInfoEarly.HasValue
+                ? $"⛔ ALARM {displayCode} — 이송 정지 · {alarmInfoEarly.Value.Detail}"
+                : $"⛔ ALARM — 이송 정지 ({displayCode})";
+            _vm.SafetyBannerBrush = Brushes.OrangeRed;
+            _vm.InterlockPanelCritical = true;
+        }
+        else if (_state == EquipmentState.Warning)
+        {
+            _vm.SafetyBannerVisible = true;
+            _vm.SafetyBannerText = "⚠ WARNING — 환경(온·습도) 편향 · 공정 모니터링 강화";
+            _vm.SafetyBannerBrush = Brushes.DarkGoldenrod;
+            _vm.InterlockPanelCritical = false;
+        }
+        else
+        {
+            _vm.SafetyBannerVisible = false;
+            _vm.SafetyBannerText = string.Empty;
+            _vm.InterlockPanelCritical = false;
+        }
+
         if (IsBenchMode)
         {
             _vm.PlcStatusText = "DEMO (시뮬)";
@@ -1066,6 +1106,156 @@ public partial class MainWindow : Window, DemoScenarioHost
 
         _vm.SetModuleSnapshots(moduleSnapshots);
         MaybeRecordAiTrainingSnapshot(moduleSnapshots);
+        SyncAiInsights();
+    }
+
+    private void SyncAiInsights()
+    {
+        bool showSensors = HasLiveSensorData || IsBenchMode;
+        _vm.ReplaceAiInsights(AiInsightComposer.Compose(
+            _lastAiDiagnosis,
+            _flaskReachable,
+            showSensors,
+            _pressureMtorr,
+            _vib,
+            _temp,
+            _humi,
+            _accessSafe,
+            _accessInputValid,
+            ShouldShowVirtualTransfer ? _transferSim : null));
+    }
+
+    private void WireProcessPanel(ProcessControlPanelControl panel)
+    {
+        panel.BtnStart.Click += BtnStart_Click;
+        panel.BtnStop.Click += BtnStop_Click;
+        panel.BtnReset.Click += BtnReset_Click;
+        panel.BtnMaint.Click += BtnMaint_Click;
+        panel.BtnMaintTools.Click += BtnMaintTools_Click;
+        panel.BtnStartCompact.Click += BtnStart_Click;
+        panel.BtnStopCompact.Click += BtnStop_Click;
+        panel.BtnResetCompact.Click += BtnReset_Click;
+        panel.BtnMaintCompact.Click += BtnMaint_Click;
+    }
+
+    private void BtnPopoutEquipment_Click(object sender, RoutedEventArgs e)
+    {
+        if (_popoutEquipment?.IsVisible == true)
+        {
+            _popoutEquipment.Activate();
+            return;
+        }
+
+        var host = new Grid();
+        host.RowDefinitions.Add(new RowDefinition { Height = new GridLength(3, GridUnitType.Star) });
+        host.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var schematic = new EquipmentSchematicControl { DataContext = _vm.Equipment };
+        var diagnostics = new EquipmentDiagnosticsControl { DataContext = _vm.Equipment };
+        Grid.SetRow(schematic, 0);
+        Grid.SetRow(diagnostics, 1);
+        host.Children.Add(schematic);
+        host.Children.Add(diagnostics);
+
+        _popoutEquipment = new HmiPopoutWindow(
+            "클러스터 도식 · TM",
+            "가상 TM 도식 + 스케줄·듀얼블레이드·타임라인",
+            host,
+            1180,
+            860)
+        {
+            Owner = this
+        };
+        _popoutEquipment.Closed += (_, _) => _popoutEquipment = null;
+        _popoutEquipment.Show();
+    }
+
+    private void BtnPopoutDiagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        if (_popoutDiagnostics?.IsVisible == true)
+        {
+            _popoutDiagnostics.Activate();
+            return;
+        }
+
+        var panel = new EquipmentDiagnosticsControl { DataContext = _vm.Equipment };
+        _popoutDiagnostics = new HmiPopoutWindow(
+            "TM · 스케줄 · 듀얼블레이드",
+            "로봇 상태 · 파이프라인 · HOLD · 웨이퍼 타임라인",
+            panel,
+            720,
+            640)
+        {
+            Owner = this
+        };
+        _popoutDiagnostics.Closed += (_, _) => _popoutDiagnostics = null;
+        _popoutDiagnostics.Show();
+    }
+
+    private void BtnPopoutSensors_Click(object sender, RoutedEventArgs e)
+    {
+        if (_popoutSensors?.IsVisible == true)
+        {
+            _popoutSensors.Activate();
+            return;
+        }
+
+        var panel = new SensorMetricsControl { DataContext = _vm };
+        _popoutSensors = new HmiPopoutWindow(
+            "센서 · 추세 · 상태",
+            "실측/데모 센서 · 스파크라인 · 정상 대역",
+            panel,
+            560,
+            620)
+        {
+            Owner = this
+        };
+        _popoutSensors.Closed += (_, _) => _popoutSensors = null;
+        _popoutSensors.Show();
+    }
+
+    private void BtnPopoutControl_Click(object sender, RoutedEventArgs e)
+    {
+        if (_popoutControl?.IsVisible == true)
+        {
+            _popoutControl.Activate();
+            return;
+        }
+
+        var panel = new ProcessControlPanelControl { DataContext = _vm, CompactMode = false };
+        WireProcessPanel(panel);
+        _popoutControl = new HmiPopoutWindow(
+            "제어 · 상태 램프",
+            "패널 램프 · 시작 · 정지 · 알람 리셋 · 정비",
+            panel,
+            360,
+            520)
+        {
+            Owner = this
+        };
+        _popoutControl.Closed += (_, _) => _popoutControl = null;
+        _popoutControl.Show();
+    }
+
+    private void BtnPopoutInterlock_Click(object sender, RoutedEventArgs e)
+    {
+        if (_popoutInterlock?.IsVisible == true)
+        {
+            _popoutInterlock.Activate();
+            return;
+        }
+
+        var panel = new InterlockAiMonitorControl { DataContext = _vm };
+        _popoutInterlock = new HmiPopoutWindow(
+            "인터락 · AI 모니터",
+            "인터락 판정 · AI 세부 근거 · 모듈 상태",
+            panel,
+            520,
+            720)
+        {
+            Owner = this
+        };
+        _popoutInterlock.Closed += (_, _) => _popoutInterlock = null;
+        _popoutInterlock.Show();
     }
 
     private void MaybeRecordAiTrainingSnapshot(IReadOnlyList<Equipment.Models.ModuleStateSnapshot> moduleSnapshots)
@@ -1690,9 +1880,12 @@ public partial class MainWindow : Window, DemoScenarioHost
                 : "Flask 미연결 — AI 조언 없음";
             _vm.AiScoreBrush = Brushes.DimGray;
             _vm.AiPredictedAlarmText = "예상 알람: —";
+            _lastAiDiagnosis = null;
+            SyncAiInsights();
             return;
         }
 
+        _lastAiDiagnosis = diag;
         _lastAiScore = diag.AnomalyScore;
         _lastAiHint = diag.SuggestedAction ?? diag.Note ?? "—";
         _vm.AiScoreText = $"이상 점수: {diag.AnomalyScore:F2}" + (diag.Stub ? " (규칙 스텁)" : " (ML)");
@@ -1713,6 +1906,8 @@ public partial class MainWindow : Window, DemoScenarioHost
             _nextAiHighScoreLogUtc = DateTime.UtcNow.AddSeconds(30);
             AddLog($"[AI] 점수 {diag.AnomalyScore:F2} — {_lastAiHint}");
         }
+
+        SyncAiInsights();
     }
 
     private void BtnLogout_Click(object sender, RoutedEventArgs e)

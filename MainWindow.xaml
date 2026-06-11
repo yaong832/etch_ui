@@ -7,21 +7,22 @@
         xmlns:eq="clr-namespace:etch_ui.Equipment.Views"
         mc:Ignorable="d"
         Title="Etch Load Lock HMI"
-        Height="900" Width="1320" MinHeight="800" MinWidth="1200"
+        Height="900" Width="1320" MinHeight="640" MinWidth="1024"
         FontFamily="{StaticResource HmiFont}"
         Background="{StaticResource HmiCanvasBrush}">
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="140" MinHeight="100" MaxHeight="200"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" MinHeight="360"/>
+            <RowDefinition Height="Auto" MinHeight="80" MaxHeight="160"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="6*"/>
-            <ColumnDefinition Width="2.8*"/>
+            <ColumnDefinition Width="7.5*"/>
             <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="1.6*"/>
         </Grid.ColumnDefinitions>
 
         <!-- Header -->
@@ -107,288 +108,102 @@
             </Grid>
         </Border>
 
-        <!-- Left: Equipment -->
-        <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource HmiCard}" Margin="0,0,12,12">
+        <!-- ALARM / WARNING 전폭 배너 -->
+        <Border Grid.Row="1" Grid.ColumnSpan="3" CornerRadius="8" Padding="14,10" Margin="0,0,0,10"
+                Background="{Binding SafetyBannerBrush}"
+                Visibility="{Binding SafetyBannerVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="{Binding SafetyBannerText}" Foreground="White" FontWeight="Bold" FontSize="14"
+                       TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- Left: Equipment schematic (시뮬 영역 최대화) -->
+        <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource HmiCard}" Margin="0,0,10,12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource HmiCardHeader}">
-                    <StackPanel>
-                        <TextBlock Text="장비 상태" Style="{StaticResource HmiCardTitle}"/>
-                        <TextBlock Text="가상 도식 · 실측 센서" Style="{StaticResource HmiCardSubtitle}"/>
-                    </StackPanel>
-                </Border>
-                <Grid Grid.Row="1" Margin="14">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" MinHeight="450"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto" MaxHeight="150"/>
-                    </Grid.RowDefinitions>
-                    <eq:EquipmentSchematicControl Grid.Row="0" DataContext="{Binding Equipment}"
-                                                  VerticalAlignment="Stretch" Margin="0,0,0,10"/>
-                    <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="{StaticResource HmiBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
-                        <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="1.2*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                            <TextBlock Text="현재 상태" Style="{StaticResource HmiCaption}"/>
-                            <TextBlock Text="{Binding StateText}" FontSize="26" FontWeight="Bold"
-                                       Foreground="{Binding StateBrush}" Margin="0,2,0,0"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <TextBlock Text="알람" Style="{StaticResource HmiCaption}" Margin="0,0,6,0"/>
-                                <TextBlock Text="{Binding AlarmCodeText}" FontWeight="SemiBold"
-                                           Foreground="{Binding AlarmCodeBrush}"/>
-                            </StackPanel>
-                            <TextBlock Text="{Binding AlarmDetailText}" TextWrapping="Wrap" Margin="0,6,0,0"
-                                       FontSize="11" Foreground="{Binding AlarmDetailBrush}" LineHeight="16" MaxHeight="48"/>
-                            </StackPanel>
-                            <UniformGrid Grid.Column="1" Columns="2" Rows="2">
-                                <Border Style="{StaticResource HmiMetricTile}">
-                                    <StackPanel>
-                                        <TextBlock Text="온도 ℃" Style="{StaticResource HmiMetricLabel}"/>
-                                        <TextBlock Text="{Binding TemperatureText}" Style="{StaticResource HmiMetricValue}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,0,8">
-                                    <StackPanel>
-                                        <TextBlock Text="습도 %" Style="{StaticResource HmiMetricLabel}"/>
-                                        <TextBlock Text="{Binding HumidityText}" Style="{StaticResource HmiMetricValue}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource HmiMetricTile}">
-                                    <StackPanel>
-                                        <TextBlock Text="압력 mTorr" Style="{StaticResource HmiMetricLabel}"/>
-                                        <TextBlock Text="{Binding PressureText}" Style="{StaticResource HmiMetricValue}"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,0,8">
-                                    <StackPanel>
-                                        <TextBlock Text="진동 g" Style="{StaticResource HmiMetricLabel}"/>
-                                        <TextBlock Text="{Binding VibrationText}" Style="{StaticResource HmiMetricValue}"/>
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
-                        </Grid>
-                        <Border Background="White" BorderBrush="{StaticResource HmiBorderBrush}"
-                                BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,10,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Load Lock 접촉" Style="{StaticResource HmiCaption}" Margin="0,0,8,0"/>
-                                <TextBlock Text="{Binding AccessText}" FontWeight="Bold" FontSize="13"
-                                           Foreground="{Binding AccessBrush}"/>
-                            </StackPanel>
-                        </Border>
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="↗ 도식" Style="{StaticResource HmiToolbarButton}" Margin="0,0,4,0"
+                                    Click="BtnPopoutEquipment_Click" ToolTip="클러스터 도식·TM 진단 전체 화면"/>
+                            <Button Content="↗ TM·스케줄" Style="{StaticResource HmiToolbarButton}" Margin="0,0,4,0"
+                                    Click="BtnPopoutDiagnostics_Click" ToolTip="TM·듀얼블레이드·파이프라인·타임라인"/>
+                            <Button Content="↗ 센서" Style="{StaticResource HmiToolbarButton}"
+                                    Click="BtnPopoutSensors_Click" ToolTip="센서·추세·상태 메트릭"/>
                         </StackPanel>
-                    </Border>
-                    <StackPanel Grid.Row="2">
-                        <TextBlock Text="실시간 추세 (약 72초)" Style="{StaticResource HmiCaption}" Margin="0,0,0,6"/>
-                        <Grid Height="72" Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <controls:SparklineControl Grid.Column="0" Title="압력 mTorr"
-                                Values="{Binding PressureSparkValues}" YMin="{Binding PressureSparkYMin}"
-                                YMax="{Binding PressureSparkYMax}" Stroke="#2563EB"/>
-                            <controls:SparklineControl Grid.Column="2" Title="진동 g"
-                                Values="{Binding VibrationSparkValues}" YMin="{Binding VibrationSparkYMin}"
-                                YMax="{Binding VibrationSparkYMax}" Stroke="#7C3AED"/>
-                        </Grid>
-                        <TextBlock Text="센서 정상 대역" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
-                        <UniformGrid Columns="2">
-                            <controls:SensorRangeBar Title="압력 mTorr" Value="{Binding SensorPressureValue}"
-                                RangeMin="{Binding SensorPressureRangeMin}" RangeMax="{Binding SensorPressureRangeMax}"
-                                ScaleMin="0" ScaleMax="{Binding SensorPressureScaleMax}" Unit="mTorr"/>
-                            <controls:SensorRangeBar Title="진동 g" Value="{Binding SensorVibrationValue}"
-                                RangeMin="0" RangeMax="{Binding SensorVibrationRangeMax}"
-                                ScaleMin="0" ScaleMax="{Binding SensorVibrationScaleMax}" Unit="g"/>
-                            <controls:SensorRangeBar Title="온도 ℃" Value="{Binding SensorTempValue}"
-                                RangeMin="{Binding SensorTempRangeMin}" RangeMax="{Binding SensorTempRangeMax}"
-                                ScaleMin="{Binding SensorTempScaleMin}" ScaleMax="{Binding SensorTempScaleMax}" Unit="℃"/>
-                            <controls:SensorRangeBar Title="습도 %" Value="{Binding SensorHumiValue}"
-                                RangeMin="{Binding SensorHumiRangeMin}" RangeMax="{Binding SensorHumiRangeMax}"
-                                ScaleMin="0" ScaleMax="{Binding SensorHumiScaleMax}" Unit="%"/>
-                        </UniformGrid>
-                    </StackPanel>
-                </Grid>
+                        <StackPanel>
+                            <TextBlock Text="장비 도식" Style="{StaticResource HmiCardTitle}"/>
+                            <TextBlock Text="가상 TM 시뮬 · 상세는 ↗ 분리 창" Style="{StaticResource HmiCardSubtitle}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <eq:EquipmentSchematicControl Grid.Row="1" DataContext="{Binding Equipment}"
+                                              VerticalAlignment="Stretch" Margin="8,4,8,8"/>
             </Grid>
         </Border>
 
-        <!-- Center: Interlock -->
-        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource HmiCard}" Margin="0,0,12,12">
+        <!-- Center: 인터락·공정 요약 (상세는 분리 창) -->
+        <Border Grid.Row="2" Grid.Column="1" Margin="0,0,10,12">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource HmiCard}">
+                    <Setter Property="BorderBrush" Value="{StaticResource HmiBorderBrush}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding InterlockPanelCritical}" Value="True">
+                            <Setter Property="BorderBrush" Value="#DC2626"/>
+                            <Setter Property="BorderThickness" Value="3"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource HmiCardHeader}">
-                    <StackPanel>
-                        <TextBlock Text="인터락 · 공정" Style="{StaticResource HmiCardTitle}"/>
-                        <TextBlock Text="appsettings.json 기준" Style="{StaticResource HmiCardSubtitle}"/>
-                    </StackPanel>
+                    <DockPanel LastChildFill="False">
+                        <Button DockPanel.Dock="Right" Content="↗ 분리" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnPopoutInterlock_Click" ToolTip="인터락·AI·레시피 전체"/>
+                        <StackPanel>
+                            <TextBlock Text="인터락 · 공정" Style="{StaticResource HmiCardTitle}"/>
+                            <TextBlock Text="요약 · 상세는 분리 창" Style="{StaticResource HmiCardSubtitle}"/>
+                        </StackPanel>
+                    </DockPanel>
                 </Border>
-                <Grid Grid.Row="1" Margin="14">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <StackPanel>
-                        <Border Style="{StaticResource HmiInfoBanner}" Background="#F5F3FF" BorderBrush="#C4B5FD" Margin="0,0,0,8">
-                            <StackPanel>
-                                <TextBlock Text="활성 레시피" FontWeight="SemiBold" Foreground="#5B21B6" FontSize="12"/>
-                                <TextBlock Text="{Binding ActiveRecipeText}" TextWrapping="Wrap"
-                                           FontSize="11" Foreground="#4C1D95" Margin="0,6,0,0" LineHeight="16"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource HmiInfoBanner}" Background="#FFFBEB" BorderBrush="#FDE68A" Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="인터락 허용 범위" FontWeight="SemiBold" Foreground="#92400E" FontSize="12"/>
-                                <TextBlock Text="{Binding InterlockThresholdsText}" TextWrapping="Wrap"
-                                           FontSize="11" Foreground="#78350F" Margin="0,6,0,0" LineHeight="16"/>
-                                <TextBlock Text="{Binding InterlockPressureDetailText}" TextWrapping="Wrap"
-                                           FontSize="12" FontWeight="SemiBold" Foreground="#1E40AF" Margin="0,8,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Text="{Binding InterlockPlcText}" Margin="0,0,0,8" FontWeight="SemiBold"
-                                   Foreground="{Binding InterlockPlcBrush}" FontSize="13"/>
-                        <TextBlock Text="{Binding InterlockPressureText}" Margin="0,0,0,4" FontWeight="SemiBold"
-                                   Foreground="{Binding InterlockPressureBrush}" FontSize="13"/>
-                        <TextBlock Text="{Binding InterlockVibText}" Margin="0,0,0,8" FontWeight="SemiBold"
-                                   Foreground="{Binding InterlockVibBrush}" FontSize="13"/>
-                        <TextBlock Text="{Binding InterlockAccessText}" Margin="0,0,0,8" FontWeight="SemiBold"
-                                   Foreground="{Binding InterlockAccessBrush}" FontSize="13"/>
-                        <TextBlock Text="{Binding InterlockTempText}" Margin="0,0,0,8" FontWeight="SemiBold"
-                                   Foreground="{Binding InterlockTempBrush}" FontSize="13"/>
-                        <TextBlock Text="{Binding InterlockHumiText}" Margin="0,0,0,12" FontWeight="SemiBold"
-                                   Foreground="{Binding InterlockHumiBrush}" FontSize="13"/>
-                        <Border Style="{StaticResource HmiInfoBanner}" Background="#EEF2FF" BorderBrush="#C7D2FE">
-                            <StackPanel>
-                                <TextBlock Text="판정 결과" FontWeight="SemiBold" Foreground="#1E3A8A"/>
-                                <TextBlock Text="{Binding InterlockResultText}" Foreground="{Binding InterlockResultBrush}"
-                                           FontSize="15" FontWeight="Bold" Margin="0,6,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource HmiInfoBanner}" Background="#F0FDF4" BorderBrush="#86EFAC" Margin="0,10,0,0">
-                            <StackPanel>
-                                <TextBlock Text="AI 조언 (조회 전용)" FontWeight="SemiBold" Foreground="#166534" FontSize="12"/>
-                                <TextBlock Text="{Binding AiScoreText}" Margin="0,6,0,0" FontWeight="Bold" FontSize="14"
-                                           Foreground="{Binding AiScoreBrush}"/>
-                                <TextBlock Text="{Binding AiHintText}" TextWrapping="Wrap" Margin="0,6,0,0"
-                                           FontSize="12" Foreground="#374151" LineHeight="18"/>
-                                <TextBlock Text="{Binding AiPredictedAlarmText}" TextWrapping="Wrap" Margin="0,8,0,0"
-                                           FontSize="12" FontWeight="SemiBold" Foreground="#7C2D12" LineHeight="18"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                    <StackPanel Grid.Row="1" Margin="0,12,0,0" VerticalAlignment="Top">
-                        <TextBlock Text="모듈 상태 (LP · BM · TM · PM)" Style="{StaticResource HmiCaption}" Margin="0,0,0,6"/>
-                        <ListBox ItemsSource="{Binding ModuleStates}" MaxHeight="150" BorderThickness="0"
-                                 Background="#F8FAFC" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,2">
-                                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#1E293B">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0} · {1}">
-                                                    <Binding Path="Id"/>
-                                                    <Binding Path="StateText"/>
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
-                                        <TextBlock Text="{Binding Detail, Mode=OneWay}" FontSize="10"
-                                                   Foreground="#64748B" TextWrapping="Wrap"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <TextBlock Text="공정 스텝 (가상 이송)" Style="{StaticResource HmiCaption}" Margin="0,12,0,6"/>
-                        <controls:ProcessStepLadderControl ActiveStepIndex="{Binding ProcessStepIndex}"
-                            IsWarningStep="{Binding ProcessStepWarning}"
-                            ActiveStepCaption="{Binding ProcessStepCaption}"
-                            StepDetailText="{Binding ProcessStepDetailText}"/>
-                    </StackPanel>
-                </Grid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="10,8,10,10">
+                    <controls:InterlockCompactControl DataContext="{Binding}"/>
+                </ScrollViewer>
             </Grid>
         </Border>
 
-        <!-- Right: Control -->
-        <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource HmiCard}" Margin="0,0,0,12" VerticalAlignment="Stretch">
-            <Grid VerticalAlignment="Top">
+        <!-- Right: 제어 (컴팩트 · 전체는 분리 창) -->
+        <Border Grid.Row="2" Grid.Column="2" Style="{StaticResource HmiCard}" Margin="0,0,0,12" VerticalAlignment="Stretch">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Border Style="{StaticResource HmiCardHeader}">
-                    <StackPanel>
-                        <TextBlock Text="제어 · 상태 램프" Style="{StaticResource HmiCardTitle}"/>
-                        <TextBlock Text="버튼 DI · 램프 DO" Style="{StaticResource HmiCardSubtitle}"/>
-                    </StackPanel>
+                    <DockPanel LastChildFill="False">
+                        <Button DockPanel.Dock="Right" Content="↗ 분리" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnPopoutControl_Click" ToolTip="램프·시작·정지·정비 전체 패널"/>
+                        <StackPanel>
+                            <TextBlock Text="제어" Style="{StaticResource HmiCardTitle}"/>
+                            <TextBlock Text="램프 · 조작" Style="{StaticResource HmiCardSubtitle}"/>
+                        </StackPanel>
+                    </DockPanel>
                 </Border>
-                <StackPanel Grid.Row="1" Margin="14,14,14,16">
-                    <TextBlock Text="패널 램프" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
-                    <Border Style="{StaticResource HmiLampPanel}" Margin="0,0,0,14">
-                        <UniformGrid Columns="2" Rows="2">
-                            <Border Style="{StaticResource HmiLampCell}"
-                                    Background="{Binding LampReadyOn, Converter={StaticResource LampBrush}, ConverterParameter=Blue}">
-                                <TextBlock Text="준비" Style="{StaticResource HmiLampText}"/>
-                            </Border>
-                            <Border Style="{StaticResource HmiLampCell}"
-                                    Background="{Binding LampRunOn, Converter={StaticResource LampBrush}, ConverterParameter=Green}">
-                                <TextBlock Text="운전" Style="{StaticResource HmiLampText}"/>
-                            </Border>
-                            <Border Style="{StaticResource HmiLampCell}"
-                                    Background="{Binding LampWarnOn, Converter={StaticResource LampBrush}, ConverterParameter=Gold}">
-                                <TextBlock Text="경고" Style="{StaticResource HmiLampText}"/>
-                            </Border>
-                            <Border Style="{StaticResource HmiLampCell}"
-                                    Background="{Binding LampAlarmOn, Converter={StaticResource LampBrush}, ConverterParameter=Red}">
-                                <TextBlock Text="알람" Style="{StaticResource HmiLampText}"/>
-                            </Border>
-                        </UniformGrid>
-                    </Border>
-                    <TextBlock Text="공정 조작" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
-                    <UniformGrid Columns="1" Rows="5">
-                        <Button x:Name="BtnStart" Content="▶  시작" Style="{StaticResource HmiBtnStart}"
-                                MinHeight="52" Margin="4,4,4,4"
-                                Click="BtnStart_Click" IsEnabled="{Binding CanStart}"
-                                ToolTip="{Binding StartButtonToolTip}"/>
-                        <Button x:Name="BtnStop" Content="■  정지" Style="{StaticResource HmiBtnStop}"
-                                MinHeight="52" Margin="4,4,4,4"
-                                Click="BtnStop_Click" IsEnabled="{Binding CanStop}"/>
-                        <Button x:Name="BtnReset" Content="↺  알람 리셋" Style="{StaticResource HmiBtnReset}"
-                                MinHeight="52" Margin="4,4,4,4"
-                                Click="BtnReset_Click" IsEnabled="{Binding CanReset}"/>
-                        <Button x:Name="BtnMaintTools" Content="정비 도구"
-                                MinHeight="44" Margin="4,4,4,4"
-                                Style="{StaticResource HmiSecondaryButton}"
-                                Click="BtnMaintTools_Click"
-                                Visibility="{Binding MaintenanceBannerVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                        <Button x:Name="BtnMaint" Content="{Binding MaintButtonText}"
-                                MinHeight="52" Margin="4,4,4,4"
-                                Click="BtnMaint_Click" IsEnabled="{Binding CanMaint}">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource HmiBtnMaint}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding MaintenanceModeActive}" Value="True">
-                                            <Setter Property="Background" Value="#7C3AED"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                    </UniformGrid>
-                </StackPanel>
+                <controls:ProcessControlPanelControl x:Name="EmbeddedProcessPanel" Grid.Row="1"
+                    DataContext="{Binding}" CompactMode="True" VerticalAlignment="Stretch"
+                    Margin="8,8,8,10"/>
             </Grid>
         </Border>
 
         <!-- Log strip -->
-        <Border Grid.Row="2" Grid.ColumnSpan="3" Style="{StaticResource HmiCard}" Margin="0,0,0,8" Padding="0">
+        <Border Grid.Row="3" Grid.ColumnSpan="3" Style="{StaticResource HmiCard}" Margin="0,0,0,8" Padding="0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -402,7 +217,7 @@
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="3" Grid.ColumnSpan="3" Foreground="{StaticResource HmiTextSecondaryBrush}" FontSize="11"
+        <TextBlock Grid.Row="4" Grid.ColumnSpan="3" Foreground="{StaticResource HmiTextSecondaryBrush}" FontSize="11"
                    Text="현장 PC: WPF + EtherCAT + Flask  ·  모니터링: http://&lt;현장PC IP&gt;:5000 (조회 전용)"/>
     </Grid>
 </Window>

@@ -1,0 +1,141 @@
+<UserControl x:Class="etch_ui.Controls.ControlPanelSideInfoControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="180">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/etch_ui;component/Resources/HmiTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border BorderBrush="{StaticResource HmiBorderBrush}" BorderThickness="1,1,0,0"
+            Padding="0,10,0,0" Margin="0,4,0,0">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Text="운전 · 잔량" Style="{StaticResource HmiCaption}" Margin="0,0,0,6"/>
+                <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="6" Padding="8,6" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="{Binding StateText}" FontSize="13" FontWeight="Bold"
+                                   Foreground="{Binding StateBrush}"/>
+                        <TextBlock Text="{Binding Equipment.RobotStatusSummary}" FontSize="10"
+                                   Foreground="#334155" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ProcessPhaseText}" FontSize="9" Foreground="#64748B"
+                                   Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <UniformGrid Columns="3" Margin="0,0,0,4">
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,3,3" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="LP1" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding Equipment.Foup1InventoryText}" FontSize="11" FontWeight="SemiBold" Foreground="#1D4ED8"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,3,3" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="LP2" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding Equipment.Foup2InventoryText}" FontSize="11" FontWeight="SemiBold" Foreground="#1D4ED8"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,0,3" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="LP3" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding Equipment.Foup3InventoryText}" FontSize="11" FontWeight="SemiBold" Foreground="#1D4ED8"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+                <UniformGrid Columns="3" Margin="0,0,0,8">
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,3,0" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="Aligner" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding Equipment.AlignerInventoryText}" FontSize="11" FontWeight="SemiBold" Foreground="#0F766E"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,3,0" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="BM" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding Equipment.LoadLockInventoryText}" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="#0F766E" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource HmiMetricTile}" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="Side Stg" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding Equipment.SideStorageInventoryText}" FontSize="11" FontWeight="SemiBold" Foreground="#0F766E"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <TextBlock Text="TM · 스케줄" Style="{StaticResource HmiCaption}" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding Equipment.WaferFlowPipelineText}" FontSize="9" Foreground="#475569"
+                           TextWrapping="Wrap" Margin="0,0,0,6"/>
+                <UniformGrid Columns="2" Margin="0,0,0,6">
+                    <Border Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1"
+                            CornerRadius="4" Padding="5,3" Margin="0,0,3,0">
+                        <TextBlock Text="{Binding Equipment.VacuumBladeSummary}" FontSize="8" FontWeight="SemiBold"
+                                   Foreground="#075985" TextWrapping="Wrap"/>
+                    </Border>
+                    <Border Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1"
+                            CornerRadius="4" Padding="5,3">
+                        <TextBlock Text="{Binding Equipment.EfemBladeSummary}" FontSize="8" FontWeight="SemiBold"
+                                   Foreground="#0F766E" TextWrapping="Wrap"/>
+                    </Border>
+                </UniformGrid>
+                <Border Padding="6,4" CornerRadius="4" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="1"
+                        Margin="0,0,0,8"
+                        Visibility="{Binding Equipment.SchedulerHoldActive, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{Binding Equipment.SchedulerStatusText}" FontSize="9" FontWeight="Bold"
+                               Foreground="#92400E" TextWrapping="Wrap"/>
+                </Border>
+
+                <TextBlock Text="센서" Style="{StaticResource HmiCaption}" Margin="0,0,0,4"/>
+                <UniformGrid Columns="2" Rows="2" Margin="0,0,0,8">
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,3,3" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="온도 ℃" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding TemperatureText}" FontSize="11" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,0,3" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="습도 %" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding HumidityText}" FontSize="11" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,3,0" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="압력 mTorr" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding PressureText}" FontSize="11" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource HmiMetricTile}" Padding="5,4">
+                        <StackPanel>
+                            <TextBlock Text="진동 g" Style="{StaticResource HmiMetricLabel}" FontSize="9"/>
+                            <TextBlock Text="{Binding VibrationText}" FontSize="11" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <TextBlock Text="모듈 상태" Style="{StaticResource HmiCaption}" Margin="0,0,0,4"/>
+                <ListBox ItemsSource="{Binding ModuleStates}" MaxHeight="96" BorderThickness="0"
+                         Background="#F8FAFC" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock FontSize="9" Foreground="#475569" TextWrapping="Wrap">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0} · {1}">
+                                        <Binding Path="Id"/>
+                                        <Binding Path="StateText"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

@@ -68,6 +68,7 @@ public partial class EquipmentSchematicControl : UserControl
             or nameof(EquipmentMotionViewModel.IsVacuumDualBlade)
             or nameof(EquipmentMotionViewModel.VacuumBladeCapacity)
             or nameof(EquipmentMotionViewModel.IsEfemDualBlade)
+            or nameof(EquipmentMotionViewModel.EfemIsRotatingBlade)
             or nameof(EquipmentMotionViewModel.IsEfemRobotActive)
             or nameof(EquipmentMotionViewModel.IsVacuumTmActive))
         {
@@ -155,12 +156,12 @@ public partial class EquipmentSchematicControl : UserControl
             double waferCenterY = armY + armH / 2;
             if (_bound.EfemBladeSlotB)
             {
-                PlaceWaferDisc(WaferOnEfemBladeB, EfemHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnEfemBladeB, EfemHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter, _bound.EfemPaddleBrush1);
             }
 
             if (_bound.EfemBladeSlotA)
             {
-                PlaceWaferDisc(WaferOnEfemBlade, EfemHubX - backLen + slotTipInset, waferCenterY, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnEfemBlade, EfemHubX - backLen + slotTipInset, waferCenterY, BladeWaferDiameter, _bound.EfemPaddleBrush0);
             }
         }
         else
@@ -195,7 +196,7 @@ public partial class EquipmentSchematicControl : UserControl
             double slotLeft = EfemHubX + efemLen - 4;
             if (_bound.EfemBladeSlotA || _bound.EfemCarryingWafer)
             {
-                PlaceWaferDisc(WaferOnEfemBlade, slotLeft, 8 + 5, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnEfemBlade, slotLeft, 8 + 5, BladeWaferDiameter, _bound.EfemPaddleBrush0);
             }
 
             WaferOnEfemBladeB.Visibility = Visibility.Collapsed;
@@ -274,12 +275,12 @@ public partial class EquipmentSchematicControl : UserControl
             double waferCenterY = vacArmY + vacArmH / 2;
             if (_bound.VacuumBladeSlotB)
             {
-                PlaceWaferDisc(WaferOnBladeB, VacHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnBladeB, VacHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter, _bound.VacuumBladeBrush1);
             }
 
             if (_bound.VacuumBladeSlotA)
             {
-                PlaceWaferDisc(WaferOnBlade, VacHubX - backLen + slotTipInset, waferCenterY, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnBlade, VacHubX - backLen + slotTipInset, waferCenterY, BladeWaferDiameter, _bound.VacuumBladeBrush0);
             }
         }
         else
@@ -315,7 +316,7 @@ public partial class EquipmentSchematicControl : UserControl
 
             if (_bound.VacuumBladeSlotA || _bound.VacuumCarryingWafer)
             {
-                PlaceWaferDisc(WaferOnBlade, slotLeft, 8 + 5, BladeWaferDiameter);
+                PlaceWaferDisc(WaferOnBlade, slotLeft, 8 + 5, BladeWaferDiameter, _bound.VacuumBladeBrush0);
             }
 
             WaferOnBladeB.Visibility = Visibility.Collapsed;
@@ -419,10 +420,15 @@ public partial class EquipmentSchematicControl : UserControl
         _ = front;
     }
 
-    private static void PlaceWaferDisc(Ellipse wafer, double centerX, double centerY, double diameter)
+    private static void PlaceWaferDisc(Ellipse wafer, double centerX, double centerY, double diameter, Brush? fill = null)
     {
         wafer.Width = diameter;
         wafer.Height = diameter;
+        if (fill is not null)
+        {
+            wafer.Fill = fill;
+        }
+
         Canvas.SetLeft(wafer, centerX - diameter / 2);
         Canvas.SetTop(wafer, centerY - diameter / 2);
     }

@@ -1,7 +1,7 @@
 # FOUP 픽업·PM 레시피·Side Storage 정책 (합의)
 
 > [`SCHEDULER_장비로직_설계.md`](SCHEDULER_장비로직_설계.md) 용량 표 보완.  
-> 코드: `FoupPickScheduler`, `EquipmentCapacityConfig`, `TmTransferSimulator`.
+> 코드: `FoupPickScheduler`, `EquipmentCapacityConfig`, `LoadLockAdmissionPolicy`, `EfemTransferScheduler`, `VacuumTransferScheduler`, `TmTransferSimulator`.
 
 ---
 
@@ -87,28 +87,50 @@ PM2 → (없으면) PM3 → (없으면) PM4
 | 다매·PM 동시 `RemainingProcessTicks` | `ClusterEquipmentState.DecrementProcessTimes` |
 | 이송 Job 큐 | `TransferJob` + 각 스케줄러 `TryScheduleOne` |
 
-### 2.5 TM 2매(dual blade) (C4 — 시뮬·UI 구현)
+### 2.5 TM 2매(dual blade) — **구현 완료**
 
-FOUP 3×25매와 궁합이 좋음. **회전 블레이드 양끝 2슬롯** 가정.
+FOUP 3×25매와 궁합이 좋음. **EFEM·진공 TM 모두 회전 듀얼암 2슬롯** (`EfemBladeSlotCount` / `VacuumBladeSlotCount` = 2).
 
-| 항목 | TM 1매 (현재) | TM 2매 |
-|------|---------------|--------|
-| 동시 이송 Job | 1 active | 최대 **2** (슬롯 A/B) |
-| 스케줄러 | FIFO 1큐 | **2-token** + 충돌 없는 (pick,drop) 쌍 |
-| 처리량 | 낮음 | PM2~4 병렬 식각과 맞물려 **↑** |
-| 구현 | `TmTransferSimulator`, `VacuumDualBladePlanner`, `RobotBladeSlots` | Etch→PM1 연속 픽업·슬롯 A/B |
-| 도식 | `EquipmentSchematicControl` | TM 중심 **앞(+)/뒤(-)** 180° 대칭 팔 · `TmRotate`로 챔버 맞춤 (슬롯 A=뒤, B=앞) |
+| 항목 | 값 (코드 기본) |
+|------|----------------|
+| 동시 이송 Job | EFEM·진공 각 최대 **2** (슬롯 A/B) |
+| 스케줄러 | `VacuumDualBladePlanner` · `RobotBladeSlots` · 2-token 큐 |
+| BM 만석 시 | 진공 **스왑**(Pre 픽업 + Strip 드롭), EFEM **블레이드 선적재** (`TryScheduleFoupBladeBuffer`) |
+| 구현 | `TmTransferSimulator`, `EfemTransferScheduler`, `VacuumTransferScheduler` |
+| 도식 | `EquipmentSchematicControl` — TM **앞(+)/뒤(-)** 180° 대칭 팔 (슬롯 A=뒤, B=앞) |
 
-스케줄이 **많이 달라짐**: 같은 틱에 「PM3 pick + PM4 place」 등 **비겹치는** 조합 가능, BM·동일 PM 슬릿 **동시 접근 금지**.
+같은 틱에 비겹치는 (pick, drop) 조합 가능. BM·동일 PM 슬롯 **동시 접근 금지**.
 
 ---
 
-## 3. Side Storage · 출하 (다음 공정 FOUP)
+## 3. 버퍼 용량 · BM 존 · Side Storage · 출하
+
+### 3.1 용량 (`EquipmentCapacityConfig`)
+
+| 모듈 | 슬롯 | 코드 상수 |
+|------|------|-----------|
+| **Aligner** | **2매** | `DefaultAlignerSlotCount = 2` — 정렬 대기 FIFO |
+| **BM (Load Lock)** | **3매** | `DefaultLoadLockSlotCount = 3` |
+| **Side Stg** | **25매** | `DefaultSideStorageSlotCount = 25` |
+| FOUP (LP1~3) | 각 **25매** | `DefaultFoupSlotCount = 25` |
+
+### 3.2 BM 존 분리 (`LoadLockAdmissionPolicy`)
+
+총 3매이지만 **논리 존**으로 나눔 (UI: `P{n}/{max}+S{n}/{max}`).
+
+| 존 | 최대 | 내용 |
+|----|------|------|
+| **Pre-Etch** | **2매** | Aligner 완료·미식각 웨이퍼 (`CanAcceptPreEtchFromAligner`) |
+| **Strip** | **1매** | PM1 Strip 완료 웨이퍼 (`CanAcceptStripFromPm1`) |
+
+- Etch PM2~4 **만석**이면 Pre-Etch는 **1매만** BM 대기 허용 (2매째 Pre 차단).
+- Aligner **2/2** + BM Pre **2/2** → FOUP는 EFEM **듀얼블레이드 선적재** 후 Aligner 슬롯 확보 시 투입.
+- 드롭·pending drop·큐 예약 슬롯 합산 검증 (`CanAcceptAnotherBmDrop`, `TmTransferSimulator.CanStartPendingDrop`).
+
+### 3.3 Side Storage · LOT 출하
 
 | 항목 | 값 |
 |------|-----|
-| Aligner | **1매** (`AlignerSlotCount = 1`, 실장비 정렬) |
-| 용량 | **25매** (`SideStorageSlotCount`) |
 | 이송 | Strip 완료 웨이퍼: **BM → Side Stg** (`EfemTransferScheduler`) |
 | 만석 | 25매 시 **BM→Side Stg HOLD** · `PerformSideStorageCassetteSwap()`로 **25매 일괄 출하** |
 | LOT | 출하 1매당 `Lot.RecordWaferCompleted()` — 목표 **75매** (3 FOUP × 25) |
@@ -122,7 +144,8 @@ FOUP 3×25매와 궁합이 좋음. **회전 블레이드 양끝 2슬롯** 가정
 ## 4. 구현·보류 (코드 기준)
 
 - [x] EFEM/진공 분리 스케줄러 + **§2.2** 파이프라인·공정 tick
-- [x] TM 듀얼 블레이드 (시뮬 `VacuumDualBladePlanner`, 도식 슬롯 A/B)
+- [x] **Aligner 2매** + **BM 3매(Pre2+Strip1)** + `LoadLockAdmissionPolicy`
+- [x] EFEM·진공 TM 듀얼 블레이드 (`VacuumDualBladePlanner`, 도식 슬롯 A/B)
 - [x] Side Stg 25 + 카세트 교체 출하 + LOT COMPLETE (`LotCompletionTracker`)
 - [ ] 레시피 XML/JSON · Flask 레시피 연동 — **후순위**
 - [ ] AI 조언·학습 파이프라인 UI — **후순위** (`PROJECT_모듈상태_AI_계획.md`)
@@ -138,8 +161,12 @@ FOUP 3×25매와 궁합이 좋음. **회전 블레이드 양끝 2슬롯** 가정
 | `dotnet run -- --sim-policy-batch [--runs=N] [--ticks=N]` | FOUP 정책·파이프라인·BM 수용 배치 |
 | `dotnet run -- --sim-report [--ticks=N]` | KPI·잔량·`lot=x/75` 스냅샷 (기본 tick 40000) |
 | `dotnet run -- --sim-dual-blade [--ticks=N]` | 2슬롯·연속픽업·180°회전·A/B 사용 검증 |
+| `dotnet run -- --sim-aligner-audit [--ticks=N]` | Aligner 2 + BM 3 파이프라인 — **매 tick** Aligner/BM 존·FOUP 회계·그리드락 WARN |
+| `dotnet run -- --sim-stress [--runs=N]` | 프로필 배치(default/fast/slow/batch) · stall·듀얼블레이드 기회 상실 감사 |
 
 **LOT 75/75:** Side Stg **카세트 3회**(25×3) 출하 후 `IsLotComplete()`. tick이 부족하면 `lot_done=False`로 끝날 수 있음.
+
+**중간 이상 감사 (`PipelineAnomalyTracker`):** Aligner 초과·BM 존 위반은 **ERROR 즉시 중단**. Aligner+BM Pre 만석·EFEM 유휴·FOUP 잔량·블레이드 고아·HOLD hint 지속은 **WARN** 기록.
 
 **BM 만석 HOLD·진공 가동률 99%:** 시뮬에서 **일시적**으로 나올 수 있는 스케줄 메시지. 실장비에서는 EFEM이 BM을 비우며 **상시 정체**로 가는 구조가 아님(§5.1). 영구 `lot=0`은 **장시간 헤드리스 튜닝·병목 검증** 이슈이지, 현장 정상 운전 예상 상태가 아님.
 

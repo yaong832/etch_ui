@@ -17,7 +17,9 @@ public sealed class VacuumTransferScheduler
         IEnumerable<TransferJob>? efemQueued = null,
         RobotBladeSlots? vacuumBlades = null,
         int vacuumBladeCapacity = 1,
-        bool restrictInbound = false)
+        bool restrictInbound = false,
+        IEnumerable<TransferJob>? vacuumPending = null,
+        bool queuedWorkBlocksScheduling = false)
     {
         if (activeJob is not null)
         {
@@ -33,12 +35,22 @@ public sealed class VacuumTransferScheduler
             return 1;
         }
 
-        if (TrySchedulePmStripToBm(state, queue, efemActiveJob, efemQueued))
+        // 듀얼: 블레이드 Strip→BM 대기 + BM 만석 → Pre-Etch 1매 BM 픽업(Etch)으로 슬롯 확보 후 드롭.
+        if (vacuumBladeCapacity >= 2
+            && vacuumBlades is not null
+            && vacuumBlades.FreeCount > 0
+            && VacuumDualBladePlanner.HasBlockedStripDropToBm(state, vacuumPending, vacuumBlades)
+            && TryScheduleBmToEtchPm(state, queue, efemActiveJob, efemQueued, vacuumBlades, vacuumBladeCapacity))
         {
             return 1;
         }
 
-        if (queue.Count > 0)
+        if (TrySchedulePmStripToBm(state, queue, efemActiveJob, efemQueued, vacuumBlades, vacuumPending))
+        {
+            return 1;
+        }
+
+        if (queuedWorkBlocksScheduling)
         {
             return 0;
         }
@@ -66,16 +78,23 @@ public sealed class VacuumTransferScheduler
         ClusterEquipmentState state,
         Queue<TransferJob> queue,
         TransferJob? efemActiveJob,
-        IEnumerable<TransferJob>? efemQueued)
+        IEnumerable<TransferJob>? efemQueued,
+        RobotBladeSlots? vacuumBlades,
+        IEnumerable<TransferJob>? vacuumPending)
     {
         if (!state.Pm1.IsReadyForPickup || state.Pm1.CurrentWafer is null || !state.Pm1.CurrentWafer.HasCompletedStrip)
         {
             return false;
         }
 
-        if (state.LoadLockBuffer.IsFull)
+        if (!LoadLockAdmissionPolicy.CanAcceptAnotherStripBmDrop(
+                state,
+                additionalSlots: 1,
+                blades: vacuumBlades,
+                pendingDropoffs: vacuumPending,
+                queuedJobs: queue))
         {
-            LastHint = "TM · BM 만석 HOLD";
+            LastHint = "TM · BM Strip 슬롯·예약 만석 HOLD";
             return false;
         }
 
@@ -135,7 +154,7 @@ public sealed class VacuumTransferScheduler
 
             src.PickupScheduled = true;
             state.Pm1.ReservedForIncoming = true;
-            Enqueue(queue, region, EquipmentRegion.ChamberA, w, 0);
+            Enqueue(queue, region, EquipmentRegion.ChamberA, w);
             LastHint = $"TM PM{RegionToPmNumber(region)} → PM1 Strip (#{w.Id})";
             return true;
         }
@@ -182,17 +201,26 @@ public sealed class VacuumTransferScheduler
             return false;
         }
 
+        if (vacuumBladeCapacity >= 2
+            && !VacuumDualBladePlanner.HasFreeBladeForPickup(vacuumBlades, vacuumBladeCapacity, queue))
+        {
+            LastHint = "TM · 블레이드 만석 · BM→Etch HOLD";
+            return false;
+        }
+
         if (!state.LoadLockBuffer.TryMarkPickupScheduled(w))
         {
             return false;
         }
 
         dst.ReservedForIncoming = true;
-        int bladeSlot = vacuumBladeCapacity >= 2 && vacuumBlades is not null
-            ? VacuumInboundPolicy.PickBmToEtchBladeSlot(vacuumBlades, vacuumBladeCapacity, queue)
-            : VacuumDualBladePlanner.FrontBladeSlot;
-        Enqueue(queue, EquipmentRegion.LoadLock, etchTarget.Value, w, bladeSlot);
-        string slotTag = vacuumBladeCapacity >= 2 ? $" · {VacuumDualBladePlanner.SlotLabel(bladeSlot)}" : string.Empty;
+        Enqueue(queue, EquipmentRegion.LoadLock, etchTarget.Value, w);
+        string slotTag = VacuumDualBladePlanner.PredictNearestSlotLabel(
+            EquipmentRegion.LoadLock,
+            TransferRobotKind.VacuumTm,
+            -125,
+            vacuumBlades,
+            vacuumBladeCapacity);
         LastHint = $"TM BM → PM{RegionToPmNumber(etchTarget.Value)}{slotTag} (#{w.Id})";
         return true;
     }
@@ -201,14 +229,12 @@ public sealed class VacuumTransferScheduler
         Queue<TransferJob> queue,
         EquipmentRegion pickup,
         EquipmentRegion dropoff,
-        WaferTrack wafer,
-        int bladeSlot = VacuumDualBladePlanner.FrontBladeSlot) =>
+        WaferTrack wafer) =>
         queue.Enqueue(new TransferJob
         {
             Wafer = wafer,
             Pickup = pickup,
-            Dropoff = dropoff,
-            BladeSlotIndex = bladeSlot
+            Dropoff = dropoff
         });
 
     private static int RegionToPmNumber(EquipmentRegion region) => region switch

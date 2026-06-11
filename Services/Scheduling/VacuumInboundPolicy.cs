@@ -16,6 +16,12 @@ public static class VacuumInboundPolicy
         IEnumerable<TransferJob> pendingDropoffs,
         IEnumerable<TransferJob> queuedJobs)
     {
+        if (bladeCapacity >= 2)
+        {
+            // 듀얼: 빈 슬롯이 있으면 PM1 Strip 대기·Etch완료 적재와 무관하게 BM→Etch 인입 허용
+            return CountInboundBmSlots(blades, queuedJobs) >= bladeCapacity;
+        }
+
         if (pendingDropoffs.Any(j => j.Dropoff == EquipmentRegion.ChamberA))
         {
             return true;
@@ -26,32 +32,9 @@ public static class VacuumInboundPolicy
             return true;
         }
 
-        if (bladeCapacity < 2)
-        {
-            return blades.OccupiedCount > 0
-                || pendingDropoffs.Any()
-                || HasInboundBmJob(queuedJobs);
-        }
-
-        int inboundReserved = CountInboundBmSlots(blades, queuedJobs);
-        return inboundReserved >= bladeCapacity;
-    }
-
-    /// <summary>BM→Etch 신규 Job에 할당할 슬롯 (뒤·A 우선).</summary>
-    public static int PickBmToEtchBladeSlot(RobotBladeSlots blades, int bladeCapacity, IEnumerable<TransferJob> queuedJobs)
-    {
-        if (bladeCapacity < 2)
-        {
-            return VacuumDualBladePlanner.FrontBladeSlot;
-        }
-
-        if (!blades.HasWafer(VacuumDualBladePlanner.BackBladeSlot)
-            && !QueueReservesSlot(queuedJobs, VacuumDualBladePlanner.BackBladeSlot))
-        {
-            return VacuumDualBladePlanner.BackBladeSlot;
-        }
-
-        return VacuumDualBladePlanner.FrontBladeSlot;
+        return blades.OccupiedCount > 0
+            || pendingDropoffs.Any()
+            || HasInboundBmJob(queuedJobs);
     }
 
     private static bool BladesHoldEtchComplete(RobotBladeSlots blades)
@@ -67,22 +50,34 @@ public static class VacuumInboundPolicy
         return false;
     }
 
-    private static int CountInboundBmSlots(RobotBladeSlots blades, IEnumerable<TransferJob> queuedJobs)
+    private static int CountInboundBmSlots(RobotBladeSlots blades, IEnumerable<TransferJob> queuedJobs) =>
+        blades.OccupiedCount + CountQueuedBmPickupReservations(blades, queuedJobs);
+
+    private static int CountQueuedBmPickupReservations(RobotBladeSlots blades, IEnumerable<TransferJob> queuedJobs)
     {
         int n = 0;
-        for (int slot = 0; slot < blades.Capacity; slot++)
+        foreach (TransferJob job in queuedJobs)
         {
-            if (blades.HasWafer(slot) || QueueReservesSlot(queuedJobs, slot))
+            if (job.Pickup != EquipmentRegion.LoadLock)
             {
-                n++;
+                continue;
             }
+
+            if (job.ResolvedBladeSlot >= 0)
+            {
+                continue;
+            }
+
+            if (VacuumDualBladePlanner.WaferOnBlades(blades, job.Wafer))
+            {
+                continue;
+            }
+
+            n++;
         }
 
         return n;
     }
-
-    private static bool QueueReservesSlot(IEnumerable<TransferJob> queuedJobs, int slot) =>
-        queuedJobs.Any(j => j.Pickup == EquipmentRegion.LoadLock && j.BladeSlotIndex == slot);
 
     private static bool HasInboundBmJob(IEnumerable<TransferJob> queuedJobs) =>
         queuedJobs.Any(j => j.Pickup == EquipmentRegion.LoadLock);

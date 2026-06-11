@@ -1,136 +1,156 @@
 # etch_ui / etchflask — 진행 상황 정리
 
-> **갱신:** 2026-06-04  
-> **저장소:** WPF [`yaong832/etch_ui`](https://github.com/yaong832/etch_ui) · Flask **etchflask** [`yaong832/farmui`](https://github.com/yaong832/farmui) → rename 권장 (`C:\etchflask`)  
-> **FarmUI(스마트팜)** 는 별도 — `C:\farmui\farmui` · [etchflask `FARMUI_분리안내.md`](C:/etchflask/FARMUI_분리안내.md)
+> **갱신:** 2026-06-04 (Codex Tier 1 HMI·검증 현황 반영)  
+> **저장소:** WPF [`yaong832/etch_ui`](https://github.com/yaong832/etch_ui) · Flask **etchflask** (`C:\etchflask`)  
+> **최근 커밋:** `0595a6e` — 정비 도구·Stop 재개·WARNING/ALARM·TM 보간·헤드리스 sim CLI
 
 ---
 
 ## 1. 한 줄 요약
 
-실장비 인터락·버튼·램프와 **가상 TM 이송(시뮬)** 이 WPF에서 동작하고, Flask는 텔레메트리·모듈·레시피·**sklearn ML AI**를 제공한다. WPF는 시뮬 1Hz JSONL로 **오프라인 재학습** 파이프라인까지 갖추었다.
+실장비 인터락·버튼·램프와 **가상 TM 이송(시뮬)** 이 WPF에서 동작하고, Flask는 텔레메트리·모듈·레시피·**sklearn ML AI**를 제공한다. **발표용 데모·헤드리스 검증**은 Release CLI로 자동화되었고, **Codex Tier 1 HMI 설득력** 개선을 진행 중이다.
 
 ---
 
-## 2. 완료된 주요 기능
+## 2. 진행도·완성도 (2026-06-04 평가)
 
-### Phase 2 — WPF UX·시뮬
+| 지표 | 수치 | 비고 |
+|------|------|------|
+| 로드맵 진행도 | **~78%** | Phase 2~3 핵심 완료, Phase 4·현장 일부 |
+| 제품 완성도 | **~62%** | HMI 설득력·Flask E2E·ML 배포·TwinCAT 미검 |
+| 발표 준비도 | **~85%** | `--sim-*` PASS, 수동 B1~B8·Flask E2E 미실행 |
+
+---
+
+## 3. 완료된 주요 기능 (최근)
+
+### 시뮬·운전 UX
+
+| 항목 | 상태 |
+|------|------|
+| Stop → **PauseTransfer** (상태 유지) / Start → Resume 또는 새 LOT | ✅ `0595a6e` |
+| WARNING에서 Tick 유지·전역 황색 모듈 | ✅ |
+| ALARM 모듈 ALM 우선·`--sim-alarm` | ✅ |
+| TM UI 200ms tick + 16ms 회전 보간 | ✅ |
+| Load Lock 웨이퍼·진공 TM 끊김 수정 | ✅ |
+| 정비 도구 (BM/Aligner/PM/Side/FOUP/1틱) | ✅ |
+| 헤드리스 sim: `--sim-smoke`, `--sim-policy-batch`, `--sim-maintenance`, `--sim-alarm`, `--sim-dual-blade`, `--sim-efem-audit` | ✅ Release PASS |
+
+### Phase 2~3 (기존)
 
 | 항목 | 상태 |
 |------|------|
 | 공정 스텝·PhaseHint·FOUP ProgressBar | ✅ |
-| PM(가상) / Load Lock(실접촉) 라벨 | ✅ |
-| Stop 시 TM 홈·데모 가이드·**데모 진행** 시나리오 | ✅ |
-| 레시피 XML (`Recipes/default.process.xml`) · PM 순서 | ✅ |
+| PM(가상) / Load Lock(실접촉) | ✅ |
+| 레시피 XML · Flask recipe/modules | ✅ |
+| 이벤트/알람 DB·설정·HMI 테마 | ✅ |
+| AI ML/sklearn + JSONL 재학습 파이프라인 | ✅ |
 
-### Phase 3 — 이력·설정·Flask 연동
-
-| 항목 | 상태 |
-|------|------|
-| 이벤트/알람 이력 DB·UI | ✅ |
-| 설정 저장 + 관리자 비밀번호 재확인 | ✅ |
-| Flask `modules/latest`, `recipe/active`, events | ✅ |
-| 웹 **모듈 상태**·**레시피** 탭 | ✅ |
-| HMI 테마·로그인·사용자 관리 | ✅ |
-
-### AI — 규칙 스텁 → **실모델(sklearn)**
+### Codex Tier 1 HMI (진행 중 → 이번 갱신)
 
 | 항목 | 상태 |
 |------|------|
-| Flask `etch_model.py` — joblib 로드·추론 | ✅ |
-| `etch_ai.py` — ML 우선, 없으면 규칙 스텁 | ✅ |
-| 데모·live 저장 시 `etch_ai_predict` 자동 갱신 | ✅ |
-| WPF AI 패널 — **(ML)** / **(규칙 스텁)** 구분 | ✅ |
-| 예상 알람·신뢰도 표시 (조언만) | ✅ |
-| **시뮬 JSONL → 학습 → 배포** 파이프라인 | ✅ |
-
-### 보안·계정
-
-| 항목 | 상태 |
-|------|------|
-| 관리자 발급 계정 (공개 가입 없음) | ✅ |
-| 비밀번호 변경·재설정·이벤트 로그 | ✅ |
+| TM **hold reason** · 스케줄러 hint (`TmTransferSimulator.UiHints.cs`) | ✅ 코드 |
+| 도식 **파이프라인·HOLD 배너·Dual blade** 텍스트 | ✅ UI 연동 |
+| **ALARM/WARNING** 전폭 SafetyBanner + 인터락 패널 강조 | ✅ |
+| PM1 Strip(amber) vs PM2~4 Etch(blue) 좌측 stripe | ✅ |
+| **웨이퍼 타임라인** (장내 웨이퍼 위치·단계) | ✅ |
+| **AI Top signals** (Flask `topSignals` + 센서 편차 fallback) | ✅ |
+| `--sim-ui-hints` 헤드리스 검증 | ✅ |
+| Flask Chart.js 로컬화 | ⏳ Tier 2 (Flask) |
 
 ---
 
-## 3. AI 학습·모델 경로 (요약)
+## 4. 검증 현황
 
-| 단계 | 위치 |
+### 자동 (Release CLI)
+
+| 명령 | 결과 |
 |------|------|
-| WPF 수집 (1Hz) | `{exe}/data/ai_training_snapshots.jsonl` |
-| 변환·학습 | `tools/ai/train_from_sim.ps1` |
-| 학습 산출물 | `tools/ai/output/models/*.joblib` |
-| Flask 추론 | `C:\etchflask/models/etch/` |
+| `--sim-smoke` | PASS |
+| `--sim-policy-batch` | PASS |
+| `--sim-maintenance` | PASS |
+| `--sim-alarm` | PASS |
+| `--sim-dual-blade` | PASS |
+| `--sim-efem-audit` | PASS |
+| `--sim-ui-hints` | PASS (신규) |
 
-**상세:** [`docs/AI_학습_모델_경로.md`](docs/AI_학습_모델_경로.md) · [`tools/ai/README.md`](tools/ai/README.md) · [`C:\etchflask\ETCH_AI.md`](C:/etchflask/ETCH_AI.md)
+### 수동 (미실행)
 
-```powershell
-# 시뮬 5분+ 수집 후
-cd d:\WPFProject\etch_ui
-.\tools\ai\train_from_sim.ps1 -Deploy -Archive
-# Flask 재시작
-```
+| 항목 | 문서 |
+|------|------|
+| B1~B8 발표 체크리스트 | `발표용_데모_체크리스트.md` |
+| Flask E2E (모듈·레시피·AI 탭) | `PROTO_실행순서.md` |
+| `train_from_sim.ps1 -Deploy` 후 sklearn ready | `tools/ai/README.md` |
+| TwinCAT 현장 | 장비 필요 |
 
 ---
 
-## 4. Git 커밋 이력 (최근)
+## 5. Git 커밋 이력 (최근)
 
 ### etch_ui
 
 | 커밋 | 요약 |
 |------|------|
-| `6444974` | 데모 AI·예상 알람·활성 레시피·데모 진행 |
-| `def0ed5` | 레시피 XML·PM 순서·Flask recipe |
-| `2602091` | PROTO modules/recipe API |
+| `0595a6e` | 정비 도구·Stop 재개·WARNING/ALARM·TM 보간·sim CLI |
+| `f1be170` / `5fb0194` | Load Lock·Flask 분리·TM 보간 등 |
+| *(로컬 미커밋)* | Tier 1 HMI: UiHints·SafetyBanner·도식 패널 |
 
-### etchflask (GitHub 이름 `farmui` — Etch 전용, FarmUI 코드 제거됨)
+### etchflask
 
 | 커밋 | 요약 |
 |------|------|
-| `4c00f9d` | 데모 AI 갱신·예상 알람·웹 AI |
-| `4714723` | 웹 활성 레시피 탭 |
-| `800ce19` | 텔레메트리·모듈·대시보드 (rebase 반영) |
+| `4c00f9d` | 데모 AI·예상 알람·웹 AI |
+| GitHub main `938f90e` | `docs/semitool-hmi-critical-feedback.md` (로컬 docs에 요약 추가 권장) |
 
 ---
 
-## 5. 미완·보류
+## 6. Codex 피드백 요약
+
+**출처:** [semitool-hmi-critical-feedback](https://github.com/yaong832/etch_ui/blob/main/docs/semitool-hmi-critical-feedback.md) (원격 main)
+
+- 기능 프로토타입은 양호, **장비 HMI 설득력**이 약함
+- Tier 1: hold reason, dual blade 가시성, PM Strip/Etch 차별, 알람 UI
+- Tier 2~3: 웨이퍼 타임라인, Flask CDN/innerHTML, AI 근거, TM tick 비균일화
+
+---
+
+## 7. 미완·보류
 
 | 항목 | 비고 |
 |------|------|
-| `MainWindow.xaml.cs` 분리·빌드 경고 CS8600 | 리팩터링 |
+| `MainWindow.xaml.cs` 분리·CS8600 | 리팩터링 |
 | TwinCAT 현장 검증 | 장비 필요 |
-| Storyboard 실도어·IEG3268 실 TM | 범위 밖/2단계 |
-| Phase 4.7 자동 재학습 스케줄·API 권한 | 운영 정책 |
-| `AlarmCatalog` A001~A006 문구 보강 | 문서/UX |
-| 시뮬만 장기 수집 → 현장 정확도 검증 | ML 품질 |
+| Storyboard 실도어·IEG3268 실 TM | 2단계 |
+| Phase 4.7 자동 재학습 스케줄 | 운영 정책 |
+| Flask ML joblib 배포 (`manifest`만 → 스텁 기본) | `-Deploy` 후 재시작 |
+| Tier 2~3 HMI | 위 Codex 로드맵 |
 
-체크리스트: [`docs/TODO.md`](docs/TODO.md)
+체크리스트: [`docs/TODO.md`](docs/TODO.md) · [`발표용_데모_체크리스트.md`](발표용_데모_체크리스트.md)
 
 ---
 
-## 6. 실행·데모
+## 8. 실행·데모
 
-1. `C:\etchflask\run_flask.bat` (또는 `ETCH_USE_DB=1`)
+1. `C:\etchflask\run_flask.bat`
 2. `etch_ui` F5 → `admin` / `Admin1234`
-3. **시뮬 허용** → **Start** 또는 **데모 진행**
-4. 브라우저 `http://localhost:5000` — 모듈·레시피·AI 탭
-5. `GET /api/etch/ai/status` — `engine: sklearn`, `ready: true` (모델 배포 후)
+3. **시뮬 허용** → **Start** (Stop 후 **재개** 가능)
+4. `--sim-smoke` 등 Release 검증: `dotnet run -c Release -- --sim-smoke`
+5. 브라우저 `http://localhost:5000`
 
 ---
 
-## 7. 문서 인덱스
+## 9. 문서 인덱스
 
 | 문서 | 용도 |
 |------|------|
-| **PROJECT_진행상황.md** | 본 문서 (전체 진행) |
-| `PROJECT_개요.md` | 아키텍처·현황 스냅샷 |
+| **PROJECT_진행상황.md** | 본 문서 |
 | `PROJECT_계획.md` | Phase·로드맵 |
-| `docs/AI_학습_모델_경로.md` | 시뮬 학습·재학습 경로 |
-| `docs/TODO.md` | 작업 목록 |
-| `PROTO_실행순서.md` | 실행 순서 |
-| `PROJECT_모듈상태_AI_계획.md` | 모듈·AI 설계 |
-| `C:\etchflask\ETCH_AI.md` | Flask AI API |
+| `발표용_데모_체크리스트.md` | 수동 검증 |
+| `PROTO_실행순서.md` | 실행·CLI |
+| `docs/semitool-hmi-critical-feedback.md` | Codex HMI 피드백 (pull 또는 원격 참조) |
+| `tools/ai/README.md` | ML 재학습 |
 
 ---
 
-*다음 갱신: Phase 1.2 현장 검증 또는 ML 재학습 워크플로 완료 시.*
+*다음 갱신: Tier 1 UI 커밋 후 또는 B1~B8 수동 검증 완료 시.*

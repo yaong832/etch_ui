@@ -1,0 +1,101 @@
+<UserControl x:Class="etch_ui.Controls.SensorMetricsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:etch_ui.Controls"
+             MinWidth="360">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/etch_ui;component/Resources/HmiTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel>
+        <Border Background="#F8FAFC" BorderBrush="{StaticResource HmiBorderBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1.2*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="현재 상태" Style="{StaticResource HmiCaption}"/>
+                        <TextBlock Text="{Binding StateText}" FontSize="26" FontWeight="Bold"
+                                   Foreground="{Binding StateBrush}" Margin="0,2,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="알람" Style="{StaticResource HmiCaption}" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding AlarmCodeText}" FontWeight="SemiBold"
+                                       Foreground="{Binding AlarmCodeBrush}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding AlarmDetailText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   FontSize="11" Foreground="{Binding AlarmDetailBrush}" LineHeight="16"/>
+                    </StackPanel>
+                    <UniformGrid Grid.Column="1" Columns="2" Rows="2">
+                        <Border Style="{StaticResource HmiMetricTile}">
+                            <StackPanel>
+                                <TextBlock Text="온도 ℃" Style="{StaticResource HmiMetricLabel}"/>
+                                <TextBlock Text="{Binding TemperatureText}" Style="{StaticResource HmiMetricValue}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="습도 %" Style="{StaticResource HmiMetricLabel}"/>
+                                <TextBlock Text="{Binding HumidityText}" Style="{StaticResource HmiMetricValue}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource HmiMetricTile}">
+                            <StackPanel>
+                                <TextBlock Text="압력 mTorr" Style="{StaticResource HmiMetricLabel}"/>
+                                <TextBlock Text="{Binding PressureText}" Style="{StaticResource HmiMetricValue}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource HmiMetricTile}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="진동 g" Style="{StaticResource HmiMetricLabel}"/>
+                                <TextBlock Text="{Binding VibrationText}" Style="{StaticResource HmiMetricValue}"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+                </Grid>
+                <Border Background="White" BorderBrush="{StaticResource HmiBorderBrush}"
+                        BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,10,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Load Lock 접촉" Style="{StaticResource HmiCaption}" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding AccessText}" FontWeight="Bold" FontSize="13"
+                                   Foreground="{Binding AccessBrush}"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+        <TextBlock Text="실시간 추세 (약 72초)" Style="{StaticResource HmiCaption}" Margin="0,0,0,6"/>
+        <Grid Height="72" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <controls:SparklineControl Grid.Column="0" Title="압력 mTorr"
+                Values="{Binding PressureSparkValues}" YMin="{Binding PressureSparkYMin}"
+                YMax="{Binding PressureSparkYMax}" Stroke="#2563EB"/>
+            <controls:SparklineControl Grid.Column="2" Title="진동 g"
+                Values="{Binding VibrationSparkValues}" YMin="{Binding VibrationSparkYMin}"
+                YMax="{Binding VibrationSparkYMax}" Stroke="#7C3AED"/>
+        </Grid>
+        <TextBlock Text="센서 정상 대역" Style="{StaticResource HmiCaption}" Margin="0,0,0,8"/>
+        <UniformGrid Columns="2">
+            <controls:SensorRangeBar Title="압력 mTorr" Value="{Binding SensorPressureValue}"
+                RangeMin="{Binding SensorPressureRangeMin}" RangeMax="{Binding SensorPressureRangeMax}"
+                ScaleMin="0" ScaleMax="{Binding SensorPressureScaleMax}" Unit="mTorr"/>
+            <controls:SensorRangeBar Title="진동 g" Value="{Binding SensorVibrationValue}"
+                RangeMin="0" RangeMax="{Binding SensorVibrationRangeMax}"
+                ScaleMin="0" ScaleMax="{Binding SensorVibrationScaleMax}" Unit="g"/>
+            <controls:SensorRangeBar Title="온도 ℃" Value="{Binding SensorTempValue}"
+                RangeMin="{Binding SensorTempRangeMin}" RangeMax="{Binding SensorTempRangeMax}"
+                ScaleMin="{Binding SensorTempScaleMin}" ScaleMax="{Binding SensorTempScaleMax}" Unit="℃"/>
+            <controls:SensorRangeBar Title="습도 %" Value="{Binding SensorHumiValue}"
+                RangeMin="{Binding SensorHumiRangeMin}" RangeMax="{Binding SensorHumiRangeMax}"
+                ScaleMin="0" ScaleMax="{Binding SensorHumiScaleMax}" Unit="%"/>
+        </UniformGrid>
+    </StackPanel>
+</UserControl>

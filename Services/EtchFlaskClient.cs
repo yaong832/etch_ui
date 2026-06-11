@@ -116,6 +116,7 @@ public sealed class EtchAiDiagnosis
     public string? Note { get; set; }
     public bool Stub { get; set; }
     public string? UpdatedAt { get; set; }
+    public List<string>? TopSignals { get; set; }
 }
 
 public sealed class EtchTelemetryPayload

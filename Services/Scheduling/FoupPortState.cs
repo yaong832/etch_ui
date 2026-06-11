@@ -26,15 +26,16 @@ public sealed class FoupPortState
         };
     }
 
-    public void OnWaferPickedFromFoup()
+    /// <summary>스케줄 시 FOUP 잔량만 차감 (InFlight는 실제 그립 시).</summary>
+    public void OnWaferReservedFromFoup()
     {
         if (RemainingInFoup > 0)
         {
             RemainingInFoup--;
         }
-
-        InFlightCount++;
     }
+
+    public void OnWaferPickedFromFoup() => InFlightCount++;
 
     public void OnWaferLeftClusterToNextProcess()
     {

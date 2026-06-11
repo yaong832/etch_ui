@@ -11,6 +11,8 @@ public sealed class MainViewModel : ViewModelBase
 {
     public EquipmentMotionViewModel Equipment { get; } = new();
 
+    public ObservableCollection<AiInsightRow> AiInsights { get; } = [];
+
     private string _currentUserText = "-";
     private bool _showUserManage;
     private string _simAllowButtonText = "시뮬 허용: 끔";
@@ -67,6 +69,10 @@ public sealed class MainViewModel : ViewModelBase
     private string _maintButtonText = "⚙  유지보수";
     private string _maintenanceBannerText = string.Empty;
     private bool _maintenanceBannerVisible;
+    private bool _safetyBannerVisible;
+    private string _safetyBannerText = string.Empty;
+    private Brush _safetyBannerBrush = Brushes.OrangeRed;
+    private bool _interlockPanelCritical;
 
     private double _sensorPressureValue;
     private double _sensorVibrationValue;
@@ -84,6 +90,7 @@ public sealed class MainViewModel : ViewModelBase
     private string _aiScoreText = "—";
     private string _aiHintText = "Flask 서버 연결 후 표시됩니다.";
     private string _aiPredictedAlarmText = "예상 알람: —";
+    private string _aiTopSignalsText = "—";
     private Brush _aiScoreBrush = Brushes.DimGray;
 
     public ObservableCollection<string> LogLines { get; } = new();
@@ -418,6 +425,30 @@ public sealed class MainViewModel : ViewModelBase
         set => SetField(ref _maintenanceBannerVisible, value);
     }
 
+    public bool SafetyBannerVisible
+    {
+        get => _safetyBannerVisible;
+        set => SetField(ref _safetyBannerVisible, value);
+    }
+
+    public string SafetyBannerText
+    {
+        get => _safetyBannerText;
+        set => SetField(ref _safetyBannerText, value);
+    }
+
+    public Brush SafetyBannerBrush
+    {
+        get => _safetyBannerBrush;
+        set => SetField(ref _safetyBannerBrush, value);
+    }
+
+    public bool InterlockPanelCritical
+    {
+        get => _interlockPanelCritical;
+        set => SetField(ref _interlockPanelCritical, value);
+    }
+
     public double PressureSparkYMin => 0;
 
     public double PressureSparkYMax
@@ -540,10 +571,25 @@ public sealed class MainViewModel : ViewModelBase
         set => SetField(ref _aiPredictedAlarmText, value);
     }
 
+    public string AiTopSignalsText
+    {
+        get => _aiTopSignalsText;
+        set => SetField(ref _aiTopSignalsText, value);
+    }
+
     public Brush AiScoreBrush
     {
         get => _aiScoreBrush;
         set => SetField(ref _aiScoreBrush, value);
+    }
+
+    public void ReplaceAiInsights(IEnumerable<AiInsightRow> rows)
+    {
+        AiInsights.Clear();
+        foreach (AiInsightRow row in rows)
+        {
+            AiInsights.Add(row);
+        }
     }
 
     public void PrependLog(string line)

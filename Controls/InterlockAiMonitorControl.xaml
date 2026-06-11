@@ -1,0 +1,86 @@
+<UserControl x:Class="etch_ui.Controls.InterlockAiMonitorControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="360">
+    <StackPanel>
+        <Border Style="{StaticResource HmiInfoBanner}" Background="#F5F3FF" BorderBrush="#C4B5FD" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock Text="활성 레시피" FontWeight="SemiBold" Foreground="#5B21B6" FontSize="12"/>
+                <TextBlock Text="{Binding ActiveRecipeText}" TextWrapping="Wrap"
+                           FontSize="11" Foreground="#4C1D95" Margin="0,6,0,0" LineHeight="16"/>
+            </StackPanel>
+        </Border>
+        <Border Style="{StaticResource HmiInfoBanner}" Background="#FFFBEB" BorderBrush="#FDE68A" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="인터락 허용 범위" FontWeight="SemiBold" Foreground="#92400E" FontSize="12"/>
+                <TextBlock Text="{Binding InterlockThresholdsText}" TextWrapping="Wrap"
+                           FontSize="11" Foreground="#78350F" Margin="0,6,0,0" LineHeight="16"/>
+                <TextBlock Text="{Binding InterlockPressureDetailText}" TextWrapping="Wrap"
+                           FontSize="12" FontWeight="SemiBold" Foreground="#1E40AF" Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+        <TextBlock Text="{Binding InterlockPlcText}" Margin="0,0,0,8" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockPlcBrush}" FontSize="13"/>
+        <TextBlock Text="{Binding InterlockPressureText}" Margin="0,0,0,4" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockPressureBrush}" FontSize="13"/>
+        <TextBlock Text="{Binding InterlockVibText}" Margin="0,0,0,8" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockVibBrush}" FontSize="13"/>
+        <TextBlock Text="{Binding InterlockAccessText}" Margin="0,0,0,8" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockAccessBrush}" FontSize="13"/>
+        <TextBlock Text="{Binding InterlockTempText}" Margin="0,0,0,8" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockTempBrush}" FontSize="13"/>
+        <TextBlock Text="{Binding InterlockHumiText}" Margin="0,0,0,12" FontWeight="SemiBold"
+                   Foreground="{Binding InterlockHumiBrush}" FontSize="13"/>
+        <Border Style="{StaticResource HmiInfoBanner}" Background="#EEF2FF" BorderBrush="#C7D2FE">
+            <StackPanel>
+                <TextBlock Text="판정 결과" FontWeight="SemiBold" Foreground="#1E3A8A"/>
+                <TextBlock Text="{Binding InterlockResultText}" Foreground="{Binding InterlockResultBrush}"
+                           FontSize="15" FontWeight="Bold" Margin="0,6,0,0"/>
+            </StackPanel>
+        </Border>
+        <Border Style="{StaticResource HmiInfoBanner}" Background="#F0FDF4" BorderBrush="#86EFAC" Margin="0,10,0,0">
+            <StackPanel>
+                <TextBlock Text="AI 조언 (조회 전용)" FontWeight="SemiBold" Foreground="#166534" FontSize="12"/>
+                <TextBlock Text="{Binding AiScoreText}" Margin="0,6,0,0" FontWeight="Bold" FontSize="14"
+                           Foreground="{Binding AiScoreBrush}"/>
+                <TextBlock Text="{Binding AiHintText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                           FontSize="12" Foreground="#374151" LineHeight="18"/>
+                <TextBlock Text="{Binding AiPredictedAlarmText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           FontSize="12" FontWeight="SemiBold" Foreground="#7C2D12" LineHeight="18"/>
+                <TextBlock Text="세부 근거" FontWeight="SemiBold" FontSize="11" Foreground="#374151" Margin="0,10,0,4"/>
+                <ListBox ItemsSource="{Binding AiInsights}" MaxHeight="200" BorderThickness="0"
+                         Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,2">
+                                <TextBlock Text="{Binding DisplayLine}" TextWrapping="Wrap" FontSize="11" LineHeight="16"/>
+                                <TextBlock Text="{Binding SeverityLabel}" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{Binding SeverityBrush}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+        </Border>
+        <TextBlock Text="모듈 상태" Style="{StaticResource HmiCaption}" Margin="0,12,0,6"/>
+        <ListBox ItemsSource="{Binding ModuleStates}" MaxHeight="180" BorderThickness="0"
+                 Background="#F8FAFC" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,2">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#1E293B">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} · {1}">
+                                    <Binding Path="Id"/>
+                                    <Binding Path="StateText"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Detail, Mode=OneWay}" FontSize="10"
+                                   Foreground="#64748B" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </StackPanel>
+</UserControl>

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows.Media;
 using etch_ui.Equipment.Helpers;
 using etch_ui.Equipment.Models;
@@ -16,6 +17,7 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private bool _vacuumBladeSlotB;
     private int _vacuumActiveBladeSlot;
     private bool _vacuumIsRotatingBlade;
+    private bool _efemIsRotatingBlade;
     private double _efemBladeAngleDegrees;
     private double _efemBladeExtension = 0.65;
     private bool _efemCarryingWafer;
@@ -23,6 +25,18 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private bool _efemBladeSlotB;
     private int _efemActiveBladeSlot;
     private Brush _waferBrush = Brushes.Wheat;
+    private Brush _alignerWaferBrush = Brushes.Transparent;
+    private Brush _loadLockWaferBrush = Brushes.Transparent;
+    private Brush _sideStorageWaferBrush = Brushes.Transparent;
+    private Brush _foupWaferBrush = Brushes.Transparent;
+    private Brush _chamberAWaferBrush = Brushes.Transparent;
+    private Brush _chamberBWaferBrush = Brushes.Transparent;
+    private Brush _chamberCWaferBrush = Brushes.Transparent;
+    private Brush _chamberDWaferBrush = Brushes.Transparent;
+    private Brush _efemPaddleBrush0 = Brushes.Transparent;
+    private Brush _efemPaddleBrush1 = Brushes.Transparent;
+    private Brush _vacuumBladeBrush0 = Brushes.Transparent;
+    private Brush _vacuumBladeBrush1 = Brushes.Transparent;
     private string _tmRegionLabel = "TM";
     private string _servoHint = "시뮬/논리";
     private bool _isEfemRobotActive;
@@ -61,6 +75,16 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private string _alignerInventoryText = "—";
     private string _sideStorageInventoryText = "—";
     private string _waferInventorySummary = "웨이퍼 잔량 · RUNNING 후 표시";
+    private string _waferFlowPipelineText = "—";
+    private string _schedulerStatusText = "—";
+    private string _dualBladeDetailText = "—";
+    private bool _schedulerHoldActive;
+    private string _robotStatusSummary = "TM 대기";
+    private string _vacuumBladeSummary = "—";
+    private string _efemBladeSummary = "—";
+    private string _transferHoldSummary = "Hold 없음";
+
+    public ObservableCollection<WaferTimelineRow> WaferTimeline { get; } = [];
 
     public double VacuumBladeAngleDegrees
     {
@@ -140,11 +164,30 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         set => SetField(ref _efemActiveBladeSlot, value);
     }
 
+    public bool EfemIsRotatingBlade
+    {
+        get => _efemIsRotatingBlade;
+        set => SetField(ref _efemIsRotatingBlade, value);
+    }
+
     public Brush WaferBrush
     {
         get => _waferBrush;
         set => SetField(ref _waferBrush, value);
     }
+
+    public Brush AlignerWaferBrush { get => _alignerWaferBrush; set => SetField(ref _alignerWaferBrush, value); }
+    public Brush LoadLockWaferBrush { get => _loadLockWaferBrush; set => SetField(ref _loadLockWaferBrush, value); }
+    public Brush SideStorageWaferBrush { get => _sideStorageWaferBrush; set => SetField(ref _sideStorageWaferBrush, value); }
+    public Brush FoupWaferBrush { get => _foupWaferBrush; set => SetField(ref _foupWaferBrush, value); }
+    public Brush ChamberAWaferBrush { get => _chamberAWaferBrush; set => SetField(ref _chamberAWaferBrush, value); }
+    public Brush ChamberBWaferBrush { get => _chamberBWaferBrush; set => SetField(ref _chamberBWaferBrush, value); }
+    public Brush ChamberCWaferBrush { get => _chamberCWaferBrush; set => SetField(ref _chamberCWaferBrush, value); }
+    public Brush ChamberDWaferBrush { get => _chamberDWaferBrush; set => SetField(ref _chamberDWaferBrush, value); }
+    public Brush EfemPaddleBrush0 { get => _efemPaddleBrush0; set => SetField(ref _efemPaddleBrush0, value); }
+    public Brush EfemPaddleBrush1 { get => _efemPaddleBrush1; set => SetField(ref _efemPaddleBrush1, value); }
+    public Brush VacuumBladeBrush0 { get => _vacuumBladeBrush0; set => SetField(ref _vacuumBladeBrush0, value); }
+    public Brush VacuumBladeBrush1 { get => _vacuumBladeBrush1; set => SetField(ref _vacuumBladeBrush1, value); }
 
     public string TmRegionLabel
     {
@@ -236,6 +279,7 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     }
 
     public bool IsVacuumDualBlade => VacuumBladeCapacity >= 2;
+
     public bool IsEfemDualBlade => EfemBladeCapacity >= 2;
 
     public string Foup1InventoryText { get => _foup1InventoryText; set => SetField(ref _foup1InventoryText, value); }
@@ -249,6 +293,54 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     public string SideStorageInventoryText { get => _sideStorageInventoryText; set => SetField(ref _sideStorageInventoryText, value); }
     public string WaferInventorySummary { get => _waferInventorySummary; set => SetField(ref _waferInventorySummary, value); }
 
+    public string WaferFlowPipelineText
+    {
+        get => _waferFlowPipelineText;
+        set => SetField(ref _waferFlowPipelineText, value);
+    }
+
+    public string SchedulerStatusText
+    {
+        get => _schedulerStatusText;
+        set => SetField(ref _schedulerStatusText, value);
+    }
+
+    public bool SchedulerHoldActive
+    {
+        get => _schedulerHoldActive;
+        set => SetField(ref _schedulerHoldActive, value);
+    }
+
+    public string RobotStatusSummary
+    {
+        get => _robotStatusSummary;
+        set => SetField(ref _robotStatusSummary, value);
+    }
+
+    public string VacuumBladeSummary
+    {
+        get => _vacuumBladeSummary;
+        set => SetField(ref _vacuumBladeSummary, value);
+    }
+
+    public string EfemBladeSummary
+    {
+        get => _efemBladeSummary;
+        set => SetField(ref _efemBladeSummary, value);
+    }
+
+    public string TransferHoldSummary
+    {
+        get => _transferHoldSummary;
+        set => SetField(ref _transferHoldSummary, value);
+    }
+
+    public string DualBladeDetailText
+    {
+        get => _dualBladeDetailText;
+        set => SetField(ref _dualBladeDetailText, value);
+    }
+
     public void ApplyWaferInventory(ClusterEquipmentState state)
     {
         int foupMax = state.Capacity.FoupSlotCount;
@@ -261,14 +353,30 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         Foup1InventoryText = FormatSlot(Foup1Remaining, foupMax);
         Foup2InventoryText = FormatSlot(Foup2Remaining, foupMax);
         Foup3InventoryText = FormatSlot(Foup3Remaining, foupMax);
-        AlignerInventoryText = FormatAlignerPresence(state.AlignerBuffer.Count);
+        int alignCap = state.Capacity.AlignerSlotCount;
+        AlignerInventoryText = FormatSlot(state.AlignerBuffer.Count, alignCap);
         SideStorageInventoryText = FormatSlot(state.SideStorage.Count, sideMax);
         LoadLockHasWafer = state.LoadLockBuffer.HasWafer;
-        LoadLockInventoryText = FormatSlot(state.LoadLockBuffer.Count, state.Capacity.LoadLockSlotCount);
+        LoadLockInventoryText = LoadLockAdmissionPolicy.FormatBmInventory(state);
 
         WaferInventorySummary =
             $"LP1 {Foup1InventoryText} · LP2 {Foup2InventoryText} · LP3 {Foup3InventoryText}  |  "
             + $"Aligner {AlignerInventoryText}  |  Side Stg {SideStorageInventoryText}";
+    }
+
+    public void ApplyWaferTimeline(IReadOnlyList<WaferTimelineEntry> entries)
+    {
+        WaferTimeline.Clear();
+        foreach (WaferTimelineEntry entry in entries)
+        {
+            WaferTimeline.Add(new WaferTimelineRow
+            {
+                WaferId = entry.WaferId,
+                Location = entry.Location,
+                Stage = entry.Stage,
+                Detail = entry.Detail
+            });
+        }
     }
 
     public void ResetWaferInventory()
@@ -285,6 +393,39 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         LoadLockHasWafer = false;
         LoadLockInventoryText = "—";
         WaferInventorySummary = "웨이퍼 잔량 · RUNNING 후 표시";
+        WaferFlowPipelineText = "—";
+        SchedulerStatusText = "—";
+        SchedulerHoldActive = false;
+        DualBladeDetailText = "—";
+        RobotStatusSummary = "TM 대기";
+        VacuumBladeSummary = "—";
+        EfemBladeSummary = "—";
+        TransferHoldSummary = "Hold 없음";
+        WaferTimeline.Clear();
+        AlignerWaferBrush = Brushes.Transparent;
+        LoadLockWaferBrush = Brushes.Transparent;
+        SideStorageWaferBrush = Brushes.Transparent;
+        FoupWaferBrush = Brushes.Transparent;
+        ChamberAWaferBrush = Brushes.Transparent;
+        ChamberBWaferBrush = Brushes.Transparent;
+        ChamberCWaferBrush = Brushes.Transparent;
+        ChamberDWaferBrush = Brushes.Transparent;
+        EfemPaddleBrush0 = Brushes.Transparent;
+        EfemPaddleBrush1 = Brushes.Transparent;
+        VacuumBladeBrush0 = Brushes.Transparent;
+        VacuumBladeBrush1 = Brushes.Transparent;
+    }
+
+    public void ApplyTransferDiagnostics(
+        string robotSummary,
+        string vacuumBladeSummary,
+        string efemBladeSummary,
+        string holdSummary)
+    {
+        RobotStatusSummary = robotSummary;
+        VacuumBladeSummary = vacuumBladeSummary;
+        EfemBladeSummary = efemBladeSummary;
+        TransferHoldSummary = holdSummary;
     }
 
     private static string FormatSlot(int count, int capacity) => $"{count}/{capacity}";
@@ -394,17 +535,20 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         double extension,
         bool carrying,
         double angleDegrees,
-        int activeBladeSlot)
+        int activeBladeSlot,
+        bool isRotatingBlade)
     {
         EfemTargetAngleDegrees = angleDegrees;
         EfemTargetExtension = extension;
         EfemTargetCarrying = carrying;
         EfemActiveBladeSlot = activeBladeSlot;
+        EfemIsRotatingBlade = isRotatingBlade;
         TargetRegion = region;
         TargetRobot = TransferRobotKind.EfemAtmospheric;
         IsEfemRobotActive = true;
         string blade = activeBladeSlot == 0 ? "뒤·A" : "앞·B";
-        TmRegionLabel = $"{RegionAngleHelper.FormatLabel(region, TransferRobotKind.EfemAtmospheric)} · {blade}";
+        string rotate = isRotatingBlade ? " · 180° 회전" : string.Empty;
+        TmRegionLabel = $"{RegionAngleHelper.FormatLabel(region, TransferRobotKind.EfemAtmospheric)} · {blade}{rotate}";
     }
 
     /// <summary>진공 TM — 슬롯별 회전각(앞/뒤 180°) 반영.</summary>
