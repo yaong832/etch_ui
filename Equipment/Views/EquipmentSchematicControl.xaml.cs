@@ -11,7 +11,6 @@ public partial class EquipmentSchematicControl : UserControl
 {
     private const double TmBaseBlade = 56;
     private const double TmMaxBlade = 178;
-    private const double TmRetractBlade = 48;
     private const double EfemBaseBlade = 48;
     private const double EfemMaxBlade = 132;
     private const double EfemHubX = 150;
@@ -70,7 +69,9 @@ public partial class EquipmentSchematicControl : UserControl
             or nameof(EquipmentMotionViewModel.IsEfemDualBlade)
             or nameof(EquipmentMotionViewModel.EfemIsRotatingBlade)
             or nameof(EquipmentMotionViewModel.IsEfemRobotActive)
-            or nameof(EquipmentMotionViewModel.IsVacuumTmActive))
+            or nameof(EquipmentMotionViewModel.IsVacuumTmActive)
+            or nameof(EquipmentMotionViewModel.EfemTransferBusy)
+            or nameof(EquipmentMotionViewModel.VacuumTransferBusy))
         {
             RefreshRobots();
         }
@@ -85,8 +86,8 @@ public partial class EquipmentSchematicControl : UserControl
 
         EfemRobotHost.Visibility = Visibility.Visible;
         TmHost.Visibility = Visibility.Visible;
-        EfemRobotHost.Opacity = _bound.IsEfemRobotActive ? 1.0 : 0.45;
-        TmHost.Opacity = _bound.IsVacuumTmActive ? 1.0 : 0.45;
+        EfemRobotHost.Opacity = _bound.IsEfemRobotActive ? 1.0 : 0.5;
+        TmHost.Opacity = _bound.IsVacuumTmActive ? 1.0 : 0.5;
 
         RefreshEfemRobot();
         RefreshVacuumRobot();
@@ -128,13 +129,14 @@ public partial class EquipmentSchematicControl : UserControl
                 EfemBladeSlotBLabel,
                 Visibility.Visible);
 
-            EfemBladeSlotA.Opacity = _bound.EfemActiveBladeSlot == 0 || _bound.EfemBladeSlotA ? 0.9 : 0.35;
-            EfemBladeSlotB.Opacity = _bound.EfemActiveBladeSlot == 1 || _bound.EfemBladeSlotB ? 0.9 : 0.35;
+            const double bladeLit = 0.9;
+            EfemBladeSlotA.Opacity = bladeLit;
+            EfemBladeSlotB.Opacity = bladeLit;
 
-            bool efemBusy = _bound.IsEfemRobotActive;
+            bool efemBusy = _bound.EfemTransferBusy;
             int activeSlot = _bound.EfemActiveBladeSlot;
-            double frontLen = ResolveArmLength(efemBusy, activeSlot == 1, efemLenExtend);
-            double backLen = ResolveArmLength(efemBusy, activeSlot == 0, efemLenExtend);
+            double frontLen = ResolveArmLength(efemBusy, activeSlot == 1, efemLenExtend, EfemBaseBlade);
+            double backLen = ResolveArmLength(efemBusy, activeSlot == 0, efemLenExtend, EfemBaseBlade);
 
             LayoutSymmetricDualArm(
                 front: true,
@@ -246,14 +248,15 @@ public partial class EquipmentSchematicControl : UserControl
                 BladeSlotALabel,
                 BladeSlotBLabel,
                 Visibility.Visible);
-            BladeSlotA.Opacity = _bound.VacuumActiveBladeSlot == 0 || _bound.VacuumBladeSlotA ? 0.9 : 0.35;
-            BladeSlotB.Opacity = _bound.VacuumActiveBladeSlot == 1 || _bound.VacuumBladeSlotB ? 0.9 : 0.35;
-            BladeHubPad.Opacity = _bound.VacuumIsRotatingBlade ? 0.6 : 0.95;
+            const double bladeLit = 0.9;
+            BladeSlotA.Opacity = bladeLit;
+            BladeSlotB.Opacity = bladeLit;
+            BladeHubPad.Opacity = _bound.VacuumIsRotatingBlade ? 0.75 : 0.95;
 
-            bool vacBusy = _bound.IsVacuumTmActive;
+            bool vacBusy = _bound.VacuumTransferBusy;
             int activeSlot = _bound.VacuumActiveBladeSlot;
-            double frontLen = ResolveArmLength(vacBusy, activeSlot == 1, vacLenExtend);
-            double backLen = ResolveArmLength(vacBusy, activeSlot == 0, vacLenExtend);
+            double frontLen = ResolveArmLength(vacBusy, activeSlot == 1, vacLenExtend, TmBaseBlade);
+            double backLen = ResolveArmLength(vacBusy, activeSlot == 0, vacLenExtend, TmBaseBlade);
 
             LayoutSymmetricDualArm(
                 front: true,
@@ -330,14 +333,14 @@ public partial class EquipmentSchematicControl : UserControl
         WaferOnBladeB.Visibility = _bound.VacuumBladeSlotB ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private static double ResolveArmLength(bool robotBusy, bool isActiveArm, double extendLen)
+    private static double ResolveArmLength(bool transferBusy, bool isActiveArm, double extendLen, double homeLen)
     {
-        if (!robotBusy)
+        if (!transferBusy || !isActiveArm)
         {
-            return TmBaseBlade;
+            return homeLen;
         }
 
-        return isActiveArm ? extendLen : TmRetractBlade;
+        return extendLen;
     }
 
     private static void SetSingleBladeVis(

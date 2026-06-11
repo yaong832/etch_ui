@@ -41,6 +41,8 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
     private string _servoHint = "시뮬/논리";
     private bool _isEfemRobotActive;
     private bool _isVacuumTmActive;
+    private bool _efemTransferBusy;
+    private bool _vacuumTransferBusy;
 
     private bool _loadLockDoorClosed = true;
     private bool _loadLockHasWafer;
@@ -201,18 +203,32 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         set => SetField(ref _servoHint, value);
     }
 
-    /// <summary>true면 EFEM TM이 이송 중(도식 강조).</summary>
+    /// <summary>true면 EFEM TM 도식 상시 표시(RUNNING·WARNING).</summary>
     public bool IsEfemRobotActive
     {
         get => _isEfemRobotActive;
         set => SetField(ref _isEfemRobotActive, value);
     }
 
-    /// <summary>true면 진공 TM이 이송 중(도식 강조).</summary>
+    /// <summary>true면 진공 TM 도식 상시 표시(RUNNING·WARNING).</summary>
     public bool IsVacuumTmActive
     {
         get => _isVacuumTmActive;
         set => SetField(ref _isVacuumTmActive, value);
+    }
+
+    /// <summary>true면 EFEM 팔이 실제 이송 동작 중(신장·회전).</summary>
+    public bool EfemTransferBusy
+    {
+        get => _efemTransferBusy;
+        set => SetField(ref _efemTransferBusy, value);
+    }
+
+    /// <summary>true면 진공 TM 팔이 실제 이송 동작 중(신장·회전).</summary>
+    public bool VacuumTransferBusy
+    {
+        get => _vacuumTransferBusy;
+        set => SetField(ref _vacuumTransferBusy, value);
     }
 
     public bool LoadLockDoorClosed
@@ -461,7 +477,6 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
             VacuumTargetCarrying = carrying;
         }
 
-        IsEfemRobotActive = robot == TransferRobotKind.EfemAtmospheric;
         TmRegionLabel = RegionAngleHelper.FormatLabel(region, robot);
     }
 
@@ -545,7 +560,6 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         EfemIsRotatingBlade = isRotatingBlade;
         TargetRegion = region;
         TargetRobot = TransferRobotKind.EfemAtmospheric;
-        IsEfemRobotActive = true;
         string blade = activeBladeSlot == 0 ? "뒤·A" : "앞·B";
         string rotate = isRotatingBlade ? " · 180° 회전" : string.Empty;
         TmRegionLabel = $"{RegionAngleHelper.FormatLabel(region, TransferRobotKind.EfemAtmospheric)} · {blade}{rotate}";
@@ -567,7 +581,6 @@ public sealed class EquipmentMotionViewModel : ViewModelBase
         VacuumIsRotatingBlade = isRotatingBlade;
         TargetRegion = region;
         TargetRobot = TransferRobotKind.VacuumTm;
-        IsVacuumTmActive = true;
         string blade = activeBladeSlot == 0 ? "뒤·A" : "앞·B";
         string rotate = isRotatingBlade ? " · 180° 회전" : string.Empty;
         TmRegionLabel = $"{RegionAngleHelper.FormatLabel(region, TransferRobotKind.VacuumTm)} · {blade}{rotate}";

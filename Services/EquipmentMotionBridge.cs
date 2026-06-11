@@ -111,43 +111,48 @@ public sealed class EquipmentMotionBridge
         _motion.ApplyWaferInventory(transfer.ClusterState);
         _motion.VacuumBladeCapacity = transfer.VacuumBladeCapacity;
         _motion.EfemBladeCapacity = transfer.EfemBladeCapacity;
-        bool vacActive = transfer.IsVacuumBusy || transfer.CarryingWafer;
-        bool efemActive = transfer.IsEfemBusy || transfer.EfemCarryingWafer;
-        _motion.SetDualRobotTargets(
-            efemActive ? transfer.EfemRegion : null,
-            transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
-            transfer.EfemCarryingWafer,
-            vacActive ? transfer.TmRegion : null,
-            vacActive ? transfer.BladeExtension : 0.65,
-            transfer.CarryingWafer,
-            hardwareMode: false,
-            transfer.EfemActiveBladeSlot,
-            transfer.VacuumActiveBladeSlot);
-        if (efemActive)
+        bool efemBusy = transfer.IsEfemBusy;
+        bool vacBusy = transfer.IsVacuumBusy;
+
+        if (operational)
         {
+            _motion.SetDualRobotTargets(
+                transfer.EfemRegion,
+                efemBusy ? transfer.EfemExtension : 0.65,
+                transfer.EfemCarryingWafer,
+                transfer.TmRegion,
+                vacBusy ? transfer.BladeExtension : 0.65,
+                transfer.CarryingWafer,
+                hardwareMode: false,
+                transfer.EfemActiveBladeSlot,
+                transfer.VacuumActiveBladeSlot);
+
             _motion.ApplyEfemMotion(
-                transfer.IsEfemBusy ? transfer.EfemRegion : EquipmentRegion.EfemRobot,
-                transfer.IsEfemBusy ? transfer.EfemExtension : 0.65,
+                transfer.EfemRegion,
+                efemBusy ? transfer.EfemExtension : 0.65,
                 transfer.EfemCarryingWafer,
                 transfer.EfemFacingAngleDegrees,
                 transfer.EfemActiveBladeSlot,
                 transfer.EfemIsRotatingBlade);
+
+            _motion.ApplyVacuumMotion(
+                transfer.TmRegion,
+                vacBusy ? transfer.BladeExtension : 0.65,
+                transfer.CarryingWafer,
+                transfer.VacuumFacingAngleDegrees,
+                transfer.VacuumActiveBladeSlot,
+                transfer.VacuumIsRotatingBlade);
         }
 
-        _motion.ApplyVacuumMotion(
-            vacActive ? transfer.TmRegion : EquipmentRegion.TM,
-            vacActive ? transfer.BladeExtension : 0.65,
-            transfer.CarryingWafer,
-            transfer.VacuumFacingAngleDegrees,
-            transfer.VacuumActiveBladeSlot,
-            transfer.VacuumIsRotatingBlade);
         _motion.VacuumBladeSlotA = transfer.VacuumCarryingSlotA;
         _motion.VacuumBladeSlotB = transfer.VacuumCarryingSlotB;
         _motion.EfemBladeSlotA = transfer.EfemCarryingSlotA;
         _motion.EfemBladeSlotB = transfer.EfemCarryingSlotB;
         _motion.EfemActiveBladeSlot = transfer.EfemActiveBladeSlot;
-        _motion.IsEfemRobotActive = efemActive;
-        _motion.IsVacuumTmActive = vacActive;
+        _motion.IsEfemRobotActive = operational;
+        _motion.IsVacuumTmActive = operational;
+        _motion.EfemTransferBusy = efemBusy;
+        _motion.VacuumTransferBusy = vacBusy;
         _motion.TmRegionLabel = FormatDualRobotLabel(transfer);
 
         _motion.FoupAHasWafer = transfer.HasWaferAt(EquipmentRegion.FoupA);
