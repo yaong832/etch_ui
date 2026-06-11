@@ -46,18 +46,23 @@
                                 <TextBlock Text="{Binding CurrentUserText}" Foreground="#6EE7B7" FontWeight="SemiBold" FontSize="13"/>
                             </StackPanel>
                         </Border>
-                        <Button x:Name="BtnEventLog" Content="이벤트 로그" Style="{StaticResource HmiToolbarButton}"
-                                Click="BtnEventLog_Click" ToolTip="SQLite 이벤트 이력"/>
-                        <Button x:Name="BtnAlarmHistory" Content="알람 이력" Style="{StaticResource HmiToolbarButton}"
-                                Click="BtnAlarmHistory_Click" ToolTip="SQLite 알람 발생·해제"/>
-                        <Button x:Name="BtnChangePassword" Content="비밀번호 변경" Style="{StaticResource HmiToolbarButton}"
-                                Click="BtnChangePassword_Click" ToolTip="본인 비밀번호 변경"/>
-                        <Button x:Name="BtnSettings" Content="설정" Style="{StaticResource HmiToolbarButton}"
-                                Click="BtnSettings_Click" ToolTip="인터락·압력 appsettings (관리자)"
-                                Visibility="{Binding ShowUserManage, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                        <Button x:Name="BtnUserManage" Content="사용자" Style="{StaticResource HmiToolbarButton}"
-                                Click="BtnUserManage_Click"
-                                Visibility="{Binding ShowUserManage, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button x:Name="BtnAppMenu" Content="메뉴 ▾" Style="{StaticResource HmiToolbarButton}"
+                                Click="BtnAppMenu_Click" ToolTip="이벤트·알람·계정·관리">
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="AppHeaderMenu" Style="{StaticResource HmiHeaderContextMenu}"
+                                             ItemContainerStyle="{StaticResource HmiHeaderMenuItem}">
+                                    <MenuItem Header="이벤트 로그" Click="BtnEventLog_Click"
+                                              ToolTip="SQLite 운영 이벤트"/>
+                                    <MenuItem Header="알람 이력" Click="BtnAlarmHistory_Click"
+                                              ToolTip="알람 발생·해제 기록"/>
+                                    <MenuItem Header="비밀번호 변경" Click="BtnChangePassword_Click"/>
+                                    <Separator x:Name="MenuAdminSeparator"/>
+                                    <MenuItem x:Name="MenuItemSettings" Header="설정 (관리자)" Click="BtnSettings_Click"
+                                              ToolTip="인터락·압력·레시피 appsettings"/>
+                                    <MenuItem x:Name="MenuItemUserManage" Header="사용자 관리" Click="BtnUserManage_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
                         <Button x:Name="BtnLogout" Content="로그아웃" Style="{StaticResource HmiToolbarButton}"
                                 Click="BtnLogout_Click"/>
                         <Button x:Name="BtnOpenFlask" Content="대시보드" Style="{StaticResource HmiToolbarButtonPrimary}"
@@ -176,7 +181,7 @@
                                 Click="BtnPopoutInterlock_Click" ToolTip="레시피·인터락 전체·AI 근거·모듈 상태"/>
                         <StackPanel>
                             <TextBlock Text="인터락 · 공정" Style="{StaticResource HmiCardTitle}"/>
-                            <TextBlock Text="요약 + AI · 상세는 분리 창" Style="{StaticResource HmiCardSubtitle}"/>
+                            <TextBlock Text="요약 + AI 전문 · 상세는 분리 창" Style="{StaticResource HmiCardSubtitle}"/>
                         </StackPanel>
                     </DockPanel>
                 </Border>

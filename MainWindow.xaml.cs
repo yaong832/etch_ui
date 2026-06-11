@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 using etch_ui.Configuration;
@@ -756,6 +757,7 @@ public partial class MainWindow : Window, DemoScenarioHost
             ? "-"
             : $"{SessionContext.CurrentUser.Username} ({SessionContext.CurrentUser.Role.ToDisplayKorean()})";
         _vm.ShowUserManage = SessionContext.HasRole(UserRole.Admin);
+        SyncAdminMenuVisibility();
         _vm.SimAllowButtonText = _simulationFallbackEnabled ? "시뮬 허용: 켬" : "시뮬 허용: 끔";
         _vm.MaintenanceModeActive = _maintenanceMode;
         _vm.MaintButtonText = _maintenanceMode ? "✓  유지보수 해제" : "⚙  유지보수";
@@ -1586,6 +1588,27 @@ public partial class MainWindow : Window, DemoScenarioHost
         AutoEvaluateState();
         PushOutputsToPlc();
         SyncViewModel();
+    }
+
+    private void SyncAdminMenuVisibility()
+    {
+        bool admin = SessionContext.HasRole(UserRole.Admin);
+        Visibility vis = admin ? Visibility.Visible : Visibility.Collapsed;
+        MenuItemSettings.Visibility = vis;
+        MenuItemUserManage.Visibility = vis;
+        MenuAdminSeparator.Visibility = vis;
+    }
+
+    private void BtnAppMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (BtnAppMenu.ContextMenu is not ContextMenu menu)
+        {
+            return;
+        }
+
+        menu.PlacementTarget = BtnAppMenu;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
     }
 
     private void BtnEventLog_Click(object sender, RoutedEventArgs e)

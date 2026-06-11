@@ -33,14 +33,14 @@
                                    Foreground="{Binding AiEngineStatusBrush}"/>
                     </Border>
                 </DockPanel>
-                <TextBlock Text="{Binding AiScoreText}" FontWeight="Bold" FontSize="12"
+                <TextBlock Text="{Binding AiScoreText}" FontWeight="Bold" FontSize="13"
                            Foreground="{Binding AiScoreBrush}" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding AiHintText}" TextWrapping="Wrap" Margin="0,4,0,0"
-                           FontSize="11" Foreground="#374151" LineHeight="16" MaxHeight="48"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding AiPredictedAlarmText}" TextWrapping="Wrap" Margin="0,6,0,0"
-                           FontSize="10" FontWeight="SemiBold" Foreground="#7C2D12" LineHeight="15"
-                           MaxHeight="60" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding AiHintText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                           FontSize="12" Foreground="#374151" LineHeight="18"
+                           ToolTip="{Binding AiHintText}"/>
+                <TextBlock Text="{Binding AiPredictedAlarmText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           FontSize="11" FontWeight="SemiBold" Foreground="#7C2D12" LineHeight="18"
+                           ToolTip="{Binding AiPredictedAlarmText}"/>
             </StackPanel>
         </Border>
         <Button x:Name="BtnOpenAiDetail" Content="↗ 인터락·AI 상세" Margin="0,8,0,0"

@@ -136,6 +136,28 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
+    <Style x:Key="HmiHeaderContextMenu" TargetType="ContextMenu">
+        <Setter Property="Background" Value="#1E293B"/>
+        <Setter Property="BorderBrush" Value="#475569"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="FontFamily" Value="{StaticResource HmiFont}"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+
+    <Style x:Key="HmiHeaderMenuItem" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="#F1F5F9"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Style.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter Property="Background" Value="#334155"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="#64748B"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="HmiStatusChip" TargetType="Border">
         <Setter Property="Background" Value="#1E293B"/>
         <Setter Property="CornerRadius" Value="6"/>
