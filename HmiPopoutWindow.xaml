@@ -16,9 +16,11 @@
         <DockPanel Grid.Row="0" Margin="0,0,0,4">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <CheckBox x:Name="ChkTopmost" Content="항상 위" VerticalAlignment="Center" Margin="0,0,12,0"
-                          Checked="ChkTopmost_Changed" Unchecked="ChkTopmost_Changed"/>
+                          Checked="ChkTopmost_Changed" Unchecked="ChkTopmost_Changed"
+                          ToolTip="다른 프로그램 위에도 이 창을 맨 앞에 둡니다. 닫을 때 설정이 저장됩니다."/>
                 <Button Content="→ 외부 모니터" Style="{StaticResource HmiToolbarButton}" Padding="8,4"
-                        Click="BtnSecondaryMonitor_Click" ToolTip="주 모니터 오른쪽(2번 모니터)으로 이동"/>
+                        Click="BtnSecondaryMonitor_Click"
+                        ToolTip="2번 모니터(주 화면 오른쪽)로 이동합니다. 크기 조절 후 닫으면 위치가 저장됩니다. 자세한 설명: docs/HMI_초보자_가이드.md §4"/>
             </StackPanel>
             <TextBlock x:Name="TxtTitle" Style="{StaticResource HmiCardTitle}"/>
         </DockPanel>

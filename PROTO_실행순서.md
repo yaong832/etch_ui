@@ -23,6 +23,8 @@
 | **원격 모니터링** | `C:\etchflask\REMOTE_MONITORING.md` |
 
 | **Flask README** | `C:\etchflask\README.md` |
+| **HMI 초보자** | [`docs/HMI_초보자_가이드.md`](docs/HMI_초보자_가이드.md) (분리 창·외부 모니터) |
+| **Flask 초보자** | [`docs/FLASK_초보자_가이드.md`](docs/FLASK_초보자_가이드.md) (웹 탭·AI) |
 | **발표·데모 (PLC 없음)** | [`발표용_데모_체크리스트.md`](발표용_데모_체크리스트.md) |
 
 

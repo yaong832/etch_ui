@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="데모 시나리오 (3분)"
-        Height="480" Width="520"
+        Height="540" Width="520"
         WindowStartupLocation="CenterOwner"
         FontFamily="{StaticResource HmiFont}"
         Background="{StaticResource HmiCanvasBrush}">
@@ -15,10 +15,12 @@
                 <Bold>0:20</Bold> 시뮬 허용 ON → DEMO (시뮬)<LineBreak/>
                 <Bold>0:40</Bold> (선택) 데모 진행 — 로그 5단계 자동<LineBreak/>
                 <Bold>1:00</Bold> ▶ 시작 → RUNNING · 가상 이송·FOUP<LineBreak/>
+                <Bold>1:20</Bold> (2모니터) 도식 확대 → → 외부 모니터<LineBreak/>
                 <Bold>2:00</Bold> AI 조언 · 공정 스텝 · 인터락 [데모]<LineBreak/>
-                <Bold>2:20</Bold> 대시보드 → 모듈·레시피·AI 진단 탭<LineBreak/>
+                <Bold>2:20</Bold> 대시보드 → 실시간·모듈·레시피·AI 진단 탭<LineBreak/>
                 <Bold>2:50</Bold> ■ 정지<LineBreak/>
                 <LineBreak/>
+                처음 쓰는 분: docs/HMI_초보자_가이드.md · docs/FLASK_초보자_가이드.md<LineBreak/>
                 전체 체크·자동 검증: 발표용_데모_체크리스트.md
             </TextBlock>
             <Button Content="닫기" Style="{StaticResource HmiPrimaryButton}" Margin="0,16,0,0"

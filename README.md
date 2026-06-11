@@ -69,6 +69,8 @@ dotnet run -c Release -- --sim-report --ticks=40000
 
 | 문서 | 용도 |
 |------|------|
+| [**docs/HMI_초보자_가이드.md**](docs/HMI_초보자_가이드.md) | **처음 사용자** — 화면 구성·분리 창·**외부 모니터** |
+| [**docs/FLASK_초보자_가이드.md**](docs/FLASK_초보자_가이드.md) | **Flask 웹** — 탭별 설명·demo/live·AI 진단 |
 | [**PROJECT_계획.md**](PROJECT_계획.md) | **전체 로드맵** (Phase 0~5, AI §10) |
 | [PROJECT_진행상황.md](PROJECT_진행상황.md) | 진행도·최근 커밋 |
 | [docs/구현상태.md](docs/구현상태.md) | Phase·Hmi·CLI 요약 |
