@@ -26,6 +26,11 @@ public static class InterlockPanelPresenter
         }
 
         ApplyLive(vm, ctx, decision, effectiveAccessSafe);
+        if (ctx.SimulationFallbackEnabled)
+        {
+            vm.InterlockResultText = "시뮬 허용 ON · 가상 이송 Start 가능";
+            vm.InterlockResultBrush = Brushes.DarkGoldenrod;
+        }
     }
 
     private static void ApplyMaintenance(MainViewModel vm, InterlockSensorContext ctx, bool effectiveAccessSafe)

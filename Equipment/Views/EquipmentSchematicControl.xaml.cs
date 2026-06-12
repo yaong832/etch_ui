@@ -28,9 +28,52 @@ public partial class EquipmentSchematicControl : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyBladeChrome();
         RepositionAll();
         DrawTracks();
         HookMotion();
+    }
+
+    private void ApplyBladeChrome()
+    {
+        BladeVisualHelper.ApplyEfemChrome(
+            EfemBladeHubPad,
+            EfemBladeRailFront,
+            EfemBladeRailBack,
+            EfemBladeRailTop,
+            EfemBladeRailBottom,
+            EfemBladeTipFront,
+            EfemBladeTipBack,
+            EfemBladeTipTop,
+            EfemBladeTipBottom,
+            EfemBladeCenterPad,
+            EfemBladeSlotA,
+            EfemBladeSlotB,
+            EfemProngFrontL,
+            EfemProngFrontR,
+            EfemProngBackL,
+            EfemProngBackR);
+        BladeVisualHelper.ApplyVacuumChrome(
+            BladeHubPad,
+            BladeRailFront,
+            BladeRailBack,
+            BladeRailTop,
+            BladeRailBottom,
+            BladeTipFront,
+            BladeTipBack,
+            BladeTipTop,
+            BladeTipBottom,
+            BladeCenterPad,
+            BladeSlotA,
+            BladeSlotB,
+            BladeProngFrontL,
+            BladeProngFrontR,
+            BladeProngBackL,
+            BladeProngBackR);
+        BladeVisualHelper.ApplyProng(EfemProngTopL, "#7A9099");
+        BladeVisualHelper.ApplyProng(EfemProngTopR, "#7A9099");
+        BladeVisualHelper.ApplyProng(BladeProngTopL, "#6B7C88");
+        BladeVisualHelper.ApplyProng(BladeProngTopR, "#6B7C88");
     }
 
     private void HookMotion()
@@ -100,9 +143,10 @@ public partial class EquipmentSchematicControl : UserControl
             return;
         }
 
-        const double armY = 15;
-        const double armH = 10;
-        const double slotTipInset = 10;
+        const double armY = 14;
+        const double armH = BladeVisualHelper.ArmHeight;
+        const double slotTipInset = 12;
+        const double waferCenterY = armY + BladeVisualHelper.PaddleHeight / 2;
 
         double efemNorm = Math.Clamp((_bound.EfemBladeExtension - 0.4) / 1.2, 0, 1);
         EfemRotate.Angle = _bound.EfemBladeAngleDegrees;
@@ -123,15 +167,16 @@ public partial class EquipmentSchematicControl : UserControl
                 EfemBladeRailBack,
                 EfemBladeTipFront,
                 EfemBladeTipBack,
+                EfemProngFrontL,
+                EfemProngFrontR,
+                EfemProngBackL,
+                EfemProngBackR,
                 EfemBladeSlotA,
                 EfemBladeSlotB,
                 EfemBladeSlotALabel,
                 EfemBladeSlotBLabel,
                 Visibility.Visible);
-
-            const double bladeLit = 0.9;
-            EfemBladeSlotA.Opacity = bladeLit;
-            EfemBladeSlotB.Opacity = bladeLit;
+            SetSingleProngVis(EfemProngTopL, EfemProngTopR, Visibility.Collapsed);
 
             bool efemBusy = _bound.EfemTransferBusy;
             int activeSlot = _bound.EfemActiveBladeSlot;
@@ -139,7 +184,6 @@ public partial class EquipmentSchematicControl : UserControl
             double backLen = ResolveArmLength(efemBusy, activeSlot == 0, efemLenExtend, EfemBaseBlade);
 
             LayoutSymmetricDualArm(
-                front: true,
                 frontLen,
                 backLen,
                 EfemHubX,
@@ -150,12 +194,14 @@ public partial class EquipmentSchematicControl : UserControl
                 EfemBladeRailBack,
                 EfemBladeTipFront,
                 EfemBladeTipBack,
+                EfemProngFrontL,
+                EfemProngFrontR,
+                EfemProngBackL,
+                EfemProngBackR,
                 EfemBladeSlotA,
                 EfemBladeSlotB,
                 EfemBladeSlotALabel,
                 EfemBladeSlotBLabel);
-
-            double waferCenterY = armY + armH / 2;
             if (_bound.EfemBladeSlotB)
             {
                 PlaceWaferDisc(WaferOnEfemBladeB, EfemHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter, _bound.EfemPaddleBrush1);
@@ -174,6 +220,10 @@ public partial class EquipmentSchematicControl : UserControl
                 EfemBladeRailBack,
                 EfemBladeTipFront,
                 EfemBladeTipBack,
+                EfemProngFrontL,
+                EfemProngFrontR,
+                EfemProngBackL,
+                EfemProngBackR,
                 EfemBladeSlotA,
                 EfemBladeSlotB,
                 EfemBladeSlotALabel,
@@ -186,19 +236,25 @@ public partial class EquipmentSchematicControl : UserControl
                 EfemBladeTipBottom,
                 EfemBladeCenterPad,
                 Visibility.Visible);
+            SetSingleProngVis(EfemProngTopL, EfemProngTopR, Visibility.Visible);
 
             double efemLen = efemLenExtend;
-            EfemBladeRailTop.Width = efemLen;
+            LayoutSingleArm(
+                EfemHubX,
+                armY,
+                armH,
+                efemLen,
+                slotTipInset,
+                EfemBladeRailTop,
+                EfemBladeTipTop,
+                EfemBladeCenterPad,
+                EfemProngTopL,
+                EfemProngTopR);
             EfemBladeRailBottom.Visibility = Visibility.Collapsed;
             EfemBladeTipBottom.Visibility = Visibility.Collapsed;
-            Canvas.SetLeft(EfemBladeRailTop, EfemHubX);
-            Canvas.SetTop(EfemBladeRailTop, 8);
-            Canvas.SetLeft(EfemBladeTipTop, EfemHubX + efemLen - 6);
-            Canvas.SetLeft(EfemBladeCenterPad, EfemHubX + efemLen - 14);
-            double slotLeft = EfemHubX + efemLen - 4;
             if (_bound.EfemBladeSlotA || _bound.EfemCarryingWafer)
             {
-                PlaceWaferDisc(WaferOnEfemBlade, slotLeft, 8 + 5, BladeWaferDiameter, _bound.EfemPaddleBrush0);
+                PlaceWaferDisc(WaferOnEfemBlade, EfemHubX + efemLen - slotTipInset, waferCenterY, BladeWaferDiameter, _bound.EfemPaddleBrush0);
             }
 
             WaferOnEfemBladeB.Visibility = Visibility.Collapsed;
@@ -219,9 +275,10 @@ public partial class EquipmentSchematicControl : UserControl
             return;
         }
 
-        const double vacArmY = 15;
-        const double vacArmH = 10;
-        const double slotTipInset = 10;
+        const double vacArmY = 14;
+        const double vacArmH = BladeVisualHelper.ArmHeight;
+        const double slotTipInset = 12;
+        const double vacWaferCenterY = vacArmY + BladeVisualHelper.PaddleHeight / 2;
 
         double vacNorm = Math.Clamp((_bound.VacuumBladeExtension - 0.4) / 1.2, 0, 1);
         TmRotate.Angle = _bound.VacuumBladeAngleDegrees;
@@ -243,15 +300,17 @@ public partial class EquipmentSchematicControl : UserControl
                 BladeRailBack,
                 BladeTipFront,
                 BladeTipBack,
+                BladeProngFrontL,
+                BladeProngFrontR,
+                BladeProngBackL,
+                BladeProngBackR,
                 BladeSlotA,
                 BladeSlotB,
                 BladeSlotALabel,
                 BladeSlotBLabel,
                 Visibility.Visible);
-            const double bladeLit = 0.9;
-            BladeSlotA.Opacity = bladeLit;
-            BladeSlotB.Opacity = bladeLit;
-            BladeHubPad.Opacity = _bound.VacuumIsRotatingBlade ? 0.75 : 0.95;
+            SetSingleProngVis(BladeProngTopL, BladeProngTopR, Visibility.Collapsed);
+            BladeHubPad.Opacity = _bound.VacuumIsRotatingBlade ? 0.75 : 0.98;
 
             bool vacBusy = _bound.VacuumTransferBusy;
             int activeSlot = _bound.VacuumActiveBladeSlot;
@@ -259,7 +318,6 @@ public partial class EquipmentSchematicControl : UserControl
             double backLen = ResolveArmLength(vacBusy, activeSlot == 0, vacLenExtend, TmBaseBlade);
 
             LayoutSymmetricDualArm(
-                front: true,
                 frontLen,
                 backLen,
                 VacHubX,
@@ -270,20 +328,22 @@ public partial class EquipmentSchematicControl : UserControl
                 BladeRailBack,
                 BladeTipFront,
                 BladeTipBack,
+                BladeProngFrontL,
+                BladeProngFrontR,
+                BladeProngBackL,
+                BladeProngBackR,
                 BladeSlotA,
                 BladeSlotB,
                 BladeSlotALabel,
                 BladeSlotBLabel);
-
-            double waferCenterY = vacArmY + vacArmH / 2;
             if (_bound.VacuumBladeSlotB)
             {
-                PlaceWaferDisc(WaferOnBladeB, VacHubX + frontLen - slotTipInset, waferCenterY, BladeWaferDiameter, _bound.VacuumBladeBrush1);
+                PlaceWaferDisc(WaferOnBladeB, VacHubX + frontLen - slotTipInset, vacWaferCenterY, BladeWaferDiameter, _bound.VacuumBladeBrush1);
             }
 
             if (_bound.VacuumBladeSlotA)
             {
-                PlaceWaferDisc(WaferOnBlade, VacHubX - backLen + slotTipInset, waferCenterY, BladeWaferDiameter, _bound.VacuumBladeBrush0);
+                PlaceWaferDisc(WaferOnBlade, VacHubX - backLen + slotTipInset, vacWaferCenterY, BladeWaferDiameter, _bound.VacuumBladeBrush0);
             }
         }
         else
@@ -294,6 +354,10 @@ public partial class EquipmentSchematicControl : UserControl
                 BladeRailBack,
                 BladeTipFront,
                 BladeTipBack,
+                BladeProngFrontL,
+                BladeProngFrontR,
+                BladeProngBackL,
+                BladeProngBackR,
                 BladeSlotA,
                 BladeSlotB,
                 BladeSlotALabel,
@@ -306,20 +370,26 @@ public partial class EquipmentSchematicControl : UserControl
                 BladeTipBottom,
                 BladeCenterPad,
                 Visibility.Visible);
+            SetSingleProngVis(BladeProngTopL, BladeProngTopR, Visibility.Visible);
+            BladeHubPad.Opacity = _bound.VacuumIsRotatingBlade ? 0.75 : 0.98;
 
             double vacLen = vacLenExtend;
-            BladeRailTop.Width = vacLen;
-            Canvas.SetLeft(BladeRailTop, VacHubX);
-            Canvas.SetTop(BladeRailTop, 8);
-            double tipLeft = VacHubX + vacLen - 6;
-            Canvas.SetLeft(BladeTipTop, tipLeft);
-            Canvas.SetLeft(BladeCenterPad, VacHubX + vacLen - 14);
-            double slotLeft = VacHubX + vacLen - 4;
+            LayoutSingleArm(
+                VacHubX,
+                vacArmY,
+                vacArmH,
+                vacLen,
+                slotTipInset,
+                BladeRailTop,
+                BladeTipTop,
+                BladeCenterPad,
+                BladeProngTopL,
+                BladeProngTopR);
             BladeSlotB.Visibility = Visibility.Collapsed;
 
             if (_bound.VacuumBladeSlotA || _bound.VacuumCarryingWafer)
             {
-                PlaceWaferDisc(WaferOnBlade, slotLeft, 8 + 5, BladeWaferDiameter, _bound.VacuumBladeBrush0);
+                PlaceWaferDisc(WaferOnBlade, VacHubX + vacLen - slotTipInset, vacWaferCenterY, BladeWaferDiameter, _bound.VacuumBladeBrush0);
             }
 
             WaferOnBladeB.Visibility = Visibility.Collapsed;
@@ -359,11 +429,15 @@ public partial class EquipmentSchematicControl : UserControl
     }
 
     private static void SetDualBladeVis(
-        Rectangle hub,
+        UIElement hub,
         Rectangle railFront,
         Rectangle railBack,
         Rectangle tipFront,
         Rectangle tipBack,
+        Rectangle prongFrontL,
+        Rectangle prongFrontR,
+        Rectangle prongBackL,
+        Rectangle prongBackR,
         Rectangle slotA,
         Rectangle slotB,
         TextBlock labelA,
@@ -375,14 +449,43 @@ public partial class EquipmentSchematicControl : UserControl
         railBack.Visibility = visibility;
         tipFront.Visibility = visibility;
         tipBack.Visibility = visibility;
+        prongFrontL.Visibility = visibility;
+        prongFrontR.Visibility = visibility;
+        prongBackL.Visibility = visibility;
+        prongBackR.Visibility = visibility;
         slotA.Visibility = visibility;
         slotB.Visibility = visibility;
         labelA.Visibility = visibility;
         labelB.Visibility = visibility;
     }
 
+    private static void SetSingleProngVis(Rectangle prongL, Rectangle prongR, Visibility visibility)
+    {
+        prongL.Visibility = visibility;
+        prongR.Visibility = visibility;
+    }
+
+    private static void LayoutSingleArm(
+        double hubX,
+        double armY,
+        double armH,
+        double armLen,
+        double slotTipInset,
+        Rectangle rail,
+        Rectangle paddle,
+        Rectangle centerPad,
+        Rectangle prongL,
+        Rectangle prongR)
+    {
+        rail.Width = armLen;
+        rail.Height = armH;
+        Canvas.SetLeft(rail, hubX);
+        Canvas.SetTop(rail, BladeVisualHelper.ArmTop(armY));
+        BladeVisualHelper.LayoutFrontPaddle(hubX, armLen, armY, paddle, prongL, prongR, null, null, slotTipInset);
+        centerPad.Visibility = Visibility.Collapsed;
+    }
+
     private static void LayoutSymmetricDualArm(
-        bool front,
         double frontLen,
         double backLen,
         double hubX,
@@ -393,6 +496,10 @@ public partial class EquipmentSchematicControl : UserControl
         Rectangle railBack,
         Rectangle tipFront,
         Rectangle tipBack,
+        Rectangle prongFrontL,
+        Rectangle prongFrontR,
+        Rectangle prongBackL,
+        Rectangle prongBackR,
         Rectangle slotA,
         Rectangle slotB,
         TextBlock labelA,
@@ -401,26 +508,17 @@ public partial class EquipmentSchematicControl : UserControl
         railFront.Width = frontLen;
         railFront.Height = armH;
         Canvas.SetLeft(railFront, hubX);
-        Canvas.SetTop(railFront, armY);
-        Canvas.SetLeft(tipFront, hubX + frontLen - 8);
-        Canvas.SetTop(tipFront, armY - 1);
-        Canvas.SetLeft(slotB, hubX + frontLen - slotTipInset);
-        Canvas.SetTop(slotB, armY - 1);
-        Canvas.SetLeft(labelB, hubX + frontLen - slotTipInset);
-        Canvas.SetTop(labelB, armY - 13);
+        Canvas.SetTop(railFront, BladeVisualHelper.ArmTop(armY));
 
         railBack.Width = backLen;
         railBack.Height = armH;
         Canvas.SetLeft(railBack, hubX - backLen);
-        Canvas.SetTop(railBack, armY);
-        Canvas.SetLeft(tipBack, hubX - backLen - 16);
-        Canvas.SetTop(tipBack, armY - 1);
-        Canvas.SetLeft(slotA, hubX - backLen + slotTipInset - 14);
-        Canvas.SetTop(slotA, armY - 1);
-        Canvas.SetLeft(labelA, hubX - backLen + slotTipInset - 14);
-        Canvas.SetTop(labelA, armY - 13);
+        Canvas.SetTop(railBack, BladeVisualHelper.ArmTop(armY));
 
-        _ = front;
+        BladeVisualHelper.LayoutFrontPaddle(
+            hubX, frontLen, armY, tipFront, prongFrontL, prongFrontR, slotB, labelB, slotTipInset);
+        BladeVisualHelper.LayoutBackPaddle(
+            hubX, backLen, armY, tipBack, prongBackL, prongBackR, slotA, labelA, slotTipInset);
     }
 
     private static void PlaceWaferDisc(Ellipse wafer, double centerX, double centerY, double diameter, Brush? fill = null)

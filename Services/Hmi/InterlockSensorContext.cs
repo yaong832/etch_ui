@@ -5,6 +5,8 @@ public sealed class InterlockSensorContext
 {
     public bool HasLiveSensorData { get; init; }
     public bool IsBenchMode { get; init; }
+    /// <summary>시뮬 허용 ON — 가상 이송 Start는 인터락과 무관.</summary>
+    public bool SimulationFallbackEnabled { get; init; }
     public bool MaintenanceMode { get; init; }
     public bool AccessInputValid { get; init; }
     public bool EffectiveAccessSafe { get; init; }

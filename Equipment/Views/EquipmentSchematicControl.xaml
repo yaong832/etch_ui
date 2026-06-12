@@ -355,19 +355,25 @@
                         </Grid.RenderTransform>
                         <Ellipse Width="76" Height="76" Fill="#0D9488" Opacity="0.18" Stroke="#0F766E" StrokeThickness="2"/>
                         <Ellipse Width="54" Height="54" Fill="#14B8A6" Stroke="#0F766E" StrokeThickness="1.8"/>
-                        <Canvas x:Name="EfemBladeCanvas" Width="300" Height="44" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">
-                            <Rectangle x:Name="EfemBladeHubPad" Canvas.Left="143" Canvas.Top="14" Width="14" Height="14" RadiusX="4" RadiusY="4" Fill="#0F766E" Opacity="0.95"/>
-                            <Rectangle x:Name="EfemBladeRailFront" Canvas.Left="150" Canvas.Top="15" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#4B5563" Visibility="Collapsed"/>
-                            <Rectangle x:Name="EfemBladeRailBack" Canvas.Left="94" Canvas.Top="15" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#4B5563" Visibility="Collapsed"/>
-                            <Rectangle x:Name="EfemBladeTipFront" Canvas.Left="198" Canvas.Top="13" Width="24" Height="14" RadiusX="4" RadiusY="4" Fill="#6B7280" Visibility="Collapsed"/>
-                            <Rectangle x:Name="EfemBladeTipBack" Canvas.Left="78" Canvas.Top="13" Width="24" Height="14" RadiusX="4" RadiusY="4" Fill="#6B7280" Visibility="Collapsed"/>
-                            <Rectangle x:Name="EfemBladeRailTop" Canvas.Left="150" Canvas.Top="8" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#4B5563"/>
-                            <Rectangle x:Name="EfemBladeRailBottom" Canvas.Left="150" Canvas.Top="26" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#4B5563" Visibility="Collapsed"/>
-                            <Rectangle x:Name="EfemBladeCenterPad" Canvas.Left="192" Canvas.Top="16" Width="16" Height="12" RadiusX="3" RadiusY="3" Fill="#9CA3AF" Opacity="0.9"/>
-                            <Rectangle x:Name="EfemBladeTipTop" Canvas.Left="198" Canvas.Top="7" Width="28" Height="12" RadiusX="4" RadiusY="4" Fill="#6B7280"/>
-                            <Rectangle x:Name="EfemBladeTipBottom" Canvas.Left="198" Canvas.Top="25" Width="28" Height="12" RadiusX="4" RadiusY="4" Fill="#6B7280" Visibility="Collapsed"/>
-                            <Rectangle x:Name="EfemBladeSlotA" Canvas.Left="78" Canvas.Top="13" Width="14" Height="10" RadiusX="2" RadiusY="2" Fill="#134E4A" Stroke="#5EEAD4" StrokeThickness="0.8" Opacity="0.45" Visibility="Collapsed"/>
-                            <Rectangle x:Name="EfemBladeSlotB" Canvas.Left="208" Canvas.Top="13" Width="14" Height="10" RadiusX="2" RadiusY="2" Fill="#134E4A" Stroke="#5EEAD4" StrokeThickness="0.8" Opacity="0.45" Visibility="Collapsed"/>
+                        <Canvas x:Name="EfemBladeCanvas" Width="300" Height="52" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">
+                            <Ellipse x:Name="EfemBladeHubPad" Canvas.Left="141" Canvas.Top="17" Width="18" Height="18" Opacity="0.98"/>
+                            <Rectangle x:Name="EfemBladeRailFront" Canvas.Left="150" Canvas.Top="17" Width="56" Height="7" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemBladeRailBack" Canvas.Left="94" Canvas.Top="17" Width="56" Height="7" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemBladeTipFront" Canvas.Left="198" Canvas.Top="14" Width="24" Height="13" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemBladeTipBack" Canvas.Left="78" Canvas.Top="14" Width="24" Height="13" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemProngFrontL" Canvas.Left="205" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemProngFrontR" Canvas.Left="215" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemProngBackL" Canvas.Left="83" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemProngBackR" Canvas.Left="93" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemBladeRailTop" Canvas.Left="150" Canvas.Top="17" Width="56" Height="7"/>
+                            <Rectangle x:Name="EfemBladeRailBottom" Canvas.Left="150" Canvas.Top="28" Width="56" Height="7" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemBladeCenterPad" Canvas.Left="192" Canvas.Top="14" Width="24" Height="13" Opacity="0.95"/>
+                            <Rectangle x:Name="EfemBladeTipTop" Canvas.Left="198" Canvas.Top="14" Width="24" Height="13"/>
+                            <Rectangle x:Name="EfemBladeTipBottom" Canvas.Left="198" Canvas.Top="28" Width="24" Height="13" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemProngTopL" Canvas.Left="205" Canvas.Top="16" Width="2.4" Height="9"/>
+                            <Rectangle x:Name="EfemProngTopR" Canvas.Left="215" Canvas.Top="16" Width="2.4" Height="9"/>
+                            <Rectangle x:Name="EfemBladeSlotA" Canvas.Left="78" Canvas.Top="13" Width="16" Height="16" Visibility="Collapsed"/>
+                            <Rectangle x:Name="EfemBladeSlotB" Canvas.Left="208" Canvas.Top="13" Width="16" Height="16" Visibility="Collapsed"/>
                             <TextBlock x:Name="EfemBladeSlotALabel" Canvas.Left="80" Canvas.Top="2" Text="뒤·A" FontSize="7" FontWeight="Bold" Foreground="#5EEAD4" Visibility="Collapsed"/>
                             <TextBlock x:Name="EfemBladeSlotBLabel" Canvas.Left="210" Canvas.Top="2" Text="앞·B" FontSize="7" FontWeight="Bold" Foreground="#5EEAD4" Visibility="Collapsed"/>
                             <Ellipse x:Name="WaferOnEfemBlade" Width="14" Height="14"
@@ -387,19 +393,25 @@
                         <Ellipse Width="112" Height="112" Fill="#1E3A8A" Opacity="0.14" Stroke="#1E40AF" StrokeThickness="2.5"/>
                         <Ellipse Width="82" Height="82" Fill="#1D4ED8" Stroke="#1E40AF" StrokeThickness="2"/>
                         <!-- 듀얼: TM 중심 기준 앞(+)/뒤(-) 180° 대칭 팔 · 회전(TmRotate)으로 챔버 맞춤. 단일: 오른쪽 1팔 -->
-                        <Canvas x:Name="BladeCanvas" Width="340" Height="44" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">
-                            <Rectangle x:Name="BladeHubPad" Canvas.Left="163" Canvas.Top="14" Width="14" Height="14" RadiusX="4" RadiusY="4" Fill="#94A3B8" Opacity="0.95"/>
-                            <Rectangle x:Name="BladeRailFront" Canvas.Left="170" Canvas.Top="15" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#475569" Visibility="Collapsed"/>
-                            <Rectangle x:Name="BladeRailBack" Canvas.Left="114" Canvas.Top="15" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#475569" Visibility="Collapsed"/>
-                            <Rectangle x:Name="BladeTipFront" Canvas.Left="218" Canvas.Top="13" Width="24" Height="14" RadiusX="4" RadiusY="4" Fill="#64748B" Visibility="Collapsed"/>
-                            <Rectangle x:Name="BladeTipBack" Canvas.Left="98" Canvas.Top="13" Width="24" Height="14" RadiusX="4" RadiusY="4" Fill="#64748B" Visibility="Collapsed"/>
-                            <Rectangle x:Name="BladeRailTop" Canvas.Left="170" Canvas.Top="8" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#475569"/>
-                            <Rectangle x:Name="BladeRailBottom" Canvas.Left="170" Canvas.Top="26" Width="56" Height="10" RadiusX="3" RadiusY="3" Fill="#475569" Visibility="Collapsed"/>
-                            <Rectangle x:Name="BladeCenterPad" Canvas.Left="212" Canvas.Top="16" Width="16" Height="12" RadiusX="3" RadiusY="3" Fill="#94A3B8" Opacity="0.9"/>
-                            <Rectangle x:Name="BladeTipTop" Canvas.Left="218" Canvas.Top="7" Width="28" Height="12" RadiusX="4" RadiusY="4" Fill="#64748B"/>
-                            <Rectangle x:Name="BladeTipBottom" Canvas.Left="218" Canvas.Top="25" Width="28" Height="12" RadiusX="4" RadiusY="4" Fill="#64748B" Visibility="Collapsed"/>
-                            <Rectangle x:Name="BladeSlotA" Canvas.Left="98" Canvas.Top="13" Width="14" Height="10" RadiusX="2" RadiusY="2" Fill="#1E293B" Stroke="#38BDF8" StrokeThickness="0.8" Opacity="0.45" Visibility="Collapsed"/>
-                            <Rectangle x:Name="BladeSlotB" Canvas.Left="228" Canvas.Top="13" Width="14" Height="10" RadiusX="2" RadiusY="2" Fill="#1E293B" Stroke="#38BDF8" StrokeThickness="0.8" Opacity="0.45" Visibility="Collapsed"/>
+                        <Canvas x:Name="BladeCanvas" Width="340" Height="52" HorizontalAlignment="Center" VerticalAlignment="Center" ClipToBounds="False">
+                            <Ellipse x:Name="BladeHubPad" Canvas.Left="161" Canvas.Top="17" Width="18" Height="18" Opacity="0.98"/>
+                            <Rectangle x:Name="BladeRailFront" Canvas.Left="170" Canvas.Top="17" Width="56" Height="7" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeRailBack" Canvas.Left="114" Canvas.Top="17" Width="56" Height="7" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeTipFront" Canvas.Left="218" Canvas.Top="14" Width="24" Height="13" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeTipBack" Canvas.Left="98" Canvas.Top="14" Width="24" Height="13" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeProngFrontL" Canvas.Left="225" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeProngFrontR" Canvas.Left="235" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeProngBackL" Canvas.Left="103" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeProngBackR" Canvas.Left="113" Canvas.Top="16" Width="2.4" Height="9" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeRailTop" Canvas.Left="170" Canvas.Top="17" Width="56" Height="7"/>
+                            <Rectangle x:Name="BladeRailBottom" Canvas.Left="170" Canvas.Top="28" Width="56" Height="7" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeCenterPad" Canvas.Left="212" Canvas.Top="14" Width="24" Height="13" Opacity="0.95"/>
+                            <Rectangle x:Name="BladeTipTop" Canvas.Left="218" Canvas.Top="14" Width="24" Height="13"/>
+                            <Rectangle x:Name="BladeTipBottom" Canvas.Left="218" Canvas.Top="28" Width="24" Height="13" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeProngTopL" Canvas.Left="225" Canvas.Top="16" Width="2.4" Height="9"/>
+                            <Rectangle x:Name="BladeProngTopR" Canvas.Left="235" Canvas.Top="16" Width="2.4" Height="9"/>
+                            <Rectangle x:Name="BladeSlotA" Canvas.Left="98" Canvas.Top="13" Width="16" Height="16" Visibility="Collapsed"/>
+                            <Rectangle x:Name="BladeSlotB" Canvas.Left="228" Canvas.Top="13" Width="16" Height="16" Visibility="Collapsed"/>
                             <TextBlock x:Name="BladeSlotALabel" Canvas.Left="100" Canvas.Top="2" Text="뒤·A" FontSize="7" FontWeight="Bold" Foreground="#7DD3FC" Visibility="Collapsed"/>
                             <TextBlock x:Name="BladeSlotBLabel" Canvas.Left="230" Canvas.Top="2" Text="앞·B" FontSize="7" FontWeight="Bold" Foreground="#7DD3FC" Visibility="Collapsed"/>
                             <Ellipse x:Name="WaferOnBlade" Width="14" Height="14"

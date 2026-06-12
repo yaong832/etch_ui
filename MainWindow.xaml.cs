@@ -471,6 +471,30 @@ public partial class MainWindow : Window, DemoScenarioHost
     }
 
     /// <summary>버튼으로 시뮬 켤 때 등, 데모 시작값.</summary>
+    /// <summary>시뮬 허용 ON 시 EtherCAT 미연결이면 데모 센서·가상 이송 모드로 전환.</summary>
+    private void EnsureBenchSimulationWhenOffline()
+    {
+        if (_plcPolling.Plc.TryReadSnapshot(out PlcProcessSnapshot snap))
+        {
+            _useSimulation = false;
+            ApplyPlcSnapshot(snap);
+            return;
+        }
+
+        if (_plcPolling.TryConnect(AppSettings.AdsPort) && _plcPolling.Plc.TryReadSnapshot(out snap))
+        {
+            _useSimulation = false;
+            ApplyPlcSnapshot(snap);
+            return;
+        }
+
+        _useSimulation = true;
+        SeedSimulationValues();
+        SimulateSensors();
+        ClearSparklineHistory();
+        AddLog("EtherCAT 미연결 — 데모 센서 모드(Start로 가상 이송 확인).");
+    }
+
     private void SeedSimulationValues()
     {
         _temp = 24.0;
@@ -541,15 +565,17 @@ public partial class MainWindow : Window, DemoScenarioHost
 
     private string? ComputePrimaryAlarmCode() => _interlock.PrimaryAlarmCode;
 
+    /// <summary>시뮬 허용 ON이면 EtherCAT·센서 인터락 없이 가상 이송 Start 가능.</summary>
     private bool CanStartProcess() =>
         SessionContext.HasRole(UserRole.Worker)
         && !_maintenanceMode
-        && (IsBenchMode || ProductionInterlockOk);
+        && (_simulationFallbackEnabled || ProductionInterlockOk);
 
     private InterlockSensorContext BuildInterlockContext() => new()
     {
         HasLiveSensorData = HasLiveSensorData,
         IsBenchMode = IsBenchMode,
+        SimulationFallbackEnabled = _simulationFallbackEnabled,
         MaintenanceMode = _maintenanceMode,
         AccessInputValid = _accessInputValid,
         EffectiveAccessSafe = EffectiveAccessSafe,
@@ -615,8 +641,14 @@ public partial class MainWindow : Window, DemoScenarioHost
             return;
         }
 
-        if (IsBenchMode)
+        if (IsBenchMode || _simulationFallbackEnabled)
         {
+            if (_state == EquipmentState.Alarm && IsBenchMode)
+            {
+                _state = EquipmentState.Ready;
+                return;
+            }
+
             if (_state == EquipmentState.Alarm)
             {
                 return;
@@ -1165,9 +1197,11 @@ public partial class MainWindow : Window, DemoScenarioHost
             return "유지보수 모드에서는 시작할 수 없습니다.";
         }
 
-        if (IsBenchMode)
+        if (_simulationFallbackEnabled)
         {
-            return "데모 모드: TwinCAT·인터락 없이 가상 TM 이송을 시작합니다.";
+            return IsBenchMode
+                ? "데모 모드: TwinCAT·인터락 없이 가상 TM 이송을 시작합니다."
+                : "시뮬 허용 ON: 인터락과 무관하게 가상 이송을 시작합니다 (센서는 EtherCAT 우선).";
         }
 
         if (!ProductionInterlockOk)
@@ -1594,25 +1628,8 @@ public partial class MainWindow : Window, DemoScenarioHost
         _simulationFallbackEnabled = !_simulationFallbackEnabled;
         if (_simulationFallbackEnabled)
         {
-            AddLog("시뮬 허용 ON — TwinCAT 없으면 데모(가상 센서·TM 이송), 연결되면 실데이터 우선.");
-            if (_plcPolling.Plc.TryReadSnapshot(out PlcProcessSnapshot snap))
-            {
-                _useSimulation = false;
-                ApplyPlcSnapshot(snap);
-            }
-            else if (_plcPolling.TryConnect(AppSettings.AdsPort) && _plcPolling.Plc.TryReadSnapshot(out snap))
-            {
-                _useSimulation = false;
-                ApplyPlcSnapshot(snap);
-            }
-            else
-            {
-                _useSimulation = true;
-                SeedSimulationValues();
-                SimulateSensors();
-                ClearSparklineHistory();
-                AddLog("EtherCAT 미연결 — 데모 모드(인터락 생략, Start로 가상 이송 확인).");
-            }
+            AddLog("시뮬 허용 ON — Start는 인터락 없이 가상 이송 가능. TwinCAT 없으면 데모 센서, 연결되면 실데이터 표시.");
+            EnsureBenchSimulationWhenOffline();
         }
         else
         {
@@ -1675,6 +1692,11 @@ public partial class MainWindow : Window, DemoScenarioHost
         {
             _flaskGateway.BaseUrl = AppSettings.FlaskBaseUrl;
             _simulationFallbackEnabled = AppSettings.SimulationEnabled;
+            if (_simulationFallbackEnabled)
+            {
+                EnsureBenchSimulationWhenOffline();
+            }
+
             SyncViewModel();
             _vm.NotifyAppSettingsBindings();
             AddLog($"설정 반영 — 압력 {AppSettings.PressureMtorrMin:F0}–{AppSettings.PressureMtorrMax:F0} mTorr, " +
