@@ -1,6 +1,6 @@
 # etch_ui
 
-
+> 📂 [포트폴리오 (Notion)](https://iced-tarsier-455.notion.site/350af40f5e6680d19f93f1653925a3b8) · 🔗 [Flask 서버](https://github.com/yaong832/Flask-etchflask) · 상태: **진행 중**
 
 에칭 Load Lock HMI — WPF(.NET 8) 현장 클라이언트. Flask(`C:\etchflask`)·TwinCAT ADS·가상 TM 이송(`TmTransferSimulator`) 연동.
 
