@@ -1,0 +1,65 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build
+        run: dotnet build etch_ui.sln -c Release
+
+      # 화면 없이 시뮬레이션을 돌려 결과를 검사합니다 (발표용_데모_체크리스트.md C1~C4 + 알람·UI 힌트·설정·AI 데이터).
+      # 오래 걸리는 회귀(--sim-report, --sim-stress, --sim-aligner-audit)와 Flask 서버가 필요한 --sim-flask-e2e는 뺐습니다.
+      - name: Headless simulation checks
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path ".\bin\Release\net8.0-windows\etch_ui.exe").Path
+          $checks = @(
+            "--sim-smoke --ticks=5000",
+            "--sim-policy-batch --runs=3 --ticks=3000",
+            "--sim-maintenance --ticks=800",
+            "--sim-dual-blade --ticks=12000",
+            "--sim-alarm",
+            "--sim-ui-hints",
+            "--sim-app-settings",
+            "--sim-ai-jsonl --ticks=120"
+          )
+          $out = Join-Path $env:RUNNER_TEMP "sim_out.txt"
+          $err = Join-Path $env:RUNNER_TEMP "sim_err.txt"
+          $failed = @()
+          foreach ($c in $checks) {
+            Write-Host "::group::$c"
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $p = Start-Process -FilePath $exe -ArgumentList $c -PassThru -NoNewWindow `
+                   -RedirectStandardOutput $out -RedirectStandardError $err
+            $null = $p.Handle  # ExitCode를 읽으려면 핸들을 먼저 잡아야 함
+            # 예외가 나면 앱이 MessageBox를 띄우고 멈추므로, 5분이 지나면 강제 종료하고 실패로 처리
+            if (-not $p.WaitForExit(300000)) {
+              $p.Kill()
+              $code = "timeout"
+            } else {
+              $code = $p.ExitCode
+            }
+            Get-Content $out, $err -ErrorAction SilentlyContinue | Write-Host
+            Write-Host "exit=$code ($([int]$sw.Elapsed.TotalSeconds) s)"
+            Write-Host "::endgroup::"
+            if ($code -ne 0) {
+              Write-Host "::error::$c failed (exit=$code)"
+              $failed += $c
+            }
+          }
+          $crash = ".\bin\Release\net8.0-windows\data\crash.log"
+          if (Test-Path $crash) { Write-Host "::group::crash.log"; Get-Content $crash | Write-Host; Write-Host "::endgroup::" }
+          if ($failed.Count -gt 0) { exit 1 }
