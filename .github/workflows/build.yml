@@ -20,8 +20,8 @@ jobs:
       - name: Build
         run: dotnet build etch_ui.sln -c Release
 
-      # 화면 없이 시뮬레이션을 돌려 결과를 검사합니다 (발표용_데모_체크리스트.md C1~C4 + 알람·UI 힌트·설정·AI 데이터).
-      # 오래 걸리는 회귀(--sim-report, --sim-stress, --sim-aligner-audit)와 Flask 서버가 필요한 --sim-flask-e2e는 뺐습니다.
+      # 화면 없이 시뮬레이션을 돌려 결과를 검사합니다 (발표용_데모_체크리스트.md C1~C4, 알람·UI 힌트·설정·AI 데이터, 장시간 회귀 4종).
+      # Flask 서버가 있어야 하는 --sim-flask-e2e만 뺐습니다.
       - name: Headless simulation checks
         shell: pwsh
         run: |
@@ -34,7 +34,11 @@ jobs:
             "--sim-alarm",
             "--sim-ui-hints",
             "--sim-app-settings",
-            "--sim-ai-jsonl --ticks=120"
+            "--sim-ai-jsonl --ticks=120",
+            "--sim-report",
+            "--sim-efem-audit",
+            "--sim-stress",
+            "--sim-aligner-audit"
           )
           $out = Join-Path $env:RUNNER_TEMP "sim_out.txt"
           $err = Join-Path $env:RUNNER_TEMP "sim_err.txt"
