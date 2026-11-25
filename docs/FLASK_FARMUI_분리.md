@@ -5,8 +5,8 @@
 | 프로그램 | 저장소·경로 | 포트 |
 |----------|-------------|------|
 | **WPF HMI** | `yaong832/etch_ui` · `D:\WPFProject\etch_ui` | — |
-| **Etch Flask** | `yaong832/farmui` *(rename → etchflask 권장)* · `C:\etchflask` | 5000 |
-| **FarmUI** | `C:\farmui\farmui` (스마트팜, 별도) | 5000 (동시 실행 불가) |
+| **Etch Flask** | `yaong832/Flask-etchflask` · `C:\etchflask` | 5000 |
+| **FarmUI** | `yaong832/Flask-SmartFarmFlask` · `C:\farmui\farmui` (스마트팜, 별도) | 5000 (동시 실행 불가) |
 
 ## 실행
 
